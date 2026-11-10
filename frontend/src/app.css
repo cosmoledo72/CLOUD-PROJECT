@@ -1,0 +1,207 @@
+/* WorkHub design tokens and base styles. Dense, calm, engineering-tool look.
+ *
+ * Theming model:
+ * - `--brand` is the portal accent colour (set at runtime from branding);
+ *   `--on-brand` / `--on-brand-dark` are text colours computed in JS for contrast.
+ * - Accent tokens are derived from `--brand` with color-mix(), separately for
+ *   light and dark mode.
+ * - `data-theme` (auto | light | dark) can be set on the root or on any element
+ *   (branding preview); token blocks are re-declared on themed elements so a
+ *   subtree with its own --brand recomputes the derived colours.
+ * - `data-corners` (sharp | default | round) controls corner radii.
+ */
+
+:root {
+  --brand: #1f4e79;
+  --on-brand: #ffffff;
+  --on-brand-dark: #111827;
+}
+
+:root, [data-theme="light"], .brand-scope {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --border: #dfe3e8;
+  --border-strong: #c5ccd5;
+  --text: #1b2430;
+  --text-2: #5b6776;
+  --text-3: #8a95a3;
+  --danger: #b42318;
+  --danger-soft: #fdecea;
+  --ok: #1d7a4a;
+  --ok-soft: #e5f4ec;
+  --warn: #b26b00;
+  --warn-soft: #fff4e0;
+  --word: #2b5797;
+  --cell: #1e7145;
+  --slide: #c2410c;
+  --pdf: #b91c1c;
+  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --shadow-lg: 0 12px 32px rgb(16 24 40 / 18%);
+
+  --accent: var(--brand);
+  --on-accent: var(--on-brand);
+  --accent-hover: color-mix(in srgb, var(--brand) 82%, black);
+  --accent-soft: color-mix(in srgb, var(--brand) 11%, white);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #11151b;
+  --surface: #181d25;
+  --surface-2: #1e242e;
+  --border: #2a323e;
+  --border-strong: #3a4452;
+  --text: #e6eaf0;
+  --text-2: #a3adba;
+  --text-3: #75808e;
+  --danger: #f2766b;
+  --danger-soft: #3a1d1b;
+  --ok: #4cc38a;
+  --ok-soft: #173126;
+  --warn: #e0a43b;
+  --warn-soft: #3a2c12;
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 50%);
+  --accent: color-mix(in srgb, var(--brand) 62%, white);
+  --on-accent: var(--on-brand-dark);
+  --accent-hover: color-mix(in srgb, var(--brand) 48%, white);
+  --accent-soft: color-mix(in srgb, var(--brand) 30%, #181d25);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]), [data-theme="auto"] {
+    --bg: #11151b;
+    --surface: #181d25;
+    --surface-2: #1e242e;
+    --border: #2a323e;
+    --border-strong: #3a4452;
+    --text: #e6eaf0;
+    --text-2: #a3adba;
+    --text-3: #75808e;
+    --danger: #f2766b;
+    --danger-soft: #3a1d1b;
+    --ok: #4cc38a;
+    --ok-soft: #173126;
+    --warn: #e0a43b;
+    --warn-soft: #3a2c12;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 50%);
+    --accent: color-mix(in srgb, var(--brand) 62%, white);
+    --on-accent: var(--on-brand-dark);
+    --accent-hover: color-mix(in srgb, var(--brand) 48%, white);
+    --accent-soft: color-mix(in srgb, var(--brand) 30%, #181d25);
+    color-scheme: dark;
+  }
+}
+
+:root, [data-corners="default"] { --radius: 6px; --radius-lg: 8px; }
+[data-corners="sharp"] { --radius: 2px; --radius-lg: 3px; }
+[data-corners="round"] { --radius: 10px; --radius-lg: 14px; }
+
+:root {
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+}
+
+/* Sidebar variants (also used by the branding preview). */
+[data-sidebar="dark"] {
+  --surface: #151b24;
+  --surface-2: #1f2733;
+  --border: #283241;
+  --text: #e8ecf1;
+  --text-2: #aab4c1;
+  --text-3: #7d8896;
+  --accent: color-mix(in srgb, var(--brand) 55%, white);
+  --accent-soft: color-mix(in srgb, var(--brand) 38%, #151b24);
+}
+[data-sidebar="accent"] {
+  --surface: var(--brand);
+  --surface-2: color-mix(in srgb, var(--brand) 86%, black);
+  --border: color-mix(in srgb, var(--on-brand) 18%, var(--brand));
+  --text: var(--on-brand);
+  --text-2: color-mix(in srgb, var(--on-brand) 82%, var(--brand));
+  --text-3: color-mix(in srgb, var(--on-brand) 62%, var(--brand));
+  --accent: var(--on-brand);
+  --accent-soft: color-mix(in srgb, var(--on-brand) 16%, var(--brand));
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs, 14px)/1.45 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1 { font-size: 20px; font-weight: 600; margin: 0; }
+h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); cursor: pointer; white-space: nowrap; color: var(--text);
+}
+.btn:hover { background: var(--surface-2); text-decoration: none; }
+.btn:focus-visible, .input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn.danger { color: var(--danger); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.sm { height: 26px; padding: 0 8px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+.input, select.input, textarea.input {
+  height: 32px; padding: 0 10px; width: 100%;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface);
+}
+textarea.input { height: auto; padding: 8px 10px; resize: vertical; }
+label.field { display: grid; gap: 4px; align-content: start; font-size: 13px; color: var(--text-2); }
+label.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.small { font-size: 12px; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.error-box { background: var(--danger-soft); color: var(--danger); padding: 8px 12px; border-radius: var(--radius); font-size: 13px; }
+.ok-box { background: var(--ok-soft); color: var(--ok); padding: 8px 12px; border-radius: var(--radius); font-size: 13px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+
+table.list { width: 100%; border-collapse: collapse; }
+table.list th {
+  text-align: left; font-weight: 500; font-size: 12px; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .04em;
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+}
+table.list td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+table.list tr:last-child td { border-bottom: 0; }
+table.list tr:hover td { background: var(--surface-2); }
+
+.badge {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px;
+  background: var(--accent-soft); color: var(--accent); white-space: nowrap;
+}
+.badge.grey { background: var(--surface-2); color: var(--text-3); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.danger { background: var(--danger-soft); color: var(--danger); }
+
+.page { padding: 20px 24px; max-width: 1400px; }
+.page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+
+@media (max-width: 720px) {
+  .page { padding: 16px; }
+}

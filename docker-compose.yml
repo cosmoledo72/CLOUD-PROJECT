@@ -1,0 +1,90 @@
+# WorkHub full stack: Postgres, Rust API, SvelteKit web (nginx) and ONLYOFFICE Docs.
+#
+#   cp .env.example .env   # then set real secrets
+#   docker compose up -d --build
+#
+# Web UI:            http://localhost:8080
+# Document Server:   http://localhost:8081  (browser loads the editor from here)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: workhub
+      POSTGRES_USER: workhub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workhub -d workhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://workhub:${POSTGRES_PASSWORD}@db:5432/workhub
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env}
+      DOCS_JWT_SECRET: ${DOCS_JWT_SECRET:?set DOCS_JWT_SECRET in .env}
+      # How the Document Server reaches this API (inside the Docker network).
+      INTERNAL_URL: http://backend:8080
+      # How the browser reaches the Document Server.
+      DOCS_PUBLIC_URL: ${DOCS_PUBLIC_URL:-http://localhost:8081}
+      # How this API reaches the Document Server (inside the Docker network).
+      DOCS_INTERNAL_URL: http://onlyoffice
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SIGNUP_ENABLED: ${SIGNUP_ENABLED:-true}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-512}
+      TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
+      LOGIN_ACCOUNT_LIMIT: ${LOGIN_ACCOUNT_LIMIT:-8}
+      LOGIN_IP_LIMIT: ${LOGIN_IP_LIMIT:-30}
+      SIGNUP_IP_LIMIT: ${SIGNUP_IP_LIMIT:-10}
+      # Address users open the portal at; used in links sent by email.
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      # Optional system-wide SMTP server for portals without their own.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-WorkHub}
+      # Unread notifications are emailed after this delay (seconds).
+      NOTIFY_EMAIL_DELAY_SECS: ${NOTIFY_EMAIL_DELAY_SECS:-180}
+      RUST_LOG: workhub_server=info,tower_http=info
+    volumes:
+      - blobs:/data/blobs
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${DOCS_JWT_SECRET}
+      JWT_HEADER: Authorization
+      # The backend lives on a private Docker network address.
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+    ports:
+      - "${DOCS_PORT:-8081}:80"
+    volumes:
+      - oo-data:/var/www/onlyoffice/Data
+      - oo-logs:/var/log/onlyoffice
+
+volumes:
+  db-data:
+  blobs:
+  oo-data:
+  oo-logs:

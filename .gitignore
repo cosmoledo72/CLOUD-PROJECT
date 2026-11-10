@@ -1,0 +1,8 @@
+.env
+backend/target/
+backend/.env.test
+backend/data/
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+__pycache__/

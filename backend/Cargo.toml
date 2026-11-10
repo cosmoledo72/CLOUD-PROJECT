@@ -1,0 +1,43 @@
+[package]
+name = "workhub-server"
+version = "0.1.0"
+edition = "2021"
+description = "WorkHub collaboration server: multi-tenant document management and projects with ONLYOFFICE Docs integration"
+license = "Proprietary"
+publish = false
+
+[dependencies]
+aes-gcm = "0.10"
+anyhow = "1"
+argon2 = "0.5"
+axum = { version = "0.8", features = ["multipart", "macros"] }
+axum-extra = { version = "0.10", features = ["cookie", "typed-header"] }
+base64 = "0.22"
+bytes = "1"
+calamine = "0.30"
+chrono = { version = "0.4", features = ["serde"] }
+csv = "1"
+encoding_rs = "0.8"
+hex = "0.4"
+jsonwebtoken = "9"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls-tls", "hostname"] }
+rand = "0.8"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "migrate", "macros"] }
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs", "signal", "sync"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+totp-rs = { version = "5", features = ["otpauth", "gen_secret"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "limit"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
