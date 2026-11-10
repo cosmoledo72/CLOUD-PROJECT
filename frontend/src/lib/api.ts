@@ -145,7 +145,10 @@ export type TaskStatus = 'open' | 'in_progress' | 'review' | 'done';
 
 export interface Task {
   id: string;
+  /** Portal-wide number shown as #234. */
+  number: number;
   project_id: string;
+  project_name: string;
   parent_id: string | null;
   title: string;
   description: string;
@@ -160,6 +163,61 @@ export interface Task {
   sort_order: number;
   spent_minutes: number;
   updated_at: string;
+  label_ids: string[];
+  checklist_total: number;
+  checklist_done: number;
+  comment_count: number;
+}
+
+export const priorityLabel: Record<number, string> = { 1: 'Низкий', 2: 'Обычный', 3: 'Высокий', 4: 'Критический' };
+
+export interface TaskLabel {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  task_count: number;
+}
+
+export interface ChecklistItem {
+  id: string;
+  body: string;
+  done: boolean;
+  done_by: string | null;
+  done_at: string | null;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  due_date: string | null;
+  sort_order: number;
+}
+
+export interface TaskCardData {
+  task: Task;
+  checklist: ChecklistItem[];
+  members: { user_id: string; display_name: string; role: 'manager' | 'member' | 'viewer' }[];
+  /** Fields, labels and checklist may be changed (members, managers, the assignee). */
+  can_edit: boolean;
+  /** Project member or manager (not just the assignee): may delete and link tasks. */
+  can_manage: boolean;
+  created_by: string | null;
+  created_by_name: string | null;
+  created_at: string | null;
+}
+
+export interface BoardProject {
+  id: string;
+  name: string;
+  status: 'active' | 'paused' | 'closed';
+  code: string | null;
+  role: 'manager' | 'member' | 'viewer';
+}
+
+export interface BoardResponse {
+  tasks: Task[];
+  dependencies: Dependency[];
+  projects: BoardProject[];
+  today: string;
+  truncated: boolean;
 }
 
 export interface BaselineEntry {

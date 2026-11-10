@@ -36,6 +36,7 @@ pub const KINDS: &[Kind] = &[
     Kind { key: "task_due_soon", label: "Срок задачи — сегодня или завтра", group: "Проекты", in_app: true, email: true },
     Kind { key: "task_overdue", label: "Задача просрочена", group: "Проекты", in_app: true, email: true },
     Kind { key: "task_comment", label: "Комментарий к моей задаче", group: "Проекты", in_app: true, email: false },
+    Kind { key: "checklist_assigned", label: "Мне поручен пункт чек-листа", group: "Проекты", in_app: true, email: false },
     Kind { key: "task_done", label: "Поставленная мной задача выполнена", group: "Проекты", in_app: true, email: false },
     Kind { key: "project_added", label: "Меня добавили в проект", group: "Проекты", in_app: true, email: false },
     Kind { key: "mention", label: "Меня упомянули", group: "Общее", in_app: true, email: true },

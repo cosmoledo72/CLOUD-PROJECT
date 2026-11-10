@@ -13,6 +13,7 @@
   import ChevronsLeft from '@lucide/svelte/icons/chevrons-left';
   import FolderKanban from '@lucide/svelte/icons/folder-kanban';
   import HardDrive from '@lucide/svelte/icons/hard-drive';
+  import ListTodo from '@lucide/svelte/icons/list-todo';
   import LogOut from '@lucide/svelte/icons/log-out';
   import MessagesSquare from '@lucide/svelte/icons/messages-square';
   import Settings from '@lucide/svelte/icons/settings';
@@ -39,6 +40,7 @@
   type NavItem = { href: string; label: string; icon: Component; match: string[]; count?: () => number; hot?: () => boolean; show?: () => boolean };
   const nav: NavItem[] = [
     { href: '/projects', label: 'Проекты', icon: FolderKanban, match: ['/projects'] },
+    { href: '/tasks', label: 'Задачи', icon: ListTodo, match: ['/tasks'] },
     { href: '/kb', label: 'База знаний', icon: BookOpen, match: ['/kb'] },
     { href: '/finance', label: 'Финансы', icon: Wallet, match: ['/finance'], show: () => session.crm },
     {

@@ -35,6 +35,7 @@
   dialog::backdrop { background: rgb(15 20 30 / 45%); }
   header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 0; }
   header h2 { margin: 0; }
-  .body { padding: 14px 16px; display: grid; gap: 12px; }
+  /* minmax(0, 1fr): wide content (date inputs, long rows) must not stretch the dialog past the screen. */
+  .body { padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
   footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
 </style>

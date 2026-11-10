@@ -2,12 +2,12 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
-    api, formatDate, roleLabel, statusLabel,
-    localToday, timeAgo, type CompanyListItem, type TaskComment, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
+    api, formatDate, roleLabel,
+    localToday, type CompanyListItem, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
   } from '$lib/api';
   import Gantt from '$lib/Gantt.svelte';
-  import MentionInput from '$lib/MentionInput.svelte';
   import TaskRows from '$lib/TaskRows.svelte';
+  import TaskCard from '$lib/tasks/TaskCard.svelte';
   import ChartGantt from '@lucide/svelte/icons/chart-gantt';
   import ListTodo from '@lucide/svelte/icons/list-todo';
   import ClipboardList from '@lucide/svelte/icons/clipboard-list';
@@ -146,109 +146,22 @@
     }
   }
 
-  // --- Task editor --------------------------------------------------------
-  type Draft = {
-    id: string | null;
-    title: string;
-    description: string;
-    status: TaskStatus;
-    priority: number;
-    is_milestone: boolean;
-    assignee_id: string;
-    start_date: string;
-    due_date: string;
-    progress: number;
-  };
-  let editorOpen = $state(false);
-  let draft = $state<Draft>(blank());
-  let newDep = $state('');
-  let timeMinutes = $state(60);
-  let timeDate = $state(new Date().toISOString().slice(0, 10));
-
-  function blank(): Draft {
-    return { id: null, title: '', description: '', status: 'open', priority: 2, is_milestone: false, assignee_id: '', start_date: '', due_date: '', progress: 0 };
-  }
+  // --- Task card ------------------------------------------------------------------
+  let cardOpen = $state(false);
+  let cardTask = $state<string | null>(null);
+  let cardMilestone = $state(false);
   function openNew(milestone = false) {
-    draft = { ...blank(), is_milestone: milestone };
-    editorOpen = true;
+    cardTask = null;
+    cardMilestone = milestone;
+    cardOpen = true;
   }
   function openTask(t: Task) {
-    draft = {
-      id: t.id, title: t.title, description: t.description, status: t.status, priority: t.priority,
-      is_milestone: t.is_milestone, assignee_id: t.assignee_id ?? '', start_date: t.start_date ?? '',
-      due_date: t.due_date ?? '', progress: t.progress
-    };
-    newDep = '';
-    editorOpen = true;
-    comments = [];
-    commentText = '';
-    loadComments(t.id);
+    cardTask = t.id;
+    cardOpen = true;
   }
-
-  // --- Comments -----------------------------------------------------------------
-  let comments = $state<TaskComment[]>([]);
-  let commentText = $state('');
-  let commentMentions = $state<string[]>([]);
-  let sending = $state(false);
-  async function loadComments(taskId: string) {
-    try {
-      const r = await api.get<{ comments: TaskComment[] }>(`/tasks/${taskId}/comments`);
-      if (draft.id === taskId) comments = r.comments;
-    } catch {
-      /* the editor still works without comments */
-    }
-  }
-  async function sendComment() {
-    const taskId = draft.id;
-    if (!taskId || !commentText.trim() || sending) return;
-    sending = true;
-    await guarded(async () => {
-      await api.post(`/tasks/${taskId}/comments`, { body: commentText, mentions: commentMentions });
-      commentText = '';
-      await loadComments(taskId);
-    });
-    sending = false;
-  }
-  async function deleteComment(c: TaskComment) {
-    if (!draft.id || !confirm('Удалить комментарий?')) return;
-    const taskId = draft.id;
-    await guarded(async () => {
-      await api.del(`/task-comments/${c.id}`);
-      await loadComments(taskId);
-    });
-  }
-  const canComment = $derived(canEdit || tasks.find((t) => t.id === draft.id)?.assignee_id === session.me?.id);
-  const mentionPeople = $derived(members.filter((m) => m.user_id !== session.me?.id).map((m) => ({ id: m.user_id, name: m.display_name })));
-
-  async function saveTask() {
-    await guarded(async () => {
-      const body = {
-        title: draft.title,
-        description: draft.description,
-        priority: draft.priority,
-        is_milestone: draft.is_milestone,
-        assignee_id: draft.assignee_id || null,
-        start_date: draft.start_date || null,
-        due_date: draft.due_date || null
-      };
-      if (draft.id) {
-        const r = await api.patch<{ shifted: Task[] }>(`/tasks/${draft.id}`, { ...body, status: draft.status, progress: draft.progress });
-        announceShift(r.shifted);
-      } else {
-        await api.post(`/projects/${id}/tasks`, body);
-      }
-      editorOpen = false;
-      await Promise.all([loadTasks(), loadProject()]);
-    });
-  }
-
-  async function deleteTask() {
-    if (!draft.id || !confirm('Удалить задачу вместе с подзадачами?')) return;
-    await guarded(async () => {
-      await api.del(`/tasks/${draft.id}`);
-      editorOpen = false;
-      await loadTasks();
-    });
+  async function onTaskChanged(shifted?: Task[]) {
+    announceShift(shifted);
+    await Promise.all([loadTasks(), loadProject()]).catch((e) => (error = e.message));
   }
 
   async function setStatus(t: Task, status: TaskStatus) {
@@ -258,32 +171,6 @@
       await loadTasks();
     });
   }
-
-  const predecessors = $derived(draft.id ? deps.filter((d) => d.task_id === draft.id) : []);
-  const titleOf = (tid: string) => tasks.find((t) => t.id === tid)?.title ?? '?';
-
-  async function addDep() {
-    if (!draft.id || !newDep) return;
-    await guarded(async () => {
-      const r = await api.post<{ shifted: Task[] }>(`/tasks/${draft.id}/dependencies`, { depends_on_id: newDep });
-      newDep = '';
-      announceShift(r.shifted);
-      await loadTasks();
-    });
-  }
-  async function removeDep(depId: string) {
-    await guarded(async () => {
-      await api.del(`/tasks/${draft.id}/dependencies/${depId}`);
-      await loadTasks();
-    });
-  }
-  async function logTime() {
-    await guarded(async () => {
-      await api.post(`/tasks/${draft.id}/time`, { work_date: timeDate, minutes: timeMinutes });
-      await loadTasks();
-    });
-  }
-  const spent = $derived(tasks.find((t) => t.id === draft.id)?.spent_minutes ?? 0);
 
   // --- Members ------------------------------------------------------------
   let users = $state<UserItem[]>([]);
@@ -546,100 +433,7 @@
   {/if}
 </div>
 
-<Modal bind:open={editorOpen} title={draft.id ? (draft.is_milestone ? 'Веха' : 'Задача') : draft.is_milestone ? 'Новая веха' : 'Новая задача'} width={620}>
-  <label class="field">Название <input class="input" bind:value={draft.title} disabled={!canEdit} /></label>
-  <label class="field">Описание <textarea class="input" rows="3" bind:value={draft.description} disabled={!canEdit}></textarea></label>
-  <div class="two">
-    <label class="field">Исполнитель
-      <select class="input" bind:value={draft.assignee_id} disabled={!canEdit}>
-        <option value="">—</option>
-        {#each members as m}<option value={m.user_id}>{m.display_name}</option>{/each}
-      </select>
-    </label>
-    <label class="field">Приоритет
-      <select class="input" bind:value={draft.priority} disabled={!canEdit}>
-        <option value={1}>Низкий</option><option value={2}>Обычный</option><option value={3}>Высокий</option><option value={4}>Критический</option>
-      </select>
-    </label>
-    {#if !draft.is_milestone}
-      <label class="field">Начало <input class="input" type="date" bind:value={draft.start_date} disabled={!canEdit} /></label>
-    {/if}
-    <label class="field">{draft.is_milestone ? 'Дата' : 'Срок'} <input class="input" type="date" bind:value={draft.due_date} disabled={!canEdit} /></label>
-    {#if draft.id}
-      <label class="field">Статус
-        <select class="input" bind:value={draft.status} disabled={!canEdit}>
-          {#each Object.entries(statusLabel) as [v, l]}<option value={v}>{l}</option>{/each}
-        </select>
-      </label>
-      <label class="field">Готовность, % <input class="input" type="number" min="0" max="100" bind:value={draft.progress} disabled={!canEdit} /></label>
-    {/if}
-  </div>
-
-  {#if draft.id}
-    <h3>Предшествующие задачи</h3>
-    {#each predecessors as p}
-      <div class="row dep">
-        <span>{titleOf(p.depends_on_id)}</span><span class="faint">({p.kind}{p.lag_days ? ` +${p.lag_days} дн.` : ''})</span>
-        <div class="spacer"></div>
-        {#if canEdit}<button class="btn ghost sm danger" onclick={() => removeDep(p.depends_on_id)}>Убрать</button>{/if}
-      </div>
-    {:else}
-      <p class="faint none">Нет</p>
-    {/each}
-    {#if canEdit}
-      <div class="row">
-        <select class="input" bind:value={newDep}>
-          <option value="">Задача должна начаться после…</option>
-          {#each tasks.filter((t) => t.id !== draft.id && !predecessors.some((p) => p.depends_on_id === t.id)) as t}
-            <option value={t.id}>{t.title}</option>
-          {/each}
-        </select>
-        <button class="btn" disabled={!newDep} onclick={addDep}>Связать</button>
-      </div>
-
-      <h3>Учёт времени <span class="faint">— всего {(spent / 60).toFixed(1)} ч</span></h3>
-      <div class="row">
-        <input class="input" type="date" bind:value={timeDate} />
-        <input class="input mins" type="number" min="1" max="1440" step="15" bind:value={timeMinutes} aria-label="Минуты" />
-        <span class="faint">мин</span>
-        <button class="btn" onclick={logTime}>Записать</button>
-      </div>
-    {/if}
-  {/if}
-
-  {#if draft.id}
-    <h3>Обсуждение {#if comments.length}<span class="faint">— {comments.length}</span>{/if}</h3>
-    <div class="comments">
-      {#each comments as c (c.id)}
-        <div class="comment">
-          <div class="c-head">
-            <b>{c.author_name ?? 'Удалённый пользователь'}</b>
-            <span class="faint small" title={new Date(c.created_at).toLocaleString('ru-RU')}>{timeAgo(c.created_at)}</span>
-            <div class="spacer"></div>
-            {#if c.author_id === session.me?.id || isManager}
-              <button class="btn ghost sm" onclick={() => deleteComment(c)} aria-label="Удалить комментарий">×</button>
-            {/if}
-          </div>
-          <div class="c-body">{c.body}</div>
-        </div>
-      {:else}
-        <p class="faint none">Комментариев нет.</p>
-      {/each}
-    </div>
-    {#if canComment}
-      <MentionInput bind:value={commentText} bind:mentions={commentMentions} people={mentionPeople}
-                    placeholder="Комментарий, вопрос исполнителю…" onsubmit={sendComment} />
-      <div class="row"><div class="spacer"></div><button class="btn" disabled={!commentText.trim() || sending} onclick={sendComment}>Отправить</button></div>
-    {/if}
-  {/if}
-
-  {#if error}<div class="error-box">{error}</div>{/if}
-  {#snippet footer()}
-    {#if draft.id && canEdit}<button class="btn danger" onclick={deleteTask}>Удалить</button><div class="spacer"></div>{/if}
-    <button class="btn" onclick={() => (editorOpen = false)}>Закрыть</button>
-    {#if canEdit}<button class="btn primary" disabled={!draft.title.trim()} onclick={saveTask}>Сохранить</button>{/if}
-  {/snippet}
-</Modal>
+<TaskCard bind:open={cardOpen} taskId={cardTask} projectId={id} milestone={cardMilestone} showProject={false} onchanged={onTaskChanged} />
 
 <Modal bind:open={genOpen} title="Документ из шаблона" width={560}>
   {#if templates.length === 0}
@@ -729,17 +523,7 @@
   .link { background: none; border: 0; padding: 0; color: var(--text); cursor: pointer; text-align: left; }
   .link:hover { color: var(--accent); text-decoration: underline; }
   .input.sm { height: 26px; width: auto; padding: 0 6px; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .dep { padding: 4px 0; border-bottom: 1px solid var(--border); }
-  .none { margin: 0; }
-  .mins { width: 90px; }
   .role { width: 170px; flex: none; }
   .addm { padding: 12px; }
   .danger-zone { margin-top: 16px; }
-  h3 { margin: 6px 0 0; }
-  .comments { display: grid; gap: 8px; max-height: 280px; overflow-y: auto; }
-  .comment { background: var(--surface-2); border-radius: var(--radius); padding: 8px 10px; }
-  .c-head { display: flex; gap: 8px; align-items: baseline; }
-  .c-body { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
-  @media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
 </style>

@@ -334,7 +334,10 @@ pub async fn remove_member(
 #[derive(Serialize, sqlx::FromRow, Clone)]
 pub struct TaskRow {
     pub id: Uuid,
+    /// Portal-wide task number shown as `#234`.
+    pub number: i64,
     pub project_id: Uuid,
+    pub project_name: String,
     pub parent_id: Option<Uuid>,
     pub title: String,
     pub description: String,
@@ -349,13 +352,23 @@ pub struct TaskRow {
     pub sort_order: f64,
     pub spent_minutes: i64,
     pub updated_at: DateTime<Utc>,
+    /// Ids of attached task labels.
+    pub label_ids: Vec<Uuid>,
+    pub checklist_total: i64,
+    pub checklist_done: i64,
+    pub comment_count: i64,
 }
 
-const TASK_SELECT: &str = "SELECT t.id, t.project_id, t.parent_id, t.title, t.description, t.status, t.priority, t.is_milestone,
+pub const TASK_SELECT: &str = "SELECT t.id, t.number, t.project_id, p.name AS project_name, t.parent_id, t.title, t.description, t.status, t.priority, t.is_milestone,
         t.assignee_id, u.display_name AS assignee_name, t.start_date, t.due_date, t.progress, t.sort_order,
         COALESCE((SELECT sum(minutes) FROM time_entries te WHERE te.task_id = t.id), 0)::bigint AS spent_minutes,
-        t.updated_at
-   FROM tasks t LEFT JOIN users u ON u.id = t.assignee_id";
+        t.updated_at,
+        ARRAY(SELECT l.label_id FROM task_label_links l JOIN task_labels tl ON tl.id = l.label_id
+               WHERE l.task_id = t.id ORDER BY tl.sort_order, lower(tl.name)) AS label_ids,
+        (SELECT count(*) FROM task_checklist_items c WHERE c.task_id = t.id) AS checklist_total,
+        (SELECT count(*) FROM task_checklist_items c WHERE c.task_id = t.id AND c.done) AS checklist_done,
+        (SELECT count(*) FROM task_comments c WHERE c.task_id = t.id) AS comment_count
+   FROM tasks t JOIN projects p ON p.id = t.project_id LEFT JOIN users u ON u.id = t.assignee_id";
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct DependencyRow {
@@ -395,7 +408,7 @@ pub async fn list_tasks(State(state): State<AppState>, user: CurrentUser, Path(i
     })))
 }
 
-async fn load_task(state: &AppState, user: &CurrentUser, id: Uuid) -> ApiResult<TaskRow> {
+pub async fn load_task(state: &AppState, user: &CurrentUser, id: Uuid) -> ApiResult<TaskRow> {
     sqlx::query_as::<_, TaskRow>(&format!("{TASK_SELECT} WHERE t.id = $1 AND t.tenant_id = $2"))
         .bind(id)
         .bind(user.tenant_id)
@@ -492,7 +505,7 @@ pub async fn create_task(
     Ok(Json(json!({ "task": load_task(&state, &user, id).await? })))
 }
 
-async fn project_name(state: &AppState, project_id: Uuid) -> String {
+pub async fn project_name(state: &AppState, project_id: Uuid) -> String {
     sqlx::query_scalar("SELECT name FROM projects WHERE id = $1")
         .bind(project_id)
         .fetch_one(&state.db)

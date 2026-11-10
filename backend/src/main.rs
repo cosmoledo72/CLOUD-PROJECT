@@ -23,6 +23,7 @@ mod ratelimit;
 mod scheduling;
 mod state;
 mod storage;
+mod task_board;
 mod team;
 mod templates;
 mod trash;
@@ -179,7 +180,13 @@ fn router(state: AppState) -> Router {
         .route("/projects/{id}/tasks", get(projects::list_tasks).post(projects::create_task))
         .route("/projects/{id}/reschedule", post(projects::reschedule))
         .route("/projects/{id}/baseline", post(projects::save_baseline).delete(projects::clear_baseline))
-        .route("/tasks/{id}", patch(projects::update_task).delete(projects::delete_task))
+        .route("/tasks", get(task_board::board))
+        .route("/tasks/{id}", get(task_board::get_task).patch(projects::update_task).delete(projects::delete_task))
+        .route("/tasks/{id}/labels", put(task_board::set_task_labels))
+        .route("/tasks/{id}/checklist", post(task_board::add_item))
+        .route("/checklist-items/{id}", patch(task_board::update_item).delete(task_board::delete_item))
+        .route("/task-labels", get(task_board::list_labels).post(task_board::create_label))
+        .route("/task-labels/{id}", patch(task_board::update_label).delete(task_board::delete_label))
         .route("/tasks/{id}/dependencies", post(projects::add_dependency))
         .route("/tasks/{id}/dependencies/{dep_id}", delete(projects::remove_dependency))
         .route("/tasks/{id}/time", get(projects::list_time).post(projects::add_time));

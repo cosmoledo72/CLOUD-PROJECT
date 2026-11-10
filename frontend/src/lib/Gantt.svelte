@@ -4,12 +4,16 @@
   // whole days. Dependencies are drawn as elbow arrows. Optional overlays:
   // critical path (red outline), float in tooltips and the baseline plan
   // (thin grey bar under each task).
-  import { formatDate, type BaselineEntry, type Dependency, type Task } from './api';
+  import { formatDate, localToday, type BaselineEntry, type Dependency, type Task } from './api';
 
-  let { tasks, dependencies, canEdit = false, critical = [], slack = {}, baseline = [], onchange, onselect }: {
+  let { tasks, dependencies, canEdit = false, canEditTask, groupOf, critical = [], slack = {}, baseline = [], onchange, onselect }: {
     tasks: Task[];
     dependencies: Dependency[];
     canEdit?: boolean;
+    /** Per-task edit right (overrides `canEdit`), e.g. across several projects. */
+    canEditTask?: (t: Task) => boolean;
+    /** Group label of a task; a header row is drawn whenever it changes (tasks must be sorted by it). */
+    groupOf?: (t: Task) => string;
     critical?: string[];
     slack?: Record<string, number>;
     baseline?: BaselineEntry[];
@@ -17,6 +21,21 @@
     onselect?: (task: Task) => void;
   } = $props();
 
+  const editable = (t: Task) => (canEditTask ? canEditTask(t) : canEdit);
+  type GRow = { kind: 'group'; key: string; label: string } | { kind: 'task'; key: string; t: Task };
+  const rows = $derived.by(() => {
+    const out: GRow[] = [];
+    let last: string | null = null;
+    for (const t of tasks) {
+      if (groupOf) {
+        const g = groupOf(t);
+        if (g !== last) out.push({ kind: 'group', key: `g:${g}:${out.length}`, label: g });
+        last = g;
+      }
+      out.push({ kind: 'task', key: t.id, t });
+    }
+    return out;
+  });
   let showCritical = $state(true);
   let showBaseline = $state(true);
   const criticalSet = $derived(new Set(critical));
@@ -60,7 +79,8 @@
     return Date.UTC(y, m - 1, d) / DAY_MS;
   };
   const fromDay = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
-  const today = Math.floor(Date.now() / DAY_MS);
+  // Today in the user's local calendar (not UTC), so the marker is right east of Greenwich too.
+  const today = toDay(localToday());
 
   // Effective [start, end] of a task in day numbers, or null when undated.
   function span(t: Task): [number, number] | null {
@@ -87,10 +107,10 @@
   });
   const days = $derived(range.end - range.start + 1);
   const width = $derived(days * dayW);
-  const height = $derived(HEAD + Math.max(tasks.length, 1) * ROW);
+  const height = $derived(HEAD + Math.max(rows.length, 1) * ROW);
   const x = (d: number) => (d - range.start) * dayW;
 
-  const index = $derived(new Map(tasks.map((t, i) => [t.id, i])));
+  const index = $derived(new Map(rows.map((r, i) => [r.key, i])));
 
   // --- Header ticks -------------------------------------------------------
   const months = $derived.by(() => {
@@ -139,7 +159,7 @@
 
   // --- Dragging ------------------------------------------------------------
   function startDrag(e: PointerEvent, t: Task, mode: 'move' | 'resize') {
-    if (!canEdit || t.status === 'done') return;
+    if (!editable(t) || t.status === 'done') return;
     const sp = span(t);
     if (!sp) return;
     e.preventDefault();
@@ -185,20 +205,25 @@
     {/each}
   </div>
   <button class="btn sm" onclick={scrollToToday}>Сегодня</button>
-  <label class="check small"><input type="checkbox" bind:checked={showCritical} />Критический путь</label>
+  {#if critical.length || Object.keys(slack).length}<label class="check small"><input type="checkbox" bind:checked={showCritical} />Критический путь</label>{/if}
   {#if baseline.length}<label class="check small"><input type="checkbox" bind:checked={showBaseline} />Базовый план</label>{/if}
-  {#if canEdit}<span class="faint hint">Перетащите полосу, чтобы сдвинуть сроки; правый край — изменить длительность.</span>{/if}
+  {#if canEdit || canEditTask}<span class="faint hint">Перетащите полосу, чтобы сдвинуть сроки; правый край — изменить длительность.</span>{/if}
 </div>
 
 <div class="gantt card">
   <div class="left">
     <div class="lhead" style="height:{HEAD}px">Задача</div>
-    {#each tasks as t (t.id)}
-      <button class="lrow" class:crit={isCritical(t)} style="height:{ROW}px" onclick={() => onselect?.(t)} title={tooltip(t)}>
-        <span class="status s-{t.status}"></span>
-        <span class="ttl" class:done={t.status === 'done'}>{t.is_milestone ? '◆ ' : ''}{t.title}</span>
-        {#if t.assignee_name}<span class="who faint">{t.assignee_name}</span>{/if}
-      </button>
+    {#each rows as r (r.key)}
+      {#if r.kind === 'group'}
+        <div class="lrow grp" style="height:{ROW}px" title={r.label}><span class="ttl">{r.label}</span></div>
+      {:else}
+        {@const t = r.t}
+        <button class="lrow" class:crit={isCritical(t)} style="height:{ROW}px" onclick={() => onselect?.(t)} title={tooltip(t)}>
+          <span class="status s-{t.status}"></span>
+          <span class="ttl" class:done={t.status === 'done'}>{t.is_milestone ? '◆ ' : ''}{t.title}</span>
+          {#if t.assignee_name}<span class="who faint">{t.assignee_name}</span>{/if}
+        </button>
+      {/if}
     {/each}
     {#if tasks.length === 0}<div class="lrow faint" style="height:{ROW}px">Задач пока нет</div>{/if}
   </div>
@@ -214,7 +239,8 @@
           <line x1={x(d)} x2={x(d)} y1={24} y2={height} class="grid" />
         {/if}
       {/each}
-      {#each tasks as _, i}
+      {#each rows as r, i (r.key)}
+        {#if r.kind === 'group'}<rect x="0" y={HEAD + i * ROW} width={width} height={ROW} class="grp-band" />{/if}
         <line x1="0" x2={width} y1={HEAD + (i + 1) * ROW} y2={HEAD + (i + 1) * ROW} class="grid" />
       {/each}
 
@@ -250,7 +276,8 @@
 
       <!-- Baseline (approved plan) -->
       {#if showBaseline}
-        {#each tasks as t, i (t.id)}
+        {#each tasks as t (t.id)}
+          {@const i = index.get(t.id) ?? 0}
           {@const b = baseSpan(t.id)}
           {#if b}
             <rect x={x(b[0])} y={HEAD + i * ROW + ROW - 8} width={Math.max(4, (b[1] - b[0] + 1) * dayW)} height="4" rx="1" class="baseline" />
@@ -259,7 +286,8 @@
       {/if}
 
       <!-- Bars -->
-      {#each tasks as t, i (t.id)}
+      {#each tasks as t (t.id)}
+        {@const i = index.get(t.id) ?? 0}
         {@const sp = spanOf(t)}
         {#if sp}
           {@const y = HEAD + i * ROW}
@@ -279,7 +307,7 @@
               <title>{tooltip(t)}</title>
               <rect x={bx} y={y + 6} width={bw} height={ROW - 16} rx="3" fill={barColor(t)} opacity="0.28" class="shape" />
               <rect x={bx} y={y + 6} width={(bw * t.progress) / 100} height={ROW - 16} rx="3" fill={barColor(t)} />
-              {#if canEdit && t.status !== 'done'}
+              {#if editable(t) && t.status !== 'done'}
                 <rect x={bx + bw - 6} y={y + 6} width="6" height={ROW - 16} class="handle" role="presentation"
                       onpointerdown={(e) => startDrag(e, t, 'resize')} />
               {/if}
@@ -308,6 +336,8 @@
     border: 0; border-bottom: 1px solid var(--border); background: none; text-align: left; cursor: pointer;
   }
   .lrow:hover { background: var(--surface-2); }
+  .lrow.grp { cursor: default; background: var(--surface-2); font-weight: 600; font-size: 12.5px; color: var(--text-2); }
+  .grp-band { fill: var(--surface-2); }
   .ttl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ttl.done { text-decoration: line-through; color: var(--text-3); }
   .who { font-size: 12px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
