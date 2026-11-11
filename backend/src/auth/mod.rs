@@ -30,6 +30,8 @@ pub struct CurrentUser {
     pub role: String,
     /// CRM access: none | user | manager.
     pub crm_role: String,
+    /// Finance access: none | view | edit.
+    pub finance_role: String,
     /// Portal modules switched off by the administrator (see `modules`).
     pub disabled_modules: Vec<String>,
 }
@@ -52,6 +54,14 @@ impl CurrentUser {
     /// Sees every CRM record and manages pipeline settings.
     pub fn crm_manager(&self) -> bool {
         self.crm_enabled() && (self.is_admin() || self.crm_role == "manager")
+    }
+    /// Sees the "Финансы" section: all payments, analytics, receivables.
+    pub fn finance_view(&self) -> bool {
+        !self.is_guest() && self.module_on("finance") && (self.is_admin() || matches!(self.finance_role.as_str(), "view" | "edit"))
+    }
+    /// Records and changes any payment and the finance categories.
+    pub fn finance_edit(&self) -> bool {
+        !self.is_guest() && self.module_on("finance") && (self.is_admin() || self.finance_role == "edit")
     }
     pub fn require_crm(&self) -> ApiResult<()> {
         if self.crm_enabled() { Ok(()) } else { Err(ApiError::Forbidden) }
@@ -169,7 +179,7 @@ impl FromRequestParts<AppState> for CurrentUser {
         let token = token_from_parts(parts).ok_or(ApiError::Unauthorized)?;
         let user = sqlx::query_as::<_, CurrentUser>(
             "SELECT u.id AS user_id, u.tenant_id, u.email::text AS email, u.display_name, u.role, u.crm_role,
-                    t.disabled_modules
+                    u.finance_role, t.disabled_modules
                FROM sessions s
                JOIN users u   ON u.id = s.user_id
                JOIN tenants t ON t.id = s.tenant_id

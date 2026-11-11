@@ -35,6 +35,8 @@ pub struct MeResponse {
     pub role: String,
     pub totp_enabled: bool,
     pub crm_role: String,
+    /// Effective finance access: none | view | edit (administrators: edit).
+    pub finance_role: String,
     pub position: String,
     pub phone: String,
     /// Portal modules that are on (see `modules::MODULES`).
@@ -42,10 +44,13 @@ pub struct MeResponse {
 }
 
 async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
-    let row: (Uuid, Uuid, String, String, String, String, String, bool, String, String, String, Vec<String>) = sqlx::query_as(
+    #[allow(clippy::type_complexity)]
+    let row: (Uuid, Uuid, String, String, String, String, String, bool, String, String, String, Vec<String>, String) = sqlx::query_as(
         "SELECT u.id, t.id, t.slug::text, t.name, u.email::text, u.display_name, u.role, u.totp_enabled,
                 CASE WHEN u.role = 'guest' OR 'crm' = ANY(t.disabled_modules) THEN 'none' ELSE u.crm_role END,
-                u.position, u.phone, t.disabled_modules
+                u.position, u.phone, t.disabled_modules,
+                CASE WHEN u.role = 'guest' OR 'finance' = ANY(t.disabled_modules) THEN 'none'
+                     WHEN u.role IN ('owner', 'admin') THEN 'edit' ELSE u.finance_role END
            FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1",
     )
     .bind(user_id)
@@ -61,6 +66,7 @@ async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
         role: row.6,
         totp_enabled: row.7,
         crm_role: row.8,
+        finance_role: row.12,
         position: row.9,
         phone: row.10,
         modules: crate::modules::enabled_keys(&row.11),

@@ -35,7 +35,8 @@ pub const MODULES: &[Module] = &[
     Module { key: "storage", label: "Хранилище", description: "Раздел «Хранилище»: мои и общие документы, доступные мне, корзина", parent: None },
     Module { key: "kb", label: "База знаний", description: "Раздел «База знаний»", parent: None },
     Module { key: "chats", label: "Чаты", description: "Раздел «Чаты» и каналы проектов", parent: None },
-    Module { key: "crm", label: "CRM", description: "Контрагенты, сделки, дела, документы продаж, раздел «Финансы»", parent: None },
+    Module { key: "crm", label: "CRM", description: "Контрагенты, сделки, дела, документы продаж", parent: None },
+    Module { key: "finance", label: "Финансы", description: "Платежи, аналитика, дебиторская задолженность, деньги проектов", parent: None },
     Module { key: "team", label: "Команда", description: "Справочник сотрудников", parent: None },
 ];
 
@@ -67,6 +68,7 @@ pub fn module_of(method: &axum::http::Method, path: &str) -> Option<&'static str
     let s = |i: usize| seg.get(i).copied().unwrap_or("");
     match s(0) {
         "projects" => Some(match s(2) {
+            "finance" => "finance",
             "reschedule" | "baseline" => "planning",
             "templates" | "generate" => "templates",
             _ => "projects",
@@ -81,6 +83,7 @@ pub fn module_of(method: &axum::http::Method, path: &str) -> Option<&'static str
         "chats" | "chat-messages" => Some("chats"),
         "crm" => Some(if s(1) == "deals" && s(3) == "project" && method == axum::http::Method::POST { "projects" } else { "crm" }),
         "team" => Some("team"),
+        "finance" => Some("finance"),
         "shared" | "trash" => Some("storage"),
         "folders" if s(1) == "roots" => Some("storage"),
         _ => None,
@@ -199,6 +202,8 @@ mod tests {
         assert_eq!(module_of(&g, "/crm/deals/x/project"), Some("crm"));
         assert_eq!(module_of(&Method::POST, "/crm/deals/x/project"), Some("projects"));
         assert_eq!(module_of(&g, "/chat-messages/x"), Some("chats"));
+        assert_eq!(module_of(&g, "/finance/payments"), Some("finance"));
+        assert_eq!(module_of(&g, "/projects/x/finance"), Some("finance"));
         assert_eq!(module_of(&g, "/auth/me"), None);
         assert_eq!(module_of(&g, "/admin/modules"), None);
     }

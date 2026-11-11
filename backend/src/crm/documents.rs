@@ -594,6 +594,8 @@ pub struct DocRow {
     pub file_name: Option<String>,
     pub created_by_name: Option<String>,
     pub created_at: DateTime<Utc>,
+    /// Actual income recorded against this invoice (finance).
+    pub paid_amount: f64,
 }
 
 /// `$1` user, `$2` manager flag, `$3` tenant.
@@ -602,7 +604,8 @@ fn doc_select(extra: &str) -> String {
         "SELECT d.id, d.kind, d.number, d.doc_date, d.company_id, d.company_name, d.deal_id, dl.title AS deal_title,
                 d.basis_id, b.number AS basis_number, d.subject, d.amount::float8 AS amount, d.vat_rate,
                 d.vat_amount::float8 AS vat_amount, d.status, d.file_id, f.name AS file_name,
-                u.display_name AS created_by_name, d.created_at
+                u.display_name AS created_by_name, d.created_at,
+                COALESCE((SELECT sum(p.amount) FROM payments p WHERE p.invoice_id = d.id AND p.status = 'fact'), 0)::float8 AS paid_amount
            FROM crm_documents d
            LEFT JOIN crm_companies c ON c.id = d.company_id
            LEFT JOIN crm_deals dl ON dl.id = d.deal_id

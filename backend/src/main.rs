@@ -13,6 +13,7 @@ mod error;
 mod fields;
 mod kb;
 mod files;
+mod finance;
 mod mail;
 mod modules;
 mod money;
@@ -100,6 +101,16 @@ fn router(state: AppState) -> Router {
         .route("/admin/project-fields/{id}", put(fields::update_def).delete(fields::delete_def))
         // Branding (public by slug for the login page)
         .route("/branding", get(branding::get_own))
+        .route("/finance/settings", get(finance::get_settings).put(finance::save_settings))
+        .route("/finance/categories", get(finance::list_categories).post(finance::create_category))
+        .route("/finance/categories/{id}", patch(finance::update_category))
+        .route("/finance/payments", get(finance::list_payments).post(finance::create_payment))
+        .route("/finance/payments/{id}", put(finance::update_payment).delete(finance::delete_payment))
+        .route("/finance/summary", get(finance::summary))
+        .route("/finance/receivables", get(finance::receivables))
+        .route("/finance/invoices", get(finance::open_invoices))
+        .route("/finance/projects", get(finance::projects_money))
+        .route("/projects/{id}/finance", get(finance::project_finance))
         .route("/view-settings/{key}", get(view_settings::get).put(view_settings::put).delete(view_settings::reset))
         .route("/admin/view-settings/{key}", put(view_settings::put_default))
         .route("/notifications", get(notify::list))

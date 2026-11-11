@@ -24,13 +24,14 @@ struct UserRow {
     is_active: bool,
     totp_enabled: bool,
     crm_role: String,
+    finance_role: String,
     invite_pending: bool,
     created_at: DateTime<Utc>,
 }
 
 pub async fn list_users(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     let rows = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email::text AS email, display_name, role, is_active, totp_enabled, crm_role, invite_pending, created_at
+        "SELECT id, email::text AS email, display_name, role, is_active, totp_enabled, crm_role, finance_role, invite_pending, created_at
            FROM users WHERE tenant_id = $1 ORDER BY lower(display_name)",
     )
     .bind(user.tenant_id)
@@ -117,6 +118,7 @@ pub struct UpdateUser {
     pub role: Option<String>,
     pub is_active: Option<bool>,
     pub crm_role: Option<String>,
+    pub finance_role: Option<String>,
 }
 
 pub async fn update_user(
@@ -147,6 +149,11 @@ pub async fn update_user(
             return bad_request("crm_role must be none, user or manager");
         }
     }
+    if let Some(r) = &req.finance_role {
+        if !matches!(r.as_str(), "none" | "view" | "edit") {
+            return bad_request("finance_role must be none, view or edit");
+        }
+    }
     if let Some(r) = &req.role {
         if !valid_role(r) {
             return bad_request("role must be admin, member or guest");
@@ -154,7 +161,7 @@ pub async fn update_user(
     }
     sqlx::query(
         "UPDATE users SET display_name = COALESCE($3, display_name), role = COALESCE($4, role), is_active = COALESCE($5, is_active),
-                crm_role = COALESCE($6, crm_role)
+                crm_role = COALESCE($6, crm_role), finance_role = COALESCE($7, finance_role)
           WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
@@ -163,12 +170,13 @@ pub async fn update_user(
     .bind(&req.role)
     .bind(req.is_active)
     .bind(&req.crm_role)
+    .bind(&req.finance_role)
     .execute(&state.db)
     .await?;
     if req.is_active == Some(false) {
         sqlx::query("DELETE FROM sessions WHERE user_id = $1").bind(id).execute(&state.db).await?;
     }
-    state.audit(user.tenant_id, Some(user.user_id), "user.updated", Some("user"), Some(id), json!({ "role": req.role, "is_active": req.is_active })).await;
+    state.audit(user.tenant_id, Some(user.user_id), "user.updated", Some("user"), Some(id), json!({ "role": req.role, "is_active": req.is_active, "crm_role": req.crm_role, "finance_role": req.finance_role })).await;
     Ok(Json(json!({ "ok": true })))
 }
 
