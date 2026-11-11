@@ -21,7 +21,7 @@ use crate::{
 
 const MAX_LABELS: i64 = 100;
 /// Labels on one project.
-const MAX_PER_PROJECT: usize = 10;
+pub const MAX_PER_PROJECT: usize = 10;
 
 #[derive(Serialize, sqlx::FromRow)]
 struct LabelRow {

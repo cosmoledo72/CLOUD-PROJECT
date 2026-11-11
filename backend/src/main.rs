@@ -208,6 +208,7 @@ fn router(state: AppState) -> Router {
         .route("/oo/callback/{id}", post(onlyoffice::ds_callback))
         // Projects
         .route("/projects", get(projects::list_projects).post(projects::create_project))
+        .route("/projects/bulk", post(projects::bulk_update))
         .route("/projects/{id}", get(projects::get_project).patch(projects::update_project).delete(projects::delete_project))
         .route("/projects/{id}/fields", put(fields::update_values))
         .route("/projects/{id}/members", post(projects::upsert_member))

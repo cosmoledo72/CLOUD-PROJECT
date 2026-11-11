@@ -26,8 +26,17 @@
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import LayoutGrid from '@lucide/svelte/icons/layout-grid';
   import List from '@lucide/svelte/icons/list';
+  import Users from '@lucide/svelte/icons/users';
+  import ChartGantt from '@lucide/svelte/icons/chart-gantt';
+  import X from '@lucide/svelte/icons/x';
+  import ProjectBoard, { type BoardColumn } from '$lib/projects/ProjectBoard.svelte';
+  import SummaryGantt from '$lib/projects/SummaryGantt.svelte';
+  import ProjectFilters, { EMPTY_FILTER, filterCount, type ProjectFilter } from '$lib/projects/ProjectFilters.svelte';
+  import type { ProjectPerson } from '$lib/api';
 
   let projects = $state<Project[]>([]);
+  /** Everyone taking part in the listed projects (from the list itself). */
+  let people = $state<ProjectPerson[]>([]);
   let defs = $state<FieldDef[]>([]);
   let allDefs = $state<FieldDef[]>([]);
   let defsLoaded = $state(false);
@@ -42,11 +51,12 @@
 
   async function load() {
     const [p, f, u] = await Promise.all([
-      api.get<{ projects: Project[] }>('/projects'),
+      api.get<{ projects: Project[]; people: ProjectPerson[] }>('/projects'),
       api.get<{ fields: FieldDef[] }>('/project-fields'),
       api.get<{ users: UserItem[] }>('/users')
     ]);
     projects = p.projects;
+    people = p.people;
     allDefs = f.fields;
     defs = f.fields.filter((d) => !d.is_archived);
     users = u.users;
@@ -99,7 +109,7 @@
   const today = localToday();
 
   // --- Remembered per browser: view, status tab, collapsed groups ----------------------
-  type View = 'rows' | 'cards';
+  type View = 'rows' | 'cards' | 'managers' | 'labels' | 'gantt';
   function stored<T extends string>(key: string, allowed: readonly T[], dflt: T): T {
     try {
       const v = localStorage.getItem(key);
@@ -111,7 +121,7 @@
   function store(key: string, v: string) {
     try { localStorage.setItem(key, v); } catch { /* storage unavailable */ }
   }
-  let view = $state<View>(stored('wh_projects_view', ['rows', 'cards'] as const, 'rows'));
+  let view = $state<View>(stored('wh_projects_view', ['rows', 'cards', 'managers', 'labels', 'gantt'] as const, 'rows'));
   function setView(v: View) {
     view = v;
     store('wh_projects_view', v);
@@ -125,10 +135,19 @@
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   });
-  const shownView = $derived<View>(narrow ? 'cards' : view);
+  const shownView = $derived<View>(narrow && view === 'rows' ? 'cards' : view);
+  const isBoard = $derived(shownView === 'managers' || shownView === 'labels');
 
   let status = $state<'all' | Project['status']>(stored('wh_projects_status', ['all', 'active', 'paused', 'closed'] as const, 'all'));
   $effect(() => store('wh_projects_status', status));
+  /** Managers, members and customers chosen in «Фильтры» (remembered per browser). */
+  let pfilter = $state<ProjectFilter>((() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('wh_projects_filter') ?? 'null');
+      return v && Array.isArray(v.managers) && Array.isArray(v.members) && Array.isArray(v.companies) ? v : { ...EMPTY_FILTER };
+    } catch { return { ...EMPTY_FILTER }; }
+  })());
+  $effect(() => store('wh_projects_filter', JSON.stringify(pfilter)));
   /** Quick filter from the summary: overdue or due within 14 days. */
   let urgency = $state<'late' | 'soon' | null>(null);
 
@@ -251,9 +270,28 @@
       (p) =>
         (status === 'all' || p.status === status) &&
         (!urgency || urgencyOf(p) === urgency) &&
-        (!labelFilter.length || p.label_ids.some((l) => labelFilter.includes(l)))
+        (!labelFilter.length || p.label_ids.some((l) => labelFilter.includes(l))) &&
+        (!pfilter.managers.length || p.manager_ids.some((m) => pfilter.managers.includes(m))) &&
+        (!pfilter.members.length || p.member_ids.some((m) => pfilter.members.includes(m))) &&
+        (!pfilter.companies.length || (!!p.company_name && pfilter.companies.includes(p.company_name)))
     )
   );
+
+  // --- Filters: who and for whom ---------------------------------------------------------
+  const personName = (id: string) => people.find((x) => x.id === id)?.display_name ?? '—';
+  const managerPeople = $derived(people.filter((x) => projects.some((p) => p.manager_ids.includes(x.id))));
+  const companies = $derived([...new Set(projects.map((p) => p.company_name).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, 'ru')));
+  // Drop choices that are no longer in the list (a project closed, a member removed).
+  $effect(() => {
+    const ok = new Set(people.map((x) => x.id));
+    if (!people.length) return;
+    const next = {
+      managers: pfilter.managers.filter((m) => ok.has(m)),
+      members: pfilter.members.filter((m) => ok.has(m)),
+      companies: pfilter.companies.filter((c) => companies.includes(c))
+    };
+    if (filterCount(next) !== filterCount(pfilter)) pfilter = next;
+  });
 
   // --- Sorting -------------------------------------------------------------------------
   let sortKey = $state<string>('$name');
@@ -340,6 +378,56 @@
     return [...map.values()].sort((a, b) => rank(a.id) - rank(b.id) || coll.compare(a.label, b.label));
   });
 
+  // --- Boards: by managers, by labels ----------------------------------------------------
+  const boardColumns = $derived.by((): BoardColumn[] => {
+    if (shownView === 'managers') {
+      const cols = managerPeople
+        .map((m) => ({ id: m.id, title: m.display_name, personId: m.id, items: sorted.filter((p) => p.manager_ids.includes(m.id)) }))
+        .filter((c) => c.items.length);
+      const none = sorted.filter((p) => !p.manager_ids.length);
+      return none.length ? [...cols, { id: '', title: 'Без руководителя', items: none }] : cols;
+    }
+    if (shownView === 'labels') {
+      const cols = projectLabels.list
+        .map((l) => ({ id: l.id, title: l.name, color: l.color, items: sorted.filter((p) => p.label_ids.includes(l.id)) }))
+        .filter((c) => c.items.length);
+      const none = sorted.filter((p) => !p.label_ids.length);
+      return none.length ? [...cols, { id: '', title: 'Без метки', items: none }] : cols;
+    }
+    return [];
+  });
+
+  // --- Bulk actions (rows view): managers of a project and administrators -----------------
+  const canManage = (p: Project) => session.isAdmin || (!!session.me && p.manager_ids.includes(session.me.id));
+  let selected = $state<string[]>([]);
+  const manageable = $derived(sorted.filter(canManage));
+  const selectedShown = $derived(selected.filter((id) => manageable.some((p) => p.id === id)));
+  const allSelected = $derived(manageable.length > 0 && manageable.every((p) => selected.includes(p.id)));
+  function toggleSelect(id: string) {
+    selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+  }
+  function toggleAll() {
+    selected = allSelected ? [] : manageable.map((p) => p.id);
+  }
+  let bulkBusy = $state(false);
+  let bulkError = $state('');
+  async function bulk(body: Record<string, string>, done: string) {
+    if (!selectedShown.length) return;
+    bulkBusy = true;
+    bulkError = '';
+    try {
+      const r = await api.post<{ changed: number }>('/projects/bulk', { ids: selectedShown, ...body });
+      selected = [];
+      await load();
+      notice = `${done}: ${r.changed} ${r.changed % 10 === 1 && r.changed % 100 !== 11 ? 'проект' : 'проектов'}.`;
+      setTimeout(() => (notice = ''), 4000);
+    } catch (e) {
+      bulkError = (e as Error).message;
+    } finally {
+      bulkBusy = false;
+    }
+  }
+
   const labelOf = (k: string) => (k in BUILTIN ? BUILTIN[k as keyof typeof BUILTIN] : defByKey.get(k)?.label ?? k);
   const cols = $derived(config.columns.filter((k) => (k in BUILTIN && (!isMoneyCol(k) || hasMoney)) || defByKey.has(k)));
   const isRight = (k: string) => { const d = defByKey.get(k); return isMoneyCol(k) || (!!d && d.field_type === 'number'); };
@@ -369,6 +457,7 @@
     <div class="spacer"></div>
     {#if projects.length > 3}<input class="input search" placeholder="Поиск: название, шифр, заказчик, ГИП" bind:value={query} aria-label="Поиск проектов" />{/if}
     {#if projects.length}
+      {#if !isBoard}
       <label class="grp-sel">
         <span class="faint small">Группировать</span>
         <select class="input" value={config.group ?? ''} onchange={(e) => (config = { ...config, group: e.currentTarget.value || null })} aria-label="Группировать">
@@ -378,13 +467,11 @@
           {#each groupDefs as d (d.id)}<option value={d.key}>{d.label}</option>{/each}
         </select>
       </label>
+      {/if}
+      <ProjectFilters bind:value={pfilter} managers={managerPeople} members={people} {companies} />
       {#if projectLabels.canCreate}<button class="btn" onclick={() => (labelsOpen = true)} title="Метки проектов"><Tags size={16} />Метки</button>{/if}
-      <FieldsMenu {defs} bind:config view={shownView} {own} isAdmin={session.isAdmin} money={hasMoney} onreset={resetConfig} onmakedefault={makeDefault} />
-      {#if !narrow}
-        <div class="seg" role="radiogroup" aria-label="Вид">
-          <button role="radio" aria-checked={view === 'rows'} class:on={view === 'rows'} title="Строками" onclick={() => setView('rows')}><List size={16} /></button>
-          <button role="radio" aria-checked={view === 'cards'} class:on={view === 'cards'} title="Карточками" onclick={() => setView('cards')}><LayoutGrid size={16} /></button>
-        </div>
+      {#if shownView === 'rows' || shownView === 'cards'}
+        <FieldsMenu {defs} bind:config view={shownView} {own} isAdmin={session.isAdmin} money={hasMoney} onreset={resetConfig} onmakedefault={makeDefault} />
       {/if}
     {/if}
     {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}><Plus size={16} />Новый проект</button>{/if}
@@ -439,10 +526,31 @@
           {#if labelFilter.length}<button class="lf-x" onclick={() => (labelFilter = [])} title="Сбросить фильтр по меткам">✕</button>{/if}
         </span>
       {/if}
+      <span class="tabs-sp"></span>
+      <div class="seg views" role="radiogroup" aria-label="Вид">
+        {#if !narrow}<button role="radio" aria-checked={view === 'rows'} class:on={view === 'rows'} title="Строками" onclick={() => setView('rows')}><List size={16} /></button>{/if}
+        <button role="radio" aria-checked={shownView === 'cards'} class:on={shownView === 'cards'} title="Карточками" onclick={() => setView('cards')}><LayoutGrid size={16} /></button>
+        <button role="radio" aria-checked={view === 'managers'} class:on={view === 'managers'} title="По руководителям проектов" onclick={() => setView('managers')}><Users size={16} /></button>
+        {#if projectLabels.list.length}<button role="radio" aria-checked={view === 'labels'} class:on={view === 'labels'} title="По меткам" onclick={() => setView('labels')}><Tags size={16} /></button>{/if}
+        <button role="radio" aria-checked={view === 'gantt'} class:on={view === 'gantt'} title="Сводный Гант" onclick={() => setView('gantt')}><ChartGantt size={16} /></button>
+      </div>
     </div>
+
+    {#if filterCount(pfilter)}
+      <div class="fchips">
+        {#each pfilter.managers as m (m)}<button class="fchip" onclick={() => (pfilter = { ...pfilter, managers: pfilter.managers.filter((x) => x !== m) })}>Руководитель: {personName(m)} <X size={12} /></button>{/each}
+        {#each pfilter.members as m (m)}<button class="fchip" onclick={() => (pfilter = { ...pfilter, members: pfilter.members.filter((x) => x !== m) })}>Участник: {personName(m)} <X size={12} /></button>{/each}
+        {#each pfilter.companies as c (c)}<button class="fchip" onclick={() => (pfilter = { ...pfilter, companies: pfilter.companies.filter((x) => x !== c) })}>Заказчик: {c} <X size={12} /></button>{/each}
+        <button class="fclear" onclick={() => (pfilter = { managers: [], members: [], companies: [] })}>Сбросить</button>
+      </div>
+    {/if}
 
     {#if !sorted.length}
       <div class="card"><EmptyState icon={SearchX} title="Ничего не найдено" text="Измените условия поиска или фильтры." /></div>
+    {:else if isBoard}
+      <ProjectBoard columns={boardColumns} {dueOf} {urgencyOf} {amountOf} showSum={!!moneyDef} hideLabelId={shownView === 'labels'} />
+    {:else if shownView === 'gantt'}
+      <SummaryGantt {groups} grouped={!!config.group} {dueOf} {urgencyOf} {personName} {today} />
     {:else if shownView === 'rows'}
       {#snippet th(k: string)}
         <th class:right={isRight(k)} class:c-name={k === '$name'} aria-sort={sortKey === k ? (sortDir === 1 ? 'ascending' : 'descending') : 'none'}>
@@ -453,13 +561,16 @@
       {/snippet}
       <div class="card table">
         <table class="rows">
-          <thead><tr>{#each cols as k (k)}{@render th(k)}{/each}</tr></thead>
+          <thead><tr>
+            {#if manageable.length}<th class="c-sel"><input type="checkbox" checked={allSelected} indeterminate={!allSelected && selectedShown.length > 0} onchange={toggleAll} aria-label="Выбрать все проекты" /></th>{/if}
+            {#each cols as k (k)}{@render th(k)}{/each}
+          </tr></thead>
           {#each groups as g (g.id)}
             <tbody>
               {#if config.group}
                 {@const shut = collapsed.includes(g.id)}
                 <tr class="ghead">
-                  <td colspan={cols.length}>
+                  <td colspan={cols.length + (manageable.length ? 1 : 0)}>
                     <button class="gbtn" onclick={() => toggleGroup(g.id)} aria-expanded={!shut}>
                       <span class="chev" class:open={!shut}><ChevronRight size={14} /></span>{g.label} <span class="n">{g.items.length}</span>
                       {#if moneyDef && g.sum}<span class="gsum">{moneyShort(g.sum)}</span>{/if}
@@ -471,7 +582,10 @@
                 {#each g.items as p (p.id)}
                   {@const pct = Math.round(progress(p) * 100)}
                   {@const u = urgencyOf(p)}
-                  <tr class="prow" class:closed={p.status === 'closed'} onclick={(e) => { if (!(e.target as HTMLElement).closest('a,button')) goto(`/projects/${p.id}`); }}>
+                  <tr class="prow" class:closed={p.status === 'closed'} class:sel={selected.includes(p.id)} onclick={(e) => { if (!(e.target as HTMLElement).closest('a,button,.c-sel')) goto(`/projects/${p.id}`); }}>
+                    {#if manageable.length}
+                      <td class="c-sel">{#if canManage(p)}<input type="checkbox" checked={selected.includes(p.id)} onchange={() => toggleSelect(p.id)} aria-label="Выбрать «{p.name}»" />{/if}</td>
+                    {/if}
                     {#each cols as k (k)}
                       {#if k === '$name'}
                         <td class="c-name">
@@ -519,6 +633,30 @@
           {/each}
         </table>
       </div>
+      {#if selectedShown.length}
+        <div class="bulk" role="region" aria-label="Действия с выбранными проектами">
+          <b>Выбрано: {selectedShown.length}</b>
+          <select class="input" disabled={bulkBusy} aria-label="Сменить статус" onchange={(e) => { const v = e.currentTarget.value; e.currentTarget.value = ''; if (v) bulk({ status: v }, 'Статус изменён'); }}>
+            <option value="">Сменить статус…</option>
+            <option value="active">Активный</option>
+            <option value="paused">Приостановлен</option>
+            <option value="closed">Закрыт</option>
+          </select>
+          {#if projectLabels.list.length}
+            <select class="input" disabled={bulkBusy} aria-label="Добавить метку" onchange={(e) => { const v = e.currentTarget.value; e.currentTarget.value = ''; if (v) bulk({ add_label: v }, 'Метка добавлена'); }}>
+              <option value="">Добавить метку…</option>
+              {#each projectLabels.list as l (l.id)}<option value={l.id}>{l.name}</option>{/each}
+            </select>
+            <select class="input" disabled={bulkBusy} aria-label="Снять метку" onchange={(e) => { const v = e.currentTarget.value; e.currentTarget.value = ''; if (v) bulk({ remove_label: v }, 'Метка снята'); }}>
+              <option value="">Снять метку…</option>
+              {#each projectLabels.list as l (l.id)}<option value={l.id}>{l.name}</option>{/each}
+            </select>
+          {/if}
+          <span class="spacer"></span>
+          {#if bulkError}<span class="berr">{bulkError}</span>{/if}
+          <button class="btn" onclick={() => { selected = []; bulkError = ''; }}>Снять выделение</button>
+        </div>
+      {/if}
     {:else}
       {#each groups as g (g.id)}
         {#if config.group}
@@ -661,6 +799,25 @@
   .ttl-row h3 { margin: 0; flex: 1; min-width: 0; }
   .chip-x.late { background: var(--danger-soft); color: var(--danger); }
   .chip-x.soon { background: var(--warn-soft); color: var(--warn); }
+
+  /* Filters, bulk */
+  .fchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -4px 0 12px; }
+  .fchip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); background: var(--surface); border-radius: 999px;
+           padding: 3px 10px; font: inherit; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+  .fchip:hover { border-color: var(--accent); color: var(--text); }
+  .fclear { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .c-sel { width: 1%; padding-right: 0 !important; }
+  .rows th.c-sel { padding: 9px 0 9px 12px; }
+  .rows td.c-sel { padding-left: 12px; }
+  .c-sel input { width: 16px; height: 16px; cursor: pointer; vertical-align: middle; }
+  .prow.sel { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .bulk { position: sticky; bottom: 12px; z-index: 5; margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+          background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 10px 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .14); }
+  .bulk .input { width: auto; }
+  .bulk .spacer { flex: 1; }
+  .berr { color: var(--danger); font-size: 13px; }
+  .views button { padding: 5px 9px; }
+  .tabs-sp { flex: 1; }
 
   /* Table */
   .table { padding: 0; overflow-x: auto; }

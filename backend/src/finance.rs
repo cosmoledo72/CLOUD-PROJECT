@@ -13,7 +13,7 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use chrono::{Datelike, Duration, NaiveDate, Utc};
+use chrono::{Datelike, Duration, NaiveDate};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -638,7 +638,7 @@ pub async fn summary(State(state): State<AppState>, user: CurrentUser, Query(q):
     projects.sort_by(|a, b| b["profit"].as_f64().partial_cmp(&a["profit"].as_f64()).unwrap_or(std::cmp::Ordering::Equal));
 
     // Planned income: overdue (before today) and expected in the next 30 days, regardless of the period.
-    let today = Utc::now().date_naive();
+    let today = crate::crm::tasks::portal_today(&state, user.tenant_id).await?;
     let (overdue, upcoming): (f64, f64) = sqlx::query_as(
         "SELECT COALESCE(sum(amount) FILTER (WHERE pay_date < $2), 0)::float8,
                 COALESCE(sum(amount) FILTER (WHERE pay_date >= $2 AND pay_date <= $2 + 30), 0)::float8
@@ -711,7 +711,7 @@ fn invoice_json(i: &InvoiceDebt, today: NaiveDate) -> Value {
 
 pub async fn receivables(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     require_view(&user)?;
-    let today = Utc::now().date_naive();
+    let today = crate::crm::tasks::portal_today(&state, user.tenant_id).await?;
     let days = invoice_due_days(&state, user.tenant_id).await?;
     let invoices: Vec<InvoiceDebt> = if user.module_on("crm") {
         sqlx::query_as(&format!("{INVOICE_SELECT} ORDER BY d.doc_date"))
@@ -765,7 +765,7 @@ pub async fn open_invoices(State(state): State<AppState>, user: CurrentUser) -> 
     if !user.finance_edit() || !user.module_on("crm") {
         return Ok(Json(json!({ "invoices": [] })));
     }
-    let today = Utc::now().date_naive();
+    let today = crate::crm::tasks::portal_today(&state, user.tenant_id).await?;
     let days = invoice_due_days(&state, user.tenant_id).await?;
     let rows: Vec<InvoiceDebt> = sqlx::query_as(&format!("{INVOICE_SELECT} ORDER BY d.doc_date DESC LIMIT 500"))
         .bind(user.tenant_id)
@@ -871,7 +871,7 @@ pub async fn project_finance(State(state): State<AppState>, user: CurrentUser, P
     let field_label = budget_field(&state, user.tenant_id).await?.map(|(_, l)| l);
     let pq = PaymentQuery { from: None, to: None, kind: None, status: None, category_id: None, project_id: Some(id), company_id: None, q: None };
     let payments = fetch_payments(&state, user.tenant_id, &pq).await?;
-    let today = Utc::now().date_naive();
+    let today = crate::crm::tasks::portal_today(&state, user.tenant_id).await?;
     let invoices: Vec<Value> = if user.module_on("crm") {
         let days = invoice_due_days(&state, user.tenant_id).await?;
         let rows: Vec<InvoiceDebt> = sqlx::query_as(&format!("{INVOICE_SELECT} AND pr.id = $3 ORDER BY d.doc_date"))

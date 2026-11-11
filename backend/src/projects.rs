@@ -94,6 +94,11 @@ pub struct ProjectRow {
     /// Badge: own colour and icon; `None` = automatic colour, first letter.
     pub badge_color: Option<String>,
     pub badge_icon: Option<String>,
+    /// Project managers (ГИП) and all members, for list views and filters.
+    pub manager_ids: Vec<Uuid>,
+    pub member_ids: Vec<Uuid>,
+    /// Dated milestones `[{ date, title, done }]` for the summary Gantt.
+    pub milestones: Value,
 }
 
 const PROJECT_SELECT: &str = "SELECT p.id, p.name, p.description, p.status, p.owner_id, p.folder_id, p.created_at,
@@ -108,7 +113,15 @@ const PROJECT_SELECT: &str = "SELECT p.id, p.name, p.description, p.status, p.ow
         p.company_id, (SELECT c.name FROM crm_companies c WHERE c.id = p.company_id) AS company_name, p.deal_id,
         ARRAY(SELECT k.label_id FROM project_label_links k JOIN project_labels pl ON pl.id = k.label_id
                WHERE k.project_id = p.id ORDER BY pl.sort_order, lower(pl.name)) AS label_ids,
-        p.badge_color, p.badge_icon
+        p.badge_color, p.badge_icon,
+        ARRAY(SELECT pm.user_id FROM project_members pm JOIN users u ON u.id = pm.user_id
+               WHERE pm.project_id = p.id AND pm.role = 'manager' ORDER BY lower(u.display_name)) AS manager_ids,
+        ARRAY(SELECT pm.user_id FROM project_members pm WHERE pm.project_id = p.id) AS member_ids,
+        (SELECT COALESCE(jsonb_agg(jsonb_build_object('date', m.due_date, 'title', m.title, 'done', m.status = 'done')
+                                   ORDER BY m.due_date), '[]'::jsonb)
+           FROM (SELECT t.due_date, t.title, t.status FROM tasks t
+                  WHERE t.project_id = p.id AND t.is_milestone AND t.due_date IS NOT NULL
+                  ORDER BY t.due_date LIMIT 50) m) AS milestones
    FROM projects p";
 
 pub async fn list_projects(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
@@ -122,7 +135,115 @@ pub async fn list_projects(State(state): State<AppState>, user: CurrentUser) -> 
     .bind(user.is_admin())
     .fetch_all(&state.db)
     .await?;
-    Ok(Json(json!({ "projects": rows })))
+    // Names of everyone taking part in the listed projects (filters, manager columns).
+    let ids: Vec<Uuid> = {
+        let mut v: Vec<Uuid> = rows.iter().flat_map(|r| r.member_ids.iter().copied()).collect();
+        v.sort();
+        v.dedup();
+        v
+    };
+    let people: Vec<(Uuid, String)> =
+        sqlx::query_as("SELECT id, display_name FROM users WHERE tenant_id = $1 AND id = ANY($2) ORDER BY lower(display_name)")
+            .bind(user.tenant_id)
+            .bind(&ids)
+            .fetch_all(&state.db)
+            .await?;
+    let people: Vec<Value> = people.into_iter().map(|(id, name)| json!({ "id": id, "display_name": name })).collect();
+    Ok(Json(json!({ "projects": rows, "people": people })))
+}
+
+/// Most projects changed by one bulk request.
+const BULK_MAX: usize = 200;
+
+#[derive(Deserialize)]
+pub struct BulkUpdate {
+    pub ids: Vec<Uuid>,
+    pub status: Option<String>,
+    pub add_label: Option<Uuid>,
+    pub remove_label: Option<Uuid>,
+}
+
+/// `POST /api/projects/bulk` — change the status of several projects or add /
+/// remove a label. All or nothing: the caller must manage every project.
+pub async fn bulk_update(State(state): State<AppState>, user: CurrentUser, Json(req): Json<BulkUpdate>) -> ApiResult<Json<Value>> {
+    let mut ids = req.ids;
+    ids.sort();
+    ids.dedup();
+    if ids.is_empty() || ids.len() > BULK_MAX {
+        return bad_request("выберите от 1 до 200 проектов");
+    }
+    let actions = [req.status.is_some(), req.add_label.is_some(), req.remove_label.is_some()].iter().filter(|x| **x).count();
+    if actions != 1 {
+        return bad_request("one action expected: status, add_label or remove_label");
+    }
+    if let Some(s) = req.status.as_deref() {
+        if !matches!(s, "active" | "paused" | "closed") {
+            return bad_request("status must be active, paused or closed");
+        }
+    }
+    for id in &ids {
+        project_role(&state, &user, *id).await?.require(ProjectRole::Manager)?;
+    }
+    if let Some(l) = req.add_label.or(req.remove_label) {
+        let known: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM project_labels WHERE id = $1 AND tenant_id = $2)")
+            .bind(l)
+            .bind(user.tenant_id)
+            .fetch_one(&state.db)
+            .await?;
+        if !known {
+            return bad_request("unknown label");
+        }
+    }
+    let mut tx = state.db.begin().await?;
+    let (action, changed): (&str, Vec<Uuid>) = if let Some(s) = &req.status {
+        let changed = sqlx::query_scalar("UPDATE projects SET status = $2 WHERE id = ANY($1) AND status <> $2 RETURNING id")
+            .bind(&ids)
+            .bind(s)
+            .fetch_all(&mut *tx)
+            .await?;
+        ("project.status_changed", changed)
+    } else if let Some(l) = req.add_label {
+        let full: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM (SELECT k.project_id FROM project_label_links k
+               WHERE k.project_id = ANY($1) AND NOT EXISTS (SELECT 1 FROM project_label_links x WHERE x.project_id = k.project_id AND x.label_id = $2)
+               GROUP BY k.project_id HAVING count(*) >= $3) f",
+        )
+        .bind(&ids)
+        .bind(l)
+        .bind(crate::project_labels::MAX_PER_PROJECT as i64)
+        .fetch_one(&mut *tx)
+        .await?;
+        if full > 0 {
+            return bad_request("не больше 10 меток на проект");
+        }
+        let changed = sqlx::query_scalar(
+            "INSERT INTO project_label_links (project_id, label_id) SELECT unnest($1::uuid[]), $2
+             ON CONFLICT DO NOTHING RETURNING project_id",
+        )
+        .bind(&ids)
+        .bind(l)
+        .fetch_all(&mut *tx)
+        .await?;
+        ("project.label_added", changed)
+    } else {
+        let l = req.remove_label.expect("one action checked above");
+        let changed = sqlx::query_scalar("DELETE FROM project_label_links WHERE project_id = ANY($1) AND label_id = $2 RETURNING project_id")
+            .bind(&ids)
+            .bind(l)
+            .fetch_all(&mut *tx)
+            .await?;
+        ("project.label_removed", changed)
+    };
+    tx.commit().await?;
+    let detail = match (&req.status, req.add_label.or(req.remove_label)) {
+        (Some(s), _) => json!({ "status": s, "bulk": true }),
+        (None, Some(l)) => json!({ "label_id": l, "bulk": true }),
+        _ => json!({ "bulk": true }),
+    };
+    for id in &changed {
+        state.audit(user.tenant_id, Some(user.user_id), action, Some("project"), Some(*id), detail.clone()).await;
+    }
+    Ok(Json(json!({ "changed": changed.len() })))
 }
 
 #[derive(Deserialize)]

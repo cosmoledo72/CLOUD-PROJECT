@@ -237,7 +237,7 @@ pub async fn next_number(State(state): State<AppState>, user: CurrentUser, Query
     if !DOC_KINDS.contains(&q.kind.as_str()) {
         return bad_request("unknown document kind");
     }
-    let date = q.date.unwrap_or_else(|| Utc::now().date_naive());
+    let date = match q.date { Some(d) => d, None => crate::crm::tasks::portal_today(&state, user.tenant_id).await? };
     let n = last_number(&state, user.tenant_id, &q.kind, date.year()).await? + 1;
     let pattern = pattern_for(&state, user.tenant_id, &q.kind).await?;
     Ok(Json(json!({ "number": format_doc_number(&pattern, n, date) })))
@@ -245,7 +245,7 @@ pub async fn next_number(State(state): State<AppState>, user: CurrentUser, Query
 
 pub async fn get_numbering(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     user.require_admin()?;
-    let today = Utc::now().date_naive();
+    let today = crate::crm::tasks::portal_today(&state, user.tenant_id).await?;
     let mut out = vec![];
     for kind in DOC_KINDS {
         let pattern = pattern_for(&state, user.tenant_id, kind).await?;
@@ -266,7 +266,7 @@ pub struct NumberingInput {
 
 pub async fn save_numbering(State(state): State<AppState>, user: CurrentUser, Json(req): Json<Vec<NumberingInput>>) -> ApiResult<Json<Value>> {
     user.require_admin()?;
-    let year = Utc::now().date_naive().year();
+    let year = crate::crm::tasks::portal_today(&state, user.tenant_id).await?.year();
     let mut tx = state.db.begin().await?;
     for r in &req {
         if !DOC_KINDS.contains(&r.kind.as_str()) {
@@ -731,7 +731,7 @@ pub async fn create(
     if subject.chars().count() > 1000 {
         return bad_request("слишком длинный предмет");
     }
-    let date = req.date.unwrap_or_else(|| Utc::now().date_naive());
+    let date = match req.date { Some(d) => d, None => crate::crm::tasks::portal_today(&state, user.tenant_id).await? };
     let basis = match req.basis_id {
         Some(b) => {
             let row: Option<(String, NaiveDate)> = sqlx::query_as(

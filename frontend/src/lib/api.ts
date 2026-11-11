@@ -182,6 +182,17 @@ export interface Project {
   /** Own badge colour and icon; null = automatic colour and the first letter. */
   badge_color: string | null;
   badge_icon: string | null;
+  /** Project managers (ГИП) and all members. */
+  manager_ids: string[];
+  member_ids: string[];
+  /** Dated milestones, for the summary Gantt. */
+  milestones: { date: string; title: string; done: boolean }[];
+}
+
+/** Someone taking part in the listed projects. */
+export interface ProjectPerson {
+  id: string;
+  display_name: string;
 }
 
 /** A label of the project catalogue. */
