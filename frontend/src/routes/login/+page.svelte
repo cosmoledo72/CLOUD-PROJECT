@@ -29,6 +29,16 @@
 
   // --- Portal branding (debounced lookup by slug) -----------------------------
   let brand = $state<Branding | null>(null);
+  // A portal known in advance (login link or last sign-in) is shown as a chip
+  // once its branding loads; «Сменить» turns it back into an input.
+  let portalKnown = $state(!!(linkPortal || storedTenant()));
+  let portalInput = $state<HTMLInputElement | null>(null);
+  const portalChip = $derived(portalKnown && !!brand && brand.tenant_slug === tenant.trim().toLowerCase());
+  function changePortal() {
+    portalKnown = false;
+    tenant = '';
+    queueMicrotask(() => portalInput?.focus());
+  }
   let lookupTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
     const slug = tenant.trim().toLowerCase();
@@ -99,10 +109,15 @@
   {#if mode === 'login'}
     <form onsubmit={(e) => { e.preventDefault(); login(); }}>
       <div class="intro">
-        <h2>Вход в портал</h2>
+        {#if portalChip && brand}
+          <span class="chip"><span class="dot"></span>{brand.tenant_slug} · {brand.display_name}</span>
+        {/if}
+        <h2>Вход на портал</h2>
         <p class="muted">Рады видеть вас снова</p>
       </div>
-      <label class="field">Портал <span class="with-icon"><Building2 size={17} /><input class="input" bind:value={tenant} required autocomplete="organization" placeholder="company" /></span></label>
+      {#if !portalChip}
+        <label class="field">Портал <span class="with-icon"><Building2 size={17} /><input class="input" bind:this={portalInput} bind:value={tenant} required autocomplete="organization" placeholder="company" /></span></label>
+      {/if}
       <label class="field">Email <span class="with-icon"><Mail size={17} /><input class="input" type="email" bind:value={email} required autocomplete="username" placeholder="name@company.ru" /></span></label>
       <label class="field">Пароль <span class="with-icon"><Lock size={17} /><input class="input" type="password" bind:value={password} required autocomplete="current-password" /></span></label>
       <button type="button" class="linkish forgot" onclick={() => { mode = 'forgot'; error = ''; }}>Забыли пароль?</button>
@@ -111,7 +126,6 @@
       {#if brand?.registration_open}
         <p class="join">Нет учётной записи? <a href="/register?portal={encodeURIComponent(brand.tenant_slug)}">Зарегистрироваться в портале</a></p>
       {/if}
-      <button type="button" class="btn ghost full" onclick={() => { mode = 'signup'; error = ''; }}>Создать новый портал</button>
     </form>
   {:else if mode === 'forgot'}
     <form onsubmit={(e) => { e.preventDefault(); forgot(); }}>
@@ -160,6 +174,14 @@
       <button type="button" class="btn ghost full" onclick={() => { mode = 'login'; error = ''; }}>У меня уже есть портал</button>
     </form>
   {/if}
+  {#snippet below()}
+    {#if mode === 'login'}
+      {#if portalChip}
+        <span>Другой портал? <button type="button" class="linkish" onclick={changePortal}>Сменить</button></span>
+      {:else}<span></span>{/if}
+      <button type="button" class="linkish" onclick={() => { mode = 'signup'; error = ''; }}>Создать портал</button>
+    {/if}
+  {/snippet}
 </AuthShell>
 
 <style>
@@ -170,4 +192,8 @@
   .forgot { justify-self: end; font-size: 13px; margin-top: -4px; }
   .join { margin: 0; text-align: center; font-size: 13.5px; color: var(--text-2); }
   .intro { display: grid; gap: 2px; margin-bottom: 6px; }
+  .chip { justify-self: start; display: inline-flex; align-items: center; gap: 7px; margin-bottom: 14px;
+          padding: 4px 11px; border-radius: 99px; font-size: 12.5px; font-weight: 500;
+          background: color-mix(in srgb, var(--brand) 9%, transparent); color: var(--accent); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 </style>

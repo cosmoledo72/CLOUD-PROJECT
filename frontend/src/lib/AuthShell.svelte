@@ -5,9 +5,10 @@
   import type { Component } from 'svelte';
   import FileText from '@lucide/svelte/icons/file-text';
   import FolderKanban from '@lucide/svelte/icons/folder-kanban';
+  import ShieldCheck from '@lucide/svelte/icons/shield-check';
   import Wallet from '@lucide/svelte/icons/wallet';
 
-  let { brand = null, children }: { brand?: Branding | null; children: Snippet } = $props();
+  let { brand = null, children, below }: { brand?: Branding | null; children: Snippet; below?: Snippet } = $props();
 
   // An empty title hides the heading; the portal name is used only when there is
   // no logo or icon either, so the page never ends up without any identity.
@@ -51,8 +52,12 @@
   </section>
 
   <section class="form-side">
-    <div class="panel">
-      {@render children()}
+    <div class="col">
+      <div class="panel">
+        {@render children()}
+      </div>
+      {#if below}<div class="below">{@render below()}</div>{/if}
+      <p class="secure"><span class="si"><ShieldCheck size={14} /></span>Защищённое соединение · данные хранятся на сервере компании</p>
     </div>
   </section>
 </div>
@@ -94,8 +99,22 @@
   .logo-plate.bare { background: none; padding: 0; box-shadow: none; border-radius: 0; }
   .hero-icon { border-radius: 12px; }
   .powered { position: absolute; left: 52px; bottom: 24px; font-size: 12px; opacity: .6; z-index: 1; }
-  .form-side { display: grid; place-items: center; padding: 32px 20px; background: var(--surface); }
-  .panel { width: min(400px, 100%); }
+  /* Form side: a quiet dotted base with the form on a card. */
+  .form-side {
+    display: grid; place-items: center; padding: 40px 24px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--text-3) 26%, transparent) 1px, transparent 1.3px) 0 0 / 22px 22px, var(--bg);
+  }
+  .col { width: min(470px, 100%); display: grid; gap: 0; }
+  .panel {
+    background: var(--surface); border-radius: 16px; padding: 36px 35px 32px;
+    border: 1px solid var(--border); border-top: 4px solid var(--brand);
+    box-shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 12px 40px rgb(16 24 40 / 9%);
+  }
+  .below { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+           padding: 16px 6px 0; font-size: 13.5px; color: var(--text-2); }
+  .below :global(a), .below :global(button) { color: var(--accent); font-weight: 500; }
+  .secure { margin: 30px 0 0; font-size: 12px; line-height: 1.6; color: var(--text-3); text-align: center; }
+  .si { display: inline-flex; vertical-align: -2px; margin-right: 6px; }
   .panel :global(form), .panel :global(.stack) { display: grid; gap: 14px; }
   .panel :global(h2) { font-size: 26px; font-weight: 650; letter-spacing: -.015em; margin: 0 0 2px; }
   .panel :global(.input) { height: 42px; }
@@ -108,5 +127,8 @@
     .hero h1 { font-size: 22px; }
     .text { margin-top: 10px; }
     .feats, .powered { display: none; }
+    .form-side { place-items: start center; padding: 20px 14px 28px; }
+    .panel { padding: 26px 20px 24px; box-shadow: 0 1px 2px rgb(16 24 40 / 5%); }
+    .secure { margin-top: 20px; }
   }
 </style>
