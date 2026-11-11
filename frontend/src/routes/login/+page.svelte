@@ -110,7 +110,7 @@
     <form onsubmit={(e) => { e.preventDefault(); login(); }}>
       <div class="intro">
         {#if portalChip && brand}
-          <span class="chip"><span class="dot"></span>{brand.tenant_slug} · {brand.display_name}</span>
+          <span class="chip"><span class="dot"></span>{brand.display_name}</span>
         {/if}
         <h2>Вход на портал</h2>
         <p class="muted">Рады видеть вас снова</p>
@@ -124,7 +124,7 @@
       {#if error}<div class="error-box">{error}</div>{/if}
       <button class="btn primary full" disabled={busy}>Войти</button>
       {#if brand?.registration_open}
-        <p class="join">Нет учётной записи? <a href="/register?portal={encodeURIComponent(brand.tenant_slug)}">Зарегистрироваться в портале</a></p>
+        <p class="join">Нет учётной записи? <a href="/register?portal={encodeURIComponent(brand.tenant_slug)}">Зарегистрироваться на портале</a></p>
       {/if}
     </form>
   {:else if mode === 'forgot'}
