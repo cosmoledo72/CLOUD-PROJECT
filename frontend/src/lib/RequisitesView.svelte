@@ -3,6 +3,9 @@
   // "show in project card"), the rest as section cards with label–value rows.
   // Empty fields are folded into one "not filled" line per section.
   import { formatDate, formatFieldValue, localToday, nameDef, type CompanyRef, type FieldDef, type FieldValues } from './api';
+  import {
+    companyOf, daysBetween, deadline as dl, initials, isAddress, isCode, isDeadline, isMoney, money, relative as rel, shortDate
+  } from './fieldLook';
   import { session } from './session.svelte';
   import Check from '@lucide/svelte/icons/check';
   import ClipboardList from '@lucide/svelte/icons/clipboard-list';
@@ -58,36 +61,11 @@
   }
 
   // --- Value helpers ---------------------------------------------------------------
-  const companyOf = (v: unknown): CompanyRef | null =>
-    v && typeof v === 'object' ? (v as CompanyRef) : typeof v === 'string' && v ? { id: null, name: v, inn: null } : null;
   const userName = (v: unknown) => users.find((u) => u.id === v)?.display_name ?? null;
-  const initials = (n: string) => n.split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-  /** Codes, INNs, cadastral numbers: short, with digits, no spaces — shown monospaced with a copy button. */
-  const isCode = (d: FieldDef, v: unknown) => d.field_type === 'text' && typeof v === 'string' && v.length <= 40 && /\d/.test(v) && !/\s/.test(v.trim());
-  const isAddress = (d: FieldDef) => /address|adres/.test(d.key) || d.label.toLowerCase().includes('адрес');
-  const isMoney = (d: FieldDef) => d.field_type === 'number' && /руб|₽|стоимост|сумм|цена|аванс/i.test(d.label);
-  const money = (v: unknown) =>
-    typeof v === 'number' ? `${v.toLocaleString('ru-RU', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })} ₽` : String(v);
+  const relative = (date: string) => rel(today, date);
+  const deadline = (date: string) => dl(today, date);
+  const days = daysBetween;
 
-  const DAY = 86_400_000;
-  const days = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / DAY);
-  function plural(n: number, one: string, few: string, many: string) {
-    const m10 = n % 10, m100 = n % 100;
-    return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
-  }
-  /** «через 37 дней» / «сегодня» / «просрочено на 3 дня» with a tone. */
-  function relative(date: string): { text: string; tone: 'late' | 'soon' | 'ok' | 'past' } {
-    const n = days(today, date);
-    if (n === 0) return { text: 'сегодня', tone: 'soon' };
-    if (n > 0) return { text: `через ${n} ${plural(n, 'день', 'дня', 'дней')}`, tone: n <= 14 ? 'soon' : 'ok' };
-    return { text: `${-n} ${plural(-n, 'день', 'дня', 'дней')} назад`, tone: 'past' };
-  }
-  const isDeadline = (d: FieldDef) => /срок|deadline|сдач/i.test(d.label + ' ' + d.key);
-  function deadline(date: string) {
-    const r = relative(date);
-    if (days(today, date) < 0) return { text: `просрочено на ${-days(today, date)} ${plural(-days(today, date), 'день', 'дня', 'дней')}`, tone: 'late' as const };
-    return r;
-  }
   /** Start of the period: the earliest of the project start and the other filled
    *  dates (e.g. the contract date), so the bar is meaningful for imported projects. */
   const periodStart = $derived.by(() => {
@@ -104,8 +82,6 @@
     const total = days(start, date);
     return Math.max(0, Math.min(100, Math.round((days(start, today) / total) * 100)));
   }
-  const shortDate = (d: string) =>
-    new Date(d + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }).replace(' г.', '');
 
   let copied = $state<string | null>(null);
   async function copy(key: string, text: string) {

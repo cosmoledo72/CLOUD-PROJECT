@@ -30,6 +30,7 @@ mod team;
 mod templates;
 mod trash;
 mod users;
+mod view_settings;
 
 use std::sync::Arc;
 
@@ -99,6 +100,8 @@ fn router(state: AppState) -> Router {
         .route("/admin/project-fields/{id}", put(fields::update_def).delete(fields::delete_def))
         // Branding (public by slug for the login page)
         .route("/branding", get(branding::get_own))
+        .route("/view-settings/{key}", get(view_settings::get).put(view_settings::put).delete(view_settings::reset))
+        .route("/admin/view-settings/{key}", put(view_settings::put_default))
         .route("/notifications", get(notify::list))
         .route("/notifications/read", post(notify::mark_read))
         .route("/notifications/prefs", get(notify::get_prefs).put(notify::save_prefs))
