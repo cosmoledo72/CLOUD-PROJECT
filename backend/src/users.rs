@@ -99,6 +99,12 @@ pub async fn create_user(State(state): State<AppState>, user: CurrentUser, Json(
     })?;
     state.audit(user.tenant_id, Some(user.user_id), "user.created", Some("user"), Some(id), json!({ "role": req.role, "invited": invite })).await;
     if invite {
+        sqlx::query("INSERT INTO invitations (user_id, tenant_id, invited_by) VALUES ($1, $2, $3)")
+            .bind(id)
+            .bind(user.tenant_id)
+            .bind(user.user_id)
+            .execute(&state.db)
+            .await?;
         let (url, emailed) = crate::accounts::send_invite(&state, &user, id).await?;
         return Ok(Json(json!({ "id": id, "invite_url": url, "emailed": emailed })));
     }

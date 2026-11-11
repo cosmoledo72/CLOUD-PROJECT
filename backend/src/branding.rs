@@ -99,7 +99,9 @@ pub async fn get_public(State(state): State<AppState>, Path(slug): Path<String>)
         .fetch_optional(&state.db)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(with_urls(b)))
+    let mut v = with_urls(b);
+    v["registration_open"] = json!(crate::registration::is_open(&state, &slug).await);
+    Ok(Json(v))
 }
 
 // ---------------------------------------------------------------------------

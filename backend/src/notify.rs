@@ -47,6 +47,7 @@ pub const KINDS: &[Kind] = &[
     Kind { key: "crm_task_assigned", label: "Мне поручено дело (звонок, встреча…)", group: "CRM", in_app: true, email: true },
     Kind { key: "crm_task_due", label: "Напоминание о деле: в назначенное время или утром в день срока", group: "CRM", in_app: true, email: true },
     Kind { key: "crm_task_overdue", label: "Дело просрочено", group: "CRM", in_app: true, email: false },
+    Kind { key: "registration_request", label: "Новая заявка на регистрацию в портале", group: "Администрирование", in_app: true, email: true },
 ];
 
 fn kind(key: &str) -> Option<&'static Kind> {
@@ -284,7 +285,7 @@ pub async fn get_prefs(State(state): State<AppState>, user: CurrentUser) -> ApiR
 }
 
 fn crm_visible(user: &CurrentUser, k: &Kind) -> bool {
-    (k.group != "CRM" || user.crm_enabled()) && kind_module(k.key, None).is_none_or(|m| user.module_on(m))
+    (k.group != "CRM" || user.crm_enabled()) && (k.group != "Администрирование" || user.is_admin()) && kind_module(k.key, None).is_none_or(|m| user.module_on(m))
 }
 
 /// Portal module a notification kind belongs to (`None` — always available).

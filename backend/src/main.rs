@@ -21,6 +21,7 @@ mod ooxml;
 mod onlyoffice;
 mod projects;
 mod ratelimit;
+mod registration;
 mod scheduling;
 mod state;
 mod storage;
@@ -113,6 +114,14 @@ fn router(state: AppState) -> Router {
         .route("/admin/mail/test", post(mail::send_test))
         .route("/admin/mail/outbox/{id}/retry", post(mail::retry))
         .route("/admin/users/{id}/invite", post(accounts::resend_invite))
+        .route("/admin/invitations", get(accounts::list_invitations).post(accounts::invite_many))
+        .route("/admin/invitations/{id}", delete(accounts::revoke_invitation))
+        .route("/admin/registration", get(registration::get_settings).put(registration::save_settings))
+        .route("/admin/registration/requests", get(registration::list_requests))
+        .route("/admin/registration/requests/{id}/approve", post(registration::approve))
+        .route("/admin/registration/requests/{id}/reject", post(registration::reject))
+        .route("/public/register", post(registration::register))
+        .route("/public/register/confirm", post(registration::confirm))
         .route("/public/branding/{slug}", get(branding::get_public))
         .route("/public/branding/{slug}/{kind}", get(branding::serve_asset))
         .route("/project-fields", get(fields::list_defs))

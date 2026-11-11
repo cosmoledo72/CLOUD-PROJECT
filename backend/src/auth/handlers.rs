@@ -192,7 +192,7 @@ pub async fn login(
     let row: Option<(Uuid, Uuid, String, bool, bool)> = sqlx::query_as(
         "SELECT u.id, u.tenant_id, u.password_hash, u.totp_enabled, u.is_active AND t.status = 'active'
            FROM users u JOIN tenants t ON t.id = u.tenant_id
-          WHERE t.slug = $1 AND u.email = $2",
+          WHERE t.slug = $1 AND u.email = $2::citext",
     )
     .bind(req.tenant.trim())
     .bind(req.email.trim())
