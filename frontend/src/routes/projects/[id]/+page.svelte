@@ -8,6 +8,9 @@
     localToday, type CompanyListItem, type DayMode, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
   } from '$lib/api';
   import Gantt from '$lib/Gantt.svelte';
+  import BadgeEditor from '$lib/projects/BadgeEditor.svelte';
+  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
+  import ProjectLabelPicker from '$lib/projects/ProjectLabelPicker.svelte';
   import TaskRows from '$lib/TaskRows.svelte';
   import TaskCard from '$lib/tasks/TaskCard.svelte';
   import ChartGantt from '@lucide/svelte/icons/chart-gantt';
@@ -303,6 +306,7 @@
       goto('/projects');
     });
   }
+  let badgeOpen = $state(false);
   // --- CRM customer link ---------------------------------------------------------------
   let custOpen = $state(false);
   let custId = $state('');
@@ -329,7 +333,16 @@
     <div class="page-head">
       <a href="/projects" class="faint">Проекты</a><span class="faint">/</span>
       {#if project.fields?.code}<span class="pcode mono">{project.fields.code}</span>{/if}
-      <h1>{project.name}</h1>
+      <h1 class="ptitle">
+        {#if isManager}
+          <button class="pbadge" onclick={() => (badgeOpen = true)} title="Изменить значок проекта" aria-label="Изменить значок проекта">
+            <ProjectBadge id={project.id} name={project.name} color={project.badge_color} icon={project.badge_icon} size={30} />
+          </button>
+        {:else}
+          <span class="pbadge"><ProjectBadge id={project.id} name={project.name} color={project.badge_color} icon={project.badge_icon} size={30} /></span>
+        {/if}
+        {project.name}
+      </h1>
       {#if project.company_id}
         {#if session.crm}<a class="badge cust" href="/crm/companies/{project.company_id}" title="Заказчик">{project.company_name}</a>
         {:else}<span class="badge cust" title="Заказчик">{project.company_name}</span>{/if}
@@ -343,6 +356,11 @@
       {/if}
     </div>
     {#if project.description}<p class="muted desc">{project.description}</p>{/if}
+    {#if isManager || project.label_ids.length}
+      <div class="plabels">
+        <ProjectLabelPicker {project} canEdit={isManager} onchange={(ids) => { if (project) project.label_ids = ids; }} />
+      </div>
+    {/if}
 
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected={tab === 'requisites'} class:on={tab === 'requisites'} onclick={() => setTab('requisites')}><ClipboardList size={16} strokeWidth={1.75} />Реквизиты</button>
@@ -482,6 +500,9 @@
   {/if}
 </div>
 
+{#if project}
+  <BadgeEditor bind:open={badgeOpen} {project} onsaved={(c, i) => { if (project) { project.badge_color = c; project.badge_icon = i; } }} />
+{/if}
 <TaskCard bind:open={cardOpen} taskId={cardTask} projectId={id} milestone={cardMilestone} showProject={false} onchanged={onTaskChanged} />
 
 <Modal bind:open={genOpen} title="Документ из шаблона" width={560}>
@@ -540,6 +561,11 @@
 
 <style>
   .desc { margin: -8px 0 12px; }
+  .ptitle { display: flex; align-items: flex-start; gap: 10px; }
+  .pbadge { flex: none; border: 0; background: none; padding: 0; margin-top: 1px; display: inline-grid; border-radius: 8px; }
+  button.pbadge { cursor: pointer; }
+  button.pbadge:hover { box-shadow: 0 0 0 3px var(--accent-soft); }
+  .plabels { margin: -6px 0 12px; }
   .cust { text-decoration: none; }
   .pcode { background: var(--surface-2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--text-2); }
   .tpl-list { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }

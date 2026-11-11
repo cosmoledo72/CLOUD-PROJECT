@@ -142,6 +142,20 @@ export interface Project {
   company_id: string | null;
   company_name: string | null;
   deal_id: string | null;
+  /** Project labels (ids of the portal catalogue, in catalogue order). */
+  label_ids: string[];
+  /** Own badge colour and icon; null = automatic colour and the first letter. */
+  badge_color: string | null;
+  badge_icon: string | null;
+}
+
+/** A label of the project catalogue. */
+export interface ProjectLabel {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  project_count: number;
 }
 
 export interface Member {
@@ -162,6 +176,8 @@ export interface Task {
   project_id: string;
   project_name: string;
   day_mode: DayMode;
+  project_badge_color: string | null;
+  project_badge_icon: string | null;
   parent_id: string | null;
   title: string;
   description: string;
@@ -180,6 +196,7 @@ export interface Task {
   checklist_total: number;
   checklist_done: number;
   comment_count: number;
+  attachment_count: number;
 }
 
 export const priorityLabel: Record<number, string> = { 1: 'Низкий', 2: 'Обычный', 3: 'Высокий', 4: 'Критический' };
@@ -204,9 +221,25 @@ export interface ChecklistItem {
   sort_order: number;
 }
 
+/** A file attached to a task (the file lives in the project folder). */
+export interface TaskAttachment {
+  file_id: string;
+  folder_id: string;
+  name: string;
+  extension: string;
+  size_bytes: number;
+  updated_at: string;
+  added_by: string | null;
+  added_by_name: string | null;
+  added_at: string;
+}
+
 export interface TaskCardData {
   task: Task;
   checklist: ChecklistItem[];
+  attachments: TaskAttachment[];
+  /** Project managers may detach any file. */
+  can_detach_any: boolean;
   members: { user_id: string; display_name: string; role: 'manager' | 'member' | 'viewer' }[];
   /** Fields, labels and checklist may be changed (members, managers, the assignee). */
   can_edit: boolean;
@@ -223,6 +256,8 @@ export interface BoardProject {
   status: 'active' | 'paused' | 'closed';
   code: string | null;
   role: 'manager' | 'member' | 'viewer';
+  badge_color: string | null;
+  badge_icon: string | null;
 }
 
 export interface BoardResponse {
@@ -980,6 +1015,9 @@ export interface ChatChannel {
   last_author: string | null;
   unread: number;
   created_by: string | null;
+  /** Badge of the project (project channels). */
+  badge_color: string | null;
+  badge_icon: string | null;
 }
 
 export interface TeamMember {

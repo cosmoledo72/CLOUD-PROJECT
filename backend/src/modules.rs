@@ -78,7 +78,7 @@ pub fn module_of(method: &axum::http::Method, path: &str) -> Option<&'static str
             "time" => "time",
             _ => "projects",
         }),
-        "task-labels" | "checklist-items" | "task-comments" | "project-fields" => Some("projects"),
+        "task-labels" | "project-labels" | "checklist-items" | "task-comments" | "project-fields" => Some("projects"),
         "kb" => Some("kb"),
         "chats" | "chat-messages" => Some("chats"),
         "crm" => Some(if s(1) == "deals" && s(3) == "project" && method == axum::http::Method::POST { "projects" } else { "crm" }),

@@ -8,9 +8,10 @@
   // critical path (red outline), float in tooltips and the baseline plan
   // (thin grey bar under each task).
   import { formatDate, localToday, type BaselineEntry, type Dependency, type Task } from './api';
+  import ProjectBadge from './projects/ProjectBadge.svelte';
   import { durationLabel, workCalendar as wc } from './workCalendar.svelte';
 
-  let { tasks, dependencies, canEdit = false, canEditTask, groupOf, critical = [], slack = {}, baseline = [], onchange, onselect }: {
+  let { tasks, dependencies, canEdit = false, canEditTask, groupOf, groupBadge = false, critical = [], slack = {}, baseline = [], onchange, onselect }: {
     tasks: Task[];
     dependencies: Dependency[];
     canEdit?: boolean;
@@ -18,6 +19,8 @@
     canEditTask?: (t: Task) => boolean;
     /** Group label of a task; a header row is drawn whenever it changes (tasks must be sorted by it). */
     groupOf?: (t: Task) => string;
+    /** Groups are projects: show the project badge in the group row. */
+    groupBadge?: boolean;
     critical?: string[];
     slack?: Record<string, number>;
     baseline?: BaselineEntry[];
@@ -26,14 +29,14 @@
   } = $props();
 
   const editable = (t: Task) => (canEditTask ? canEditTask(t) : canEdit);
-  type GRow = { kind: 'group'; key: string; label: string } | { kind: 'task'; key: string; t: Task };
+  type GRow = { kind: 'group'; key: string; label: string; first: Task } | { kind: 'task'; key: string; t: Task };
   const rows = $derived.by(() => {
     const out: GRow[] = [];
     let last: string | null = null;
     for (const t of tasks) {
       if (groupOf) {
         const g = groupOf(t);
-        if (g !== last) out.push({ kind: 'group', key: `g:${g}:${out.length}`, label: g });
+        if (g !== last) out.push({ kind: 'group', key: `g:${g}:${out.length}`, label: g, first: t });
         last = g;
       }
       out.push({ kind: 'task', key: t.id, t });
@@ -246,7 +249,10 @@
     <div class="lhead" style="height:{HEAD}px">Задача</div>
     {#each rows as r (r.key)}
       {#if r.kind === 'group'}
-        <div class="lrow grp" style="height:{ROW}px" title={r.label}><span class="ttl">{r.label}</span></div>
+        <div class="lrow grp" style="height:{ROW}px" title={r.label}>
+          {#if groupBadge}<ProjectBadge id={r.first.project_id} name={r.first.project_name} color={r.first.project_badge_color} icon={r.first.project_badge_icon} size={20} />{/if}
+          <span class="ttl">{r.label}</span>
+        </div>
       {:else}
         {@const t = r.t}
         <button class="lrow" class:crit={isCritical(t)} style="height:{ROW}px" onclick={() => onselect?.(t)} title={tooltip(t)}>

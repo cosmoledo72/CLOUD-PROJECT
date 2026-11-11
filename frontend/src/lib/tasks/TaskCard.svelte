@@ -14,6 +14,7 @@
   import { durationLabel, toDay, workCalendar } from '$lib/workCalendar.svelte';
   import { LABEL_COLORS, labels } from './labels.svelte';
   import LabelChip from './LabelChip.svelte';
+  import TaskFiles from './TaskFiles.svelte';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import GripVertical from '@lucide/svelte/icons/grip-vertical';
   import ListChecks from '@lucide/svelte/icons/list-checks';
@@ -135,6 +136,11 @@
     labelMenu = false;
     load(taskId).catch((e) => (error = e.message));
   });
+
+  function filesChanged(count: number) {
+    if (card) card.task.attachment_count = count;
+    onchanged?.();
+  }
 
   async function guarded(fn: () => Promise<unknown>) {
     error = '';
@@ -469,6 +475,9 @@
           <p class="faint none">Пунктов нет.</p>
         {/if}
       </section>
+
+      <TaskFiles taskId={task.id} projectId={task.project_id} bind:attachments={card!.attachments} {canEdit}
+                 canDetachAny={!!card?.can_detach_any} {meId} onchange={filesChanged} />
 
       {#if session.has('planning')}
         <section class="sec">

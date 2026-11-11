@@ -3,6 +3,7 @@
 mod accounts;
 mod acl;
 mod admin;
+mod attachments;
 mod auth;
 mod branding;
 mod calendar;
@@ -21,6 +22,7 @@ mod money;
 mod notify;
 mod ooxml;
 mod onlyoffice;
+mod project_labels;
 mod projects;
 mod ratelimit;
 mod registration;
@@ -212,6 +214,12 @@ fn router(state: AppState) -> Router {
         .route("/tasks", get(task_board::board))
         .route("/tasks/{id}", get(task_board::get_task).patch(projects::update_task).delete(projects::delete_task))
         .route("/tasks/{id}/labels", put(task_board::set_task_labels))
+        .route("/tasks/{id}/attachments", get(attachments::list).post(attachments::upload))
+        .route("/tasks/{id}/attachments/link", post(attachments::link_existing))
+        .route("/tasks/{id}/attachments/{file_id}", delete(attachments::detach))
+        .route("/project-labels", get(project_labels::list).post(project_labels::create))
+        .route("/project-labels/{id}", patch(project_labels::update).delete(project_labels::delete))
+        .route("/projects/{id}/labels", put(project_labels::set_for_project))
         .route("/tasks/{id}/checklist", post(task_board::add_item))
         .route("/checklist-items/{id}", patch(task_board::update_item).delete(task_board::delete_item))
         .route("/task-labels", get(task_board::list_labels).post(task_board::create_label))

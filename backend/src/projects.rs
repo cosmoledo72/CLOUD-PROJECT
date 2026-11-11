@@ -89,6 +89,11 @@ pub struct ProjectRow {
     pub company_id: Option<Uuid>,
     pub company_name: Option<String>,
     pub deal_id: Option<Uuid>,
+    /// Project labels (ids of the portal catalogue).
+    pub label_ids: Vec<Uuid>,
+    /// Badge: own colour and icon; `None` = automatic colour, first letter.
+    pub badge_color: Option<String>,
+    pub badge_icon: Option<String>,
 }
 
 const PROJECT_SELECT: &str = "SELECT p.id, p.name, p.description, p.status, p.owner_id, p.folder_id, p.created_at,
@@ -100,7 +105,10 @@ const PROJECT_SELECT: &str = "SELECT p.id, p.name, p.description, p.status, p.ow
            FROM project_field_values v JOIN project_field_defs d ON d.id = v.field_id
           WHERE v.project_id = p.id) AS fields,
         p.auto_schedule, p.day_mode, p.baseline_saved_at,
-        p.company_id, (SELECT c.name FROM crm_companies c WHERE c.id = p.company_id) AS company_name, p.deal_id
+        p.company_id, (SELECT c.name FROM crm_companies c WHERE c.id = p.company_id) AS company_name, p.deal_id,
+        ARRAY(SELECT k.label_id FROM project_label_links k JOIN project_labels pl ON pl.id = k.label_id
+               WHERE k.project_id = p.id ORDER BY pl.sort_order, lower(pl.name)) AS label_ids,
+        p.badge_color, p.badge_icon
    FROM projects p";
 
 pub async fn list_projects(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
@@ -232,6 +240,11 @@ pub struct UpdateProject {
     pub status: Option<String>,
     pub auto_schedule: Option<bool>,
     pub day_mode: Option<String>,
+    /// Badge colour `#rrggbb` and icon key; `null` returns to automatic.
+    #[serde(default, deserialize_with = "double_option")]
+    pub badge_color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub badge_icon: Option<Option<String>>,
 }
 
 pub async fn update_project(
@@ -252,10 +265,21 @@ pub async fn update_project(
             return bad_request("day_mode must be work or calendar");
         }
     }
+    let badge_color = match &req.badge_color {
+        Some(Some(c)) => Some(Some(crate::task_board::check_color(c)?)),
+        other => other.clone(),
+    };
+    if let Some(Some(i)) = &req.badge_icon {
+        if i.is_empty() || i.len() > 40 || !i.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
+            return bad_request("invalid badge icon");
+        }
+    }
     let mut tx = state.db.begin().await?;
     sqlx::query(
         "UPDATE projects SET description = COALESCE($2, description), status = COALESCE($3, status),
-                auto_schedule = COALESCE($4, auto_schedule), day_mode = COALESCE($5, day_mode)
+                auto_schedule = COALESCE($4, auto_schedule), day_mode = COALESCE($5, day_mode),
+                badge_color = CASE WHEN $6 THEN $7 ELSE badge_color END,
+                badge_icon = CASE WHEN $8 THEN $9 ELSE badge_icon END
           WHERE id = $1",
     )
     .bind(id)
@@ -263,6 +287,10 @@ pub async fn update_project(
     .bind(&req.status)
     .bind(req.auto_schedule)
     .bind(&req.day_mode)
+    .bind(badge_color.is_some())
+    .bind(badge_color.flatten())
+    .bind(req.badge_icon.is_some())
+    .bind(req.badge_icon.clone().flatten())
     .execute(&mut *tx)
     .await?;
     let mut renamed = None;
@@ -462,6 +490,9 @@ pub struct TaskRow {
     pub project_name: String,
     /// The project's day mode (`work` / `calendar`) — how the chart moves the task.
     pub day_mode: String,
+    /// Badge of the project (`None` = automatic).
+    pub project_badge_color: Option<String>,
+    pub project_badge_icon: Option<String>,
     pub parent_id: Option<Uuid>,
     pub title: String,
     pub description: String,
@@ -481,9 +512,11 @@ pub struct TaskRow {
     pub checklist_total: i64,
     pub checklist_done: i64,
     pub comment_count: i64,
+    pub attachment_count: i64,
 }
 
-pub const TASK_SELECT: &str = "SELECT t.id, t.number, t.project_id, p.name AS project_name, p.day_mode, t.parent_id, t.title, t.description, t.status, t.priority, t.is_milestone,
+pub const TASK_SELECT: &str = "SELECT t.id, t.number, t.project_id, p.name AS project_name, p.day_mode,
+        p.badge_color AS project_badge_color, p.badge_icon AS project_badge_icon, t.parent_id, t.title, t.description, t.status, t.priority, t.is_milestone,
         t.assignee_id, u.display_name AS assignee_name, t.start_date, t.due_date, t.progress, t.sort_order,
         COALESCE((SELECT sum(minutes) FROM time_entries te WHERE te.task_id = t.id), 0)::bigint AS spent_minutes,
         t.updated_at,
@@ -491,7 +524,8 @@ pub const TASK_SELECT: &str = "SELECT t.id, t.number, t.project_id, p.name AS pr
                WHERE l.task_id = t.id ORDER BY tl.sort_order, lower(tl.name)) AS label_ids,
         (SELECT count(*) FROM task_checklist_items c WHERE c.task_id = t.id) AS checklist_total,
         (SELECT count(*) FROM task_checklist_items c WHERE c.task_id = t.id AND c.done) AS checklist_done,
-        (SELECT count(*) FROM task_comments c WHERE c.task_id = t.id) AS comment_count
+        (SELECT count(*) FROM task_comments c WHERE c.task_id = t.id) AS comment_count,
+        (SELECT count(*) FROM task_attachments a WHERE a.task_id = t.id AND file_is_live(a.file_id)) AS attachment_count
    FROM tasks t JOIN projects p ON p.id = t.project_id LEFT JOIN users u ON u.id = t.assignee_id";
 
 #[derive(Serialize, sqlx::FromRow)]

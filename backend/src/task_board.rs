@@ -121,6 +121,8 @@ struct BoardProject {
     status: String,
     code: Option<String>,
     role: String,
+    badge_color: Option<String>,
+    badge_icon: Option<String>,
 }
 
 pub async fn board(State(state): State<AppState>, user: CurrentUser, Query(q): Query<BoardQuery>) -> ApiResult<Json<Value>> {
@@ -142,7 +144,7 @@ pub async fn board(State(state): State<AppState>, user: CurrentUser, Query(q): Q
         "SELECT p.id, p.name, p.status,
                 (SELECT v.value #>> '{}' FROM project_field_values v JOIN project_field_defs d ON d.id = v.field_id
                   WHERE v.project_id = p.id AND d.key = 'code') AS code,
-                CASE WHEN $3 THEN 'manager' ELSE pm.role END AS role
+                CASE WHEN $3 THEN 'manager' ELSE pm.role END AS role, p.badge_color, p.badge_icon
            FROM projects p LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $2
           WHERE p.tenant_id = $1 AND ($3 OR pm.user_id IS NOT NULL) AND ($4 OR p.status = 'active')
           ORDER BY lower(p.name)",
@@ -263,6 +265,8 @@ pub async fn get_task(State(state): State<AppState>, user: CurrentUser, Path(id)
     Ok(Json(json!({
         "task": t,
         "checklist": checklist(&state, id).await?,
+        "attachments": crate::attachments::list_for(&state, id).await?,
+        "can_detach_any": role >= ProjectRole::Manager,
         "members": members,
         "can_edit": editable,
         "can_manage": role >= ProjectRole::Member,
@@ -304,7 +308,7 @@ pub struct LabelInput {
     pub sort_order: Option<i32>,
 }
 
-fn check_label_name(name: &str) -> ApiResult<String> {
+pub fn check_label_name(name: &str) -> ApiResult<String> {
     let n = name.trim();
     if n.is_empty() || n.chars().count() > 40 {
         return bad_request("название метки — от 1 до 40 символов");
@@ -312,7 +316,7 @@ fn check_label_name(name: &str) -> ApiResult<String> {
     Ok(n.to_string())
 }
 
-fn check_color(c: &str) -> ApiResult<String> {
+pub fn check_color(c: &str) -> ApiResult<String> {
     let c = c.trim();
     if c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|ch| ch.is_ascii_hexdigit()) {
         Ok(c.to_lowercase())

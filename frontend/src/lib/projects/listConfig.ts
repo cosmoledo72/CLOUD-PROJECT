@@ -11,6 +11,7 @@ import { isDeadline } from '$lib/fieldLook';
 export const BUILTIN = {
   $name: 'Проект',
   $status: 'Статус',
+  $labels: 'Метки',
   $progress: 'Задачи',
   $dates: 'Сроки по задачам',
   $description: 'Описание',
@@ -29,7 +30,7 @@ export interface ListConfig {
   subtitle: string | null;
   /** Fields on a card, in order (`$name` is the card title and is not listed). */
   card: string[];
-  /** Group the list by: `$status`, a requisite key, or null. */
+  /** Group the list by: `$status`, `$labels`, a requisite key, or null. */
   group: string | null;
 }
 
@@ -68,7 +69,7 @@ export function normalize(raw: unknown, defs: FieldDef[]): ListConfig {
   if (!columns.includes('$name')) columns.unshift('$name');
   const card = clean(r.card).filter((k) => k !== '$name');
   const subtitle = typeof r.subtitle === 'string' && keys.has(r.subtitle) && r.subtitle !== '$name' ? r.subtitle : null;
-  const groupKeys = new Set(['$status', ...groupable(defs).map((d) => d.key)]);
+  const groupKeys = new Set(['$status', '$labels', ...groupable(defs).map((d) => d.key)]);
   const group = typeof r.group === 'string' && groupKeys.has(r.group) ? r.group : null;
   return { columns: Array.isArray(r.columns) ? columns : base.columns, subtitle, card: Array.isArray(r.card) ? card : base.card, group };
 }

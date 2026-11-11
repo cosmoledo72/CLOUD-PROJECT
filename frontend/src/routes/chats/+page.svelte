@@ -4,10 +4,10 @@
   import { onDestroy, tick } from 'svelte';
   import { api, type ChatChannel, type UserItem } from '$lib/api';
   import Avatar from '$lib/Avatar.svelte';
+  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
   import { chats, type ChatEvent, type ChatMessage } from '$lib/chat.svelte';
   import { session } from '$lib/session.svelte';
   import Search from '@lucide/svelte/icons/search';
-  import Hash from '@lucide/svelte/icons/hash';
   import UsersRound from '@lucide/svelte/icons/users-round';
   import SquarePen from '@lucide/svelte/icons/square-pen';
   import SendHorizontal from '@lucide/svelte/icons/send-horizontal';
@@ -308,7 +308,11 @@
             {#if c.kind === 'direct' && c.other_user_id}
               <Avatar id={c.other_user_id} name={c.name} size={36} />
             {:else}
-              <span class="cic k-{c.kind}">{#if c.kind === 'project'}<FolderKanban size={17} />{:else}<UsersRound size={17} />{/if}</span>
+              {#if c.kind === 'project' && c.project_id}
+                <ProjectBadge id={c.project_id} name={c.name} color={c.badge_color} icon={c.badge_icon} size={36} />
+              {:else}
+                <span class="cic k-{c.kind}"><UsersRound size={17} /></span>
+              {/if}
             {/if}
             <span class="cbody">
               <span class="crow"><span class="cn">{c.name}</span><span class="ct faint">{listTime(c.last_message_at)}</span></span>
@@ -334,7 +338,11 @@
         {#if channel.kind === 'direct' && channel.other_user_id}
           <Avatar id={channel.other_user_id} name={channel.name} size={34} />
         {:else}
-          <span class="cic k-{channel.kind}">{#if channel.kind === 'project'}<Hash size={17} />{:else}<UsersRound size={17} />{/if}</span>
+          {#if channel.kind === 'project' && channel.project_id}
+            <ProjectBadge id={channel.project_id} name={channel.name} color={channel.badge_color} icon={channel.badge_icon} size={34} />
+          {:else}
+            <span class="cic k-{channel.kind}"><UsersRound size={17} /></span>
+          {/if}
         {/if}
         <div class="pt">
           <div class="pn">{channel.name}</div>

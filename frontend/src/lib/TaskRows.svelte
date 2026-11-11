@@ -9,6 +9,8 @@
   import Clock from '@lucide/svelte/icons/clock';
   import ListChecks from '@lucide/svelte/icons/list-checks';
   import MessageSquare from '@lucide/svelte/icons/message-square';
+  import Paperclip from '@lucide/svelte/icons/paperclip';
+  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
   import Diamond from '@lucide/svelte/icons/diamond';
   import Search from '@lucide/svelte/icons/search';
 
@@ -159,6 +161,9 @@
       <button class="group" onclick={() => (folded[g.key] = !folded[g.key])} aria-expanded={!folded[g.key]}>
         <span class="chev" class:shut={folded[g.key]}><ChevronDown size={16} strokeWidth={2} /></span>
         {#if groupBy === 'status'}<span class="dot st-{g.key}"></span>{/if}
+        {#if groupBy === 'project' && g.items[0]}
+          <ProjectBadge id={g.key} name={g.title} color={g.items[0].project_badge_color} icon={g.items[0].project_badge_icon} size={20} />
+        {/if}
         {g.title}<span class="cnt">{g.items.length}</span>
       </button>
     {/if}
@@ -180,7 +185,7 @@
               <button class="ttl" onclick={() => onopen(t)} title={t.title}><span class="num">#{t.number}</span>{t.title}</button>
               {#if t.priority === 4}<span class="prio p4">{priorityLabel[4]}</span>{:else if t.priority === 3}<span class="prio p3" title="Высокий приоритет">!</span>{/if}
             </span>
-            {#if t.label_ids.length || t.checklist_total || t.comment_count}
+            {#if t.label_ids.length || t.checklist_total || t.comment_count || t.attachment_count}
             <span class="extra">
             {#each t.label_ids as lid (lid)}
               {@const l = labels.byId(lid)}
@@ -192,10 +197,15 @@
               </span>
             {/if}
             {#if t.comment_count}<span class="meta" title="Комментарии"><MessageSquare size={13} strokeWidth={2} />{t.comment_count}</span>{/if}
+            {#if t.attachment_count}<span class="meta" title="Файлы"><Paperclip size={13} strokeWidth={2} />{t.attachment_count}</span>{/if}
             </span>
             {/if}
           </span>
-          {#if showProject}<a class="c-proj" href="/projects/{t.project_id}?tab=list" title={t.project_name}>{t.project_name}</a>{/if}
+          {#if showProject}
+            <a class="c-proj" href="/projects/{t.project_id}?tab=list" title={t.project_name}>
+              <ProjectBadge id={t.project_id} name={t.project_name} color={t.project_badge_color} icon={t.project_badge_icon} size={18} /><span>{t.project_name}</span>
+            </a>
+          {/if}
           <span class="c-status">
             {#if editable(t)}
               <select class="pill st-{t.status}" value={t.status} onchange={(e) => onstatus(t, e.currentTarget.value as TaskStatus)} aria-label="Статус: {t.title}">
@@ -272,7 +282,8 @@
   .prio.p3 { background: var(--warn-soft); color: var(--warn); padding: 1px 6px; }
   .meta { flex: none; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-3); }
   .meta.all { color: var(--ok); }
-  .c-proj { font-size: 13px; color: var(--text-2); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c-proj { font-size: 13px; color: var(--text-2); text-decoration: none; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .c-proj span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .c-proj:hover { color: var(--accent); }
   .dpill { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: 12.5px; }
   .dpill.late { background: var(--danger-soft); color: var(--danger); font-weight: 600; }

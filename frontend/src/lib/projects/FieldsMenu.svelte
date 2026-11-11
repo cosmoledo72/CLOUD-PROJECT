@@ -50,7 +50,7 @@
   const labelOf = (k: string) => (k in BUILTIN ? BUILTIN[k as keyof typeof BUILTIN] : usable.find((d) => d.key === k)?.label ?? k);
   // Everything that can be listed in the current tab.
   const candidates = $derived(
-    [...(tab === 'rows' ? ['$name'] : []), ...usable.map((d) => d.key), '$status', '$progress', '$dates',
+    [...(tab === 'rows' ? ['$name'] : []), ...usable.map((d) => d.key), '$status', '$labels', '$progress', '$dates',
      ...(money ? ['$budget', '$paid', '$due'] : []), ...(tab === 'cards' ? ['$description'] : [])]
   );
   const chosen = $derived(tab === 'rows' ? config.columns : config.card);

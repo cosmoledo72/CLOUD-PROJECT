@@ -61,6 +61,9 @@ pub struct ChannelRow {
     pub last_author: Option<String>,
     pub unread: i64,
     pub created_by: Option<Uuid>,
+    /// Badge of the project (project channels).
+    pub badge_color: Option<String>,
+    pub badge_icon: Option<String>,
 }
 
 fn channel_select(extra: &str) -> String {
@@ -74,7 +77,7 @@ fn channel_select(extra: &str) -> String {
                 (SELECT count(*) FROM chat_messages x
                   WHERE x.channel_id = c.id AND x.deleted_at IS NULL AND x.author_id IS DISTINCT FROM $1
                     AND x.created_at > COALESCE(me.last_read_at, '-infinity')) AS unread,
-                c.created_by
+                c.created_by, p.badge_color, p.badge_icon
            FROM chat_channels c
            LEFT JOIN projects p ON p.id = c.project_id
            LEFT JOIN chat_members me ON me.channel_id = c.id AND me.user_id = $1

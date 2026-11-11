@@ -15,6 +15,11 @@
   import { avatarHue, daysBetween, initials, isDeadline, isMoney, money as fmtMoney, moneyShort } from '$lib/fieldLook';
   import FieldValue from '$lib/projects/FieldValue.svelte';
   import FieldsMenu from '$lib/projects/FieldsMenu.svelte';
+  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
+  import ProjectLabelsDialog from '$lib/projects/ProjectLabelsDialog.svelte';
+  import Tags from '@lucide/svelte/icons/tags';
+  import { projectLabels } from '$lib/projects/projectLabels.svelte';
+  import LabelChip from '$lib/tasks/LabelChip.svelte';
   import { BUILTIN, MONEY_KEYS, groupable, normalize, type ListConfig } from '$lib/projects/listConfig';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
@@ -49,7 +54,18 @@
   }
   $effect(() => {
     load();
+    projectLabels.load(true).catch(() => {});
   });
+
+  // --- Project labels: chips, filter, grouping ---------------------------------------
+  /** Selected labels: a project matches when it has any of them. */
+  let labelsOpen = $state(false);
+  let labelFilter = $state<string[]>([]);
+  function toggleLabelFilter(id: string) {
+    labelFilter = labelFilter.includes(id) ? labelFilter.filter((x) => x !== id) : [...labelFilter, id];
+  }
+  /** Labels present on at least one visible project, in catalogue order. */
+  const usedLabels = $derived(projectLabels.list.filter((l) => projects.some((p) => p.label_ids.includes(l.id))));
 
   const hasRequired = $derived(defs.some((d) => d.is_required));
   // «Наименование объекта» is the project name: one input instead of two.
@@ -215,7 +231,8 @@
       const q = query.trim().toLowerCase();
       if (!q) return true;
       const people = Object.values(p.fields ?? {}).map((v) => users.find((u) => u.id === v)?.display_name ?? '');
-      const hay = [p.name, p.description, ...Object.values(p.fields ?? {}).map(textOf), ...people].join(' ').toLowerCase();
+      const marks = projectLabels.of(p.label_ids).map((l) => l.name);
+      const hay = [p.name, p.description, ...Object.values(p.fields ?? {}).map(textOf), ...people, ...marks].join(' ').toLowerCase();
       return hay.includes(q);
     })
   );
@@ -230,7 +247,12 @@
   const toCollect = $derived(searched.filter((p) => p.status === 'active').reduce((s, p) => s + (moneyById.get(p.id)?.due ?? 0), 0));
   const inWork = $derived(searched.filter((p) => p.status === 'active').reduce((s, p) => s + amountOf(p), 0));
   const filtered = $derived(
-    searched.filter((p) => (status === 'all' || p.status === status) && (!urgency || urgencyOf(p) === urgency))
+    searched.filter(
+      (p) =>
+        (status === 'all' || p.status === status) &&
+        (!urgency || urgencyOf(p) === urgency) &&
+        (!labelFilter.length || p.label_ids.some((l) => labelFilter.includes(l)))
+    )
   );
 
   // --- Sorting -------------------------------------------------------------------------
@@ -246,6 +268,7 @@
     switch (k) {
       case '$name': return p.name;
       case '$status': return statusOrder.indexOf(p.status);
+      case '$labels': return projectLabels.of(p.label_ids).map((l) => l.name).join(', ');
       case '$progress': return progress(p);
       case '$dates': return p.end_date ?? '';
       case '$description': return p.description ?? '';
@@ -281,6 +304,22 @@
     const def = defByKey.get(g);
     if (g === '$status') order = statusOrder;
     else if (def?.field_type === 'select') order = def.options ?? [];
+    if (g === '$labels') {
+      // A project with several labels is listed under each of them.
+      const put = (id: string, label: string, p: Project) => {
+        if (!map.has(id)) map.set(id, { id, label, items: [], sum: 0 });
+        const grp = map.get(id)!;
+        grp.items.push(p);
+        grp.sum += amountOf(p);
+      };
+      for (const p of sorted) {
+        const ls = projectLabels.of(p.label_ids);
+        if (!ls.length) put('', 'Без меток', p);
+        for (const l of ls) put(l.id, l.name, p);
+      }
+      const pos = (id: string) => (id === '' ? 1e9 : projectLabels.list.findIndex((l) => l.id === id));
+      return [...map.values()].sort((a, b) => pos(a.id) - pos(b.id));
+    }
     for (const p of sorted) {
       let id: string;
       let label: string;
@@ -318,7 +357,7 @@
   const cardPerson = $derived(cardKeys.find((k) => defByKey.get(k)?.field_type === 'user') ?? null);
   const cardDeadline = $derived(cardKeys.find((k) => { const d = defByKey.get(k); return !!d && isDeadline(d); }) ?? null);
   const cardGrid = $derived(
-    cardKeys.filter((k) => k !== 'code' && k !== cardPerson && k !== cardDeadline && k !== '$progress' && k !== '$status' && k !== '$description')
+    cardKeys.filter((k) => k !== 'code' && k !== cardPerson && k !== cardDeadline && k !== '$progress' && k !== '$status' && k !== '$labels' && k !== '$description')
   );
   const hasCodeDef = $derived(defByKey.has('code'));
   const personOf = (p: Project) => (cardPerson ? users.find((u) => u.id === p.fields?.[cardPerson]) : undefined);
@@ -335,9 +374,11 @@
         <select class="input" value={config.group ?? ''} onchange={(e) => (config = { ...config, group: e.currentTarget.value || null })} aria-label="Группировать">
           <option value="">нет</option>
           <option value="$status">по статусу</option>
+          {#if projectLabels.list.length}<option value="$labels">по меткам</option>{/if}
           {#each groupDefs as d (d.id)}<option value={d.key}>{d.label}</option>{/each}
         </select>
       </label>
+      {#if projectLabels.canCreate}<button class="btn" onclick={() => (labelsOpen = true)} title="Метки проектов"><Tags size={16} />Метки</button>{/if}
       <FieldsMenu {defs} bind:config view={shownView} {own} isAdmin={session.isAdmin} money={hasMoney} onreset={resetConfig} onmakedefault={makeDefault} />
       {#if !narrow}
         <div class="seg" role="radiogroup" aria-label="Вид">
@@ -388,6 +429,16 @@
       {#if urgency}
         <button class="chip-x {urgency}" onclick={() => (urgency = null)}>{urgency === 'late' ? 'Только просроченные' : 'Только со сдачей ≤ 14 дн.'} ✕</button>
       {/if}
+      {#if usedLabels.length}
+        <span class="lf" role="group" aria-label="Фильтр по меткам">
+          {#each usedLabels as l (l.id)}
+            <button class="lf-b" class:on={labelFilter.includes(l.id)} aria-pressed={labelFilter.includes(l.id)} onclick={() => toggleLabelFilter(l.id)} title="Показать проекты с меткой «{l.name}»">
+              <LabelChip label={l} />
+            </button>
+          {/each}
+          {#if labelFilter.length}<button class="lf-x" onclick={() => (labelFilter = [])} title="Сбросить фильтр по меткам">✕</button>{/if}
+        </span>
+      {/if}
     </div>
 
     {#if !sorted.length}
@@ -424,9 +475,19 @@
                     {#each cols as k (k)}
                       {#if k === '$name'}
                         <td class="c-name">
-                          <a href="/projects/{p.id}" title={p.description || p.name}>{p.name}</a>
-                          {#if subtitleOf(p)}<div class="subl">{subtitleOf(p)}</div>{/if}
+                          <div class="nm-row">
+                            <ProjectBadge id={p.id} name={p.name} color={p.badge_color} icon={p.badge_icon} size={26} />
+                            <div class="nm-main">
+                              <a href="/projects/{p.id}" title={p.description || p.name}>{p.name}</a>
+                              {#if subtitleOf(p)}<div class="subl">{subtitleOf(p)}</div>{/if}
+                              {#if !cols.includes('$labels') && p.label_ids.length}
+                                <div class="marks">{#each projectLabels.of(p.label_ids) as l (l.id)}<LabelChip label={l} small />{/each}</div>
+                              {/if}
+                            </div>
+                          </div>
                         </td>
+                      {:else if k === '$labels'}
+                        <td class="c-labels"><div class="marks">{#each projectLabels.of(p.label_ids) as l (l.id)}<LabelChip label={l} small />{:else}<span class="faint">—</span>{/each}</div></td>
                       {:else if k === '$status'}
                         <td><span class="st st-{p.status}"><i></i>{statusText[p.status]}</span></td>
                       {:else if k === '$progress'}
@@ -483,7 +544,13 @@
                       <FieldValue def={defByKey.get(cardDeadline)!} value={p.fields?.[cardDeadline]} {users} {today} active={p.status === 'active'} short />
                     {/if}
                   </div>
-                  <h3>{p.name}</h3>
+                  <div class="ttl-row">
+                    <ProjectBadge id={p.id} name={p.name} color={p.badge_color} icon={p.badge_icon} size={30} />
+                    <h3>{p.name}</h3>
+                  </div>
+                  {#if p.label_ids.length}
+                    <div class="marks">{#each projectLabels.of(p.label_ids) as l (l.id)}<LabelChip label={l} small />{/each}</div>
+                  {/if}
                   {#if cardKeys.includes('$description') && p.description}<p class="muted desc">{p.description}</p>{/if}
                   {#if cardGrid.length}
                     <dl class="kv">
@@ -521,6 +588,8 @@
     {/if}
   {/if}
 </div>
+
+<ProjectLabelsDialog bind:open={labelsOpen} onchange={load} />
 
 <Modal bind:open={createOpen} title="Новый проект" width={defs.length ? 640 : 480}>
   {#if nd}
@@ -579,6 +648,17 @@
   .tabs button[role='tab'].on { background: var(--accent); color: var(--on-accent); }
   .tabs .n { font-size: 11.5px; opacity: .7; font-variant-numeric: tabular-nums; }
   .chip-x { margin-left: 6px; border: 0; border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+  .lf { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-left: 10px; padding-left: 12px; border-left: 1px solid var(--border); }
+  .lf-b { border: 1px solid transparent; background: none; padding: 1px; border-radius: 999px; cursor: pointer; display: inline-flex; opacity: .75; }
+  .lf-b:hover { opacity: 1; }
+  .lf-b.on { opacity: 1; border-color: var(--text-2); }
+  .lf-x { border: 0; background: none; color: var(--text-3); cursor: pointer; font-size: 12px; padding: 2px 6px; }
+  .nm-row { display: flex; align-items: flex-start; gap: 10px; }
+  .nm-main { min-width: 0; }
+  .marks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .c-labels .marks { margin-top: 0; }
+  .ttl-row { display: flex; align-items: flex-start; gap: 10px; }
+  .ttl-row h3 { margin: 0; flex: 1; min-width: 0; }
   .chip-x.late { background: var(--danger-soft); color: var(--danger); }
   .chip-x.soon { background: var(--warn-soft); color: var(--warn); }
 

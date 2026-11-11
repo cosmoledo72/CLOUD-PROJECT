@@ -270,7 +270,7 @@
     <TaskCalendar {tasks} {today} onopen={openTask} onundated={() => (view = 'list')} />
   {:else}
     {#if ganttTasks.length < tasks.length}<p class="faint small hint">Задачи без сроков на диаграмме не показаны: {tasks.length - ganttTasks.length}.</p>{/if}
-    <Gantt tasks={ganttTasks} dependencies={deps} {canEditTask} groupOf={(t) => t.project_name} onchange={reschedule} onselect={openTask} />
+    <Gantt tasks={ganttTasks} dependencies={deps} {canEditTask} groupOf={(t) => t.project_name} groupBadge onchange={reschedule} onselect={openTask} />
   {/if}
 </div>
 
