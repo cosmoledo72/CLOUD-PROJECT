@@ -133,7 +133,7 @@ def main():
     # Login page plate and background, portal font.
     pub = anon.call("GET", f"/public/branding/{slug}")
     assert pub["login_logo_plate"] is True and pub["login_bg_overlay"] == 45 and pub["login_bg_url"] is None
-    assert pub["font_family"] == "system" and pub["font_size"] == "default"
+    assert pub["font_family"] == "inter" and pub["font_size"] == "default"
     b = admin.call("PUT", "/admin/branding", {**payload, "login_logo_plate": False, "login_bg_overlay": 60,
                                               "font_family": "golos", "font_size": "large"})
     assert b["login_logo_plate"] is False and b["login_bg_overlay"] == 60 and b["font_family"] == "golos" and b["font_size"] == "large"

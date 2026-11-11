@@ -34,7 +34,7 @@
       try {
         const r = await api.get<EditorResponse>(`/files/${id}/editor?mode=${mode}`);
         title = r.config.document.title;
-        document.title = `${title} — WorkHub`;
+        document.title = `${title} — CLOUD-PROJECT`;
         await loadScript(`${r.docs_url}/web-apps/apps/api/documents/api.js`);
         const config = {
           ...r.config,

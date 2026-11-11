@@ -1,4 +1,12 @@
 <script lang="ts">
+  import Banknote from '@lucide/svelte/icons/banknote';
+  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import CircleAlert from '@lucide/svelte/icons/circle-alert';
+  import HandCoins from '@lucide/svelte/icons/hand-coins';
+  import EmptyState from '$lib/EmptyState.svelte';
+  import FolderKanban from '@lucide/svelte/icons/folder-kanban';
+  import Plus from '@lucide/svelte/icons/plus';
+  import SearchX from '@lucide/svelte/icons/search-x';
   import { goto } from '$app/navigation';
   import { api, formatDate, formatFieldValue, localToday, nameDef, type ProjectMoney, type FieldDef, type FieldValues, type Project, type UserItem } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
@@ -338,32 +346,35 @@
         </div>
       {/if}
     {/if}
-    {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}>Новый проект</button>{/if}
+    {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}><Plus size={16} />Новый проект</button>{/if}
   </div>
   {#if notice}<div class="ok-box">{notice}</div>{/if}
 
   {#if projects.length === 0}
-    <div class="card empty"><p class="muted">Проектов пока нет.</p></div>
+    <div class="card"><EmptyState icon={FolderKanban} title="Проектов пока нет"
+      text="Создайте первый проект: реквизиты, задачи, график и документы будут в одном месте.">
+      {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}><Plus size={16} />Новый проект</button>{/if}
+    </EmptyState></div>
   {:else}
     <div class="sum">
       <button class="card tile" class:on={status === 'active' && !urgency} onclick={() => { status = 'active'; urgency = null; }}>
-        <b>{counts.active}</b><span>{counts.active === 1 ? 'активный проект' : counts.active < 5 && counts.active > 1 ? 'активных проекта' : 'активных проектов'}</span>
+        <i class="chip-icon accent"><FolderKanban size={18} /></i><b>{counts.active}</b><span>{counts.active === 1 ? 'активный проект' : counts.active < 5 && counts.active > 1 ? 'активных проекта' : 'активных проектов'}</span>
       </button>
       <button class="card tile" class:on={urgency === 'late'} class:zero={!late.length} onclick={() => (urgency = urgency === 'late' ? null : 'late')}
               title={dueDef ? `По реквизиту «${dueDef.label}», без него — по срокам задач` : 'По срокам задач'}>
-        <b class:late={late.length > 0}>{late.length}</b><span>{late.length === 1 ? 'просрочен' : 'просрочено'}</span>
+        <i class="chip-icon" class:danger={late.length > 0}><CircleAlert size={18} /></i><b class:late={late.length > 0}>{late.length}</b><span>{late.length === 1 ? 'просрочен' : 'просрочено'}</span>
       </button>
       <button class="card tile" class:on={urgency === 'soon'} class:zero={!soon.length} onclick={() => (urgency = urgency === 'soon' ? null : 'soon')}>
-        <b class:soon={soon.length > 0}>{soon.length}</b><span>сдача в ближайшие 14 дней</span>
+        <i class="chip-icon" class:warn={soon.length > 0}><CalendarClock size={18} /></i><b class:soon={soon.length > 0}>{soon.length}</b><span>сдача в ближайшие 14 дней</span>
       </button>
       {#if hasMoney && toCollect > 0}
         <div class="card tile static" title="Остаток к оплате по активным проектам: бюджет − поступления">
-          <b>{moneyShort(toCollect)}</b><span>к получению от заказчиков</span>
+          <i class="chip-icon ok"><HandCoins size={18} /></i><b>{moneyShort(toCollect)}</b><span>к получению от заказчиков</span>
         </div>
       {/if}
       {#if moneyDef}
         <div class="card tile static" title="Сумма «{moneyDef.label}» по активным проектам">
-          <b>{moneyShort(inWork)}</b><span>в работе по договорам</span>
+          <i class="chip-icon"><Banknote size={18} /></i><b>{moneyShort(inWork)}</b><span>в работе по договорам</span>
         </div>
       {/if}
     </div>
@@ -380,7 +391,7 @@
     </div>
 
     {#if !sorted.length}
-      <div class="card empty"><p class="muted">Ничего не найдено.</p></div>
+      <div class="card"><EmptyState icon={SearchX} title="Ничего не найдено" text="Измените условия поиска или фильтры." /></div>
     {:else if shownView === 'rows'}
       {#snippet th(k: string)}
         <th class:right={isRight(k)} class:c-name={k === '$name'} aria-sort={sortKey === k ? (sortDir === 1 ? 'ascending' : 'descending') : 'none'}>
@@ -542,9 +553,6 @@
   .search { width: 260px; }
   .grp-sel { display: flex; align-items: center; gap: 6px; }
   .grp-sel .input { width: auto; max-width: 180px; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; height: 34px; }
-  .seg button { border: 0; background: var(--surface); padding: 0 10px; cursor: pointer; color: var(--text-2); display: grid; place-items: center; }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
   .ok-box { margin-bottom: 12px; }
   .empty { padding: 40px; text-align: center; }
   p { margin: 0; }
@@ -552,7 +560,9 @@
 
   /* Summary */
   .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile { text-align: left; padding: 11px 14px; display: grid; gap: 1px; font: inherit; color: var(--text); cursor: pointer; border: 1px solid var(--border); }
+  .tile { text-align: left; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center;
+          font: inherit; color: var(--text); cursor: pointer; border: 1px solid var(--border); }
+  .tile .chip-icon { grid-row: span 2; font-style: normal; }
   .tile.static { cursor: default; }
   .tile:not(.static):hover { border-color: var(--accent); }
   .tile.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -650,5 +660,7 @@
     .grp-sel span { display: none; }
     .grid { grid-template-columns: 1fr; }
     .sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile { grid-template-columns: 1fr; }
+    .tile .chip-icon { display: none; }
   }
 </style>

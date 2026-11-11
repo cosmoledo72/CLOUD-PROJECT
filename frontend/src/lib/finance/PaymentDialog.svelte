@@ -205,11 +205,8 @@
 
 <style>
   .row2 { display: flex; gap: 10px; flex-wrap: wrap; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .seg button { border: 0; background: var(--surface); padding: 6px 14px; cursor: pointer; font: inherit; color: var(--text-2); }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
-  .seg button.in.on { background: var(--ok); }
-  .seg button.out.on { background: var(--danger); }
+  .seg > button.in.on { background: var(--ok); color: #fff; }
+  .seg > button.out.on { background: var(--danger); color: #fff; }
   .hint { margin: -4px 0 0; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

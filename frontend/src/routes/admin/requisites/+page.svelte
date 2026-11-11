@@ -238,13 +238,10 @@
 </Modal>
 
 <style>
+  .seg { margin-bottom: 12px; }
   .toolbar { margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .intro { margin: 0; max-width: 620px; }
   .ok-box, .error-box { margin-bottom: 12px; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
-  .seg button { border: 0; background: var(--surface); padding: 6px 14px; cursor: pointer; color: var(--text-2); }
-  .seg button + button { border-left: 1px solid var(--border-strong); }
-  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
   .sec { margin-bottom: 12px; overflow-x: auto; }
   .sec-title { padding: 12px 14px 4px; margin: 0; }
   .order { width: 72px; white-space: nowrap; padding-right: 0; }
@@ -252,7 +249,7 @@
   .fields { table-layout: fixed; min-width: 760px; }
   .fields td { overflow: hidden; }
   .opts { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .flags { white-space: nowrap; }
+  .flags { white-space: normal; line-height: 1.9; }
   .flags .badge { margin-right: 4px; }
   .actions { text-align: right; white-space: nowrap; }
   tr.archived td:not(.actions) { opacity: .55; }

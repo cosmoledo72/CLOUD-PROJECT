@@ -1,4 +1,6 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import Banknote from '@lucide/svelte/icons/banknote';
   // «Финансы → Платежи»: income and expenses for a period with filters, totals,
   // CSV export; finance editors add and change payments.
   import { api, formatDate, formatMoney, plainMessage, type FinanceCategory, type Payment, type PaymentTotals } from '$lib/api';
@@ -118,7 +120,7 @@
     <button class="btn" onclick={exportCsv} disabled={!payments.length} title="Выгрузить в CSV"><Download size={15} /></button>
   </div>
   {#if loaded && !payments.length}
-    <p class="empty muted">Платежей за выбранный период нет.{session.financeEdit ? ' Добавьте поступление или расход кнопками выше.' : ''}</p>
+    <EmptyState icon={Banknote} title="Платежей за период нет" text={session.financeEdit ? 'Добавьте поступление или расход кнопками выше или выберите другой период.' : 'Выберите другой период.'} />
   {:else}
     <div class="scroll">
       <table>
@@ -180,5 +182,4 @@
   .desc { max-width: 300px; color: var(--text-2); }
   .tag { font-size: 11px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
   .tag.late { background: var(--danger-soft); color: var(--danger); }
-  .empty { padding: 26px; text-align: center; margin: 0; }
 </style>

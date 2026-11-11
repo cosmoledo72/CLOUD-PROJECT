@@ -1,4 +1,6 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import FolderOpen from '@lucide/svelte/icons/folder-open';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import { api, can, docKind, folderName, formatDateTime, formatSize, type FileItem, type FolderView, type Version } from '$lib/api';
   import FileIcon from '$lib/FileIcon.svelte';
@@ -280,10 +282,7 @@
 
     <div class="card" class:drag={dragOver}>
       {#if view.folders.length === 0 && view.files.length === 0}
-        <div class="empty">
-          <p>Папка пуста.</p>
-          {#if canEdit}<p class="faint">Перетащите файлы сюда или создайте документ.</p>{/if}
-        </div>
+        <EmptyState icon={FolderOpen} title="Папка пуста" text={canEdit ? 'Перетащите файлы сюда или создайте документ кнопками выше.' : ''} />
       {:else}
         <table class="list">
           <thead>
@@ -414,8 +413,6 @@
   .embedded .page-head { margin-bottom: 12px; }
   .actions { text-align: right; white-space: nowrap; }
   .editing { margin-left: 8px; background: var(--warn-soft); color: var(--warn); }
-  .empty { padding: 48px 16px; text-align: center; }
-  .empty p { margin: 4px 0; }
   .badge { margin-bottom: 10px; }
   @media (max-width: 720px) { .hide-sm { display: none; } }
 </style>

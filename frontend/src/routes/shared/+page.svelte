@@ -1,4 +1,6 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import Share2 from '@lucide/svelte/icons/share-2';
   import StorageTabs from '$lib/StorageTabs.svelte';
   import { api, docKind, formatDateTime, type FileItem, type Folder } from '$lib/api';
   import FileIcon from '$lib/FileIcon.svelte';
@@ -15,7 +17,7 @@
   {#if data}
     <div class="card">
       {#if data.folders.length === 0 && data.files.length === 0}
-        <p class="empty muted">С вами пока ничем не поделились.</p>
+        <EmptyState icon={Share2} title="Пока пусто" text="Здесь появятся папки и документы, к которым вам откроют доступ коллеги." />
       {:else}
         <table class="list">
           <thead><tr><th>Имя</th><th>Владелец</th><th>Изменён</th></tr></thead>
@@ -39,5 +41,4 @@
 
 <style>
   .name { display: inline-flex; align-items: center; gap: 10px; color: var(--text); }
-  .empty { padding: 40px; text-align: center; margin: 0; }
 </style>

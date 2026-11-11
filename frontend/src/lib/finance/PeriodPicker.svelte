@@ -26,8 +26,5 @@
 
 <style>
   .pp { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; flex-wrap: wrap; }
-  .seg button { border: 0; background: var(--surface); padding: 5px 12px; cursor: pointer; font: inherit; color: var(--text-2); }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
   .date { width: 150px; }
 </style>

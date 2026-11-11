@@ -15,6 +15,7 @@
   import HardDrive from '@lucide/svelte/icons/hard-drive';
   import ListTodo from '@lucide/svelte/icons/list-todo';
   import LogOut from '@lucide/svelte/icons/log-out';
+  import Menu from '@lucide/svelte/icons/menu';
   import MessagesSquare from '@lucide/svelte/icons/messages-square';
   import Settings from '@lucide/svelte/icons/settings';
   import UsersRound from '@lucide/svelte/icons/users-round';
@@ -130,7 +131,7 @@
             {#if b?.icon_url}
               <img class="icon" src={b.icon_url} alt="" width="28" height="28" />
             {:else}
-              <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 10h4l2 9 2-9h2l2 9 2-9h4l-4 13h-3l-2-8-2 8h-3z" fill="var(--on-accent)"/></svg>
+              <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" transform="translate(4 4.5)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="var(--on-accent)"/></svg>
             {/if}
             {#if !collapsed}<span class="brand-name">{portalName}</span>{/if}
           {/if}
@@ -143,7 +144,7 @@
           {@const n = item.count?.() ?? 0}
           <a href={item.href} class:active={isActive(item)} onclick={() => (menuOpen = false)} title={collapsed ? item.label : undefined}
              aria-current={isActive(item) ? 'page' : undefined}>
-            <span class="ico"><Icon size={20} strokeWidth={1.75} /></span>
+            <span class="ico"><Icon size={19} /></span>
             <span class="label">{item.label}</span>
             {#if n}<span class="nav-count" class:hot={item.hot?.()} aria-label="{n} новых">{n > 99 ? '99+' : n}</span>{/if}
           </a>
@@ -154,7 +155,7 @@
         {#if collapsed}<div class="bell-collapsed"><NotificationBell /></div>{/if}
         {#if session.isAdmin}
           <a href="/admin" class:active={page.url.pathname.startsWith('/admin')} onclick={() => (menuOpen = false)} title={collapsed ? 'Администрирование' : undefined}>
-            <span class="ico"><Settings size={20} strokeWidth={1.75} /></span>
+            <span class="ico"><Settings size={19} /></span>
             <span class="label">Администрирование</span>
           </a>
         {/if}
@@ -171,7 +172,8 @@
     </aside>
     <main>
       <div class="mobile-bar">
-        <button class="btn ghost burger" aria-label="Меню" onclick={() => (menuOpen = !menuOpen)}>☰</button>
+        <button class="icon-btn burger" aria-label="Меню" onclick={() => (menuOpen = !menuOpen)}><Menu size={20} /></button>
+        <span class="mb-name">{portalName}</span>
         <div class="spacer"></div>
         <NotificationBell />
       </div>
@@ -192,33 +194,37 @@
 {/if}
 
 <style>
-  .shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; transition: grid-template-columns .15s; }
+  .shell { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; transition: grid-template-columns .15s; }
   aside {
     background: var(--surface); color: var(--text); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; padding: 14px 10px; position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; padding: 14px 12px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    scrollbar-width: thin;
   }
   .nav-count { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600;
-    line-height: 18px; text-align: center; background: var(--warn); color: #fff; }
-  .nav-count.hot { background: var(--danger); }
-  .top { display: flex; align-items: flex-start; gap: 4px; }
+    line-height: 18px; text-align: center; background: var(--surface-3); color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .nav-count.hot { background: var(--danger); color: #fff; }
+  .top { display: flex; align-items: flex-start; gap: 4px; padding-bottom: 12px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
   .top .brand { flex: 1; min-width: 0; }
-  .bell-desktop { padding-top: 10px; color: var(--text-2); }
-  .brand { display: flex; gap: 10px; align-items: center; padding: 4px 8px 18px; color: var(--text); min-height: 52px; }
+  .bell-desktop { padding-top: 8px; color: var(--text-2); }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 4px 6px; color: var(--text); min-height: 44px; }
   .brand:hover { text-decoration: none; }
   /* Explicit height: an SVG with only a viewBox has no intrinsic size and would collapse. */
-  .logo { height: 40px; width: auto; max-width: 100%; object-fit: contain; object-position: left center; }
-  .logo.plate { background: #fff; padding: 5px 8px; border-radius: var(--radius); height: 46px; }
-  .icon { border-radius: 6px; object-fit: contain; flex: none; }
-  .brand-name { font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
-  nav { display: grid; gap: 2px; }
+  .logo { height: 38px; width: auto; max-width: 100%; object-fit: contain; object-position: left center; }
+  .logo.plate { background: #fff; padding: 5px 8px; border-radius: var(--radius); height: 44px; }
+  .icon { border-radius: 7px; object-fit: contain; flex: none; }
+  .brand-name { font-weight: 650; font-size: 14px; letter-spacing: .01em; line-height: 1.25; overflow-wrap: anywhere; }
+  nav { display: grid; gap: 1px; }
   nav a, .collapse {
-    display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px;
-    color: var(--text-2); font: inherit; font-size: 14.5px; border: 0; background: none; cursor: pointer; text-align: left; width: 100%;
+    position: relative; display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: var(--radius);
+    color: var(--text-2); font: inherit; font-size: 14px; font-weight: 500; border: 0; background: none; cursor: pointer; text-align: left; width: 100%;
     transition: background .12s, color .12s;
   }
-  nav a:hover, .collapse:hover { background: var(--surface-2); text-decoration: none; color: var(--text); }
-  nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
-  .ico { display: grid; place-items: center; width: 22px; flex: none; color: var(--text-3); transition: color .12s; }
+  nav a:hover, .collapse:hover { background: var(--surface-3); text-decoration: none; color: var(--text); }
+  nav a.active { background: var(--accent-soft); color: var(--accent); }
+  nav a.active::before {
+    content: ''; position: absolute; left: -12px; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
+  }
+  .ico { display: grid; place-items: center; width: 20px; flex: none; color: var(--text-3); transition: color .12s; }
   nav a:hover .ico { color: var(--text-2); }
   nav a.active .ico { color: var(--accent); }
   .ico.flip { transform: rotate(180deg); }
@@ -228,30 +234,32 @@
   .off { padding: 28px; max-width: 560px; display: grid; gap: 10px; justify-items: start; }
   .off h2, .off p { margin: 0; }
   .bell-collapsed { display: grid; place-items: center; padding: 4px 0; color: var(--text-2); }
-  .me { display: flex; align-items: center; gap: 8px; padding: 10px 4px 0; border-top: 1px solid var(--border); }
+  .me { display: flex; align-items: center; gap: 10px; padding: 10px 4px 0; border-top: 1px solid var(--border); }
   .avatar {
-    width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600;
+    width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600;
     background: var(--accent-soft); color: var(--accent);
   }
   .avatar:hover { text-decoration: none; }
-  .me-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .me-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 500; font-size: 13.5px; }
   .me :global(.btn) { color: var(--text-2); }
   .out { margin-left: auto; }
   /* Icons-only sidebar */
   .shell.collapsed { grid-template-columns: 68px 1fr; }
-  .collapsed aside { padding-left: 8px; padding-right: 8px; }
+  .collapsed aside { padding-left: 10px; padding-right: 10px; }
   .collapsed .label, .collapsed .nav-count:not(.dot) { display: none; }
-  .collapsed nav a, .collapsed .collapse { justify-content: center; padding: 9px 0; position: relative; }
-  .collapsed nav a .nav-count { display: block; position: absolute; top: 3px; right: 6px; min-width: 16px; height: 16px; line-height: 16px; padding: 0 4px; font-size: 10px; }
-  .collapsed .brand { justify-content: center; padding: 4px 0 18px; }
+  .collapsed nav a, .collapsed .collapse { justify-content: center; padding: 9px 0; }
+  .collapsed nav a.active::before { left: -10px; }
+  .collapsed nav a .nav-count { display: block; position: absolute; top: 3px; right: 4px; min-width: 16px; height: 16px; line-height: 16px; padding: 0 4px; font-size: 10px; }
+  .collapsed .brand { justify-content: center; padding: 4px 0; }
   .collapsed .me { flex-direction: column; padding: 10px 0 0; }
   .collapsed .out { margin: 0; }
   main { min-width: 0; }
-  .mobile-bar { display: none; align-items: center; padding: 6px 8px 0; }
+  .mb-name { font-weight: 600; margin-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-bar { display: none; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
   @media (max-width: 860px) {
     .shell, .shell.collapsed { grid-template-columns: 1fr; }
     .collapse { display: none; }
-    aside { position: fixed; z-index: 20; width: 250px; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow-lg); }
+    aside { position: fixed; z-index: 20; width: 260px; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow-lg); }
     aside.open { transform: none; }
     .mobile-bar { display: flex; }
     .bell-desktop { display: none; }

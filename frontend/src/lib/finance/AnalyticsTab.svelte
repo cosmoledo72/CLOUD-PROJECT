@@ -150,9 +150,6 @@
 <style>
   .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   .spacer { flex: 1; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .seg button { border: 0; background: var(--surface); padding: 5px 12px; cursor: pointer; font: inherit; color: var(--text-2); }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
   .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .k { padding: 12px 14px; display: grid; gap: 2px; }
   .k span { font-size: 12.5px; color: var(--text-3); }

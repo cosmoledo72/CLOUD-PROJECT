@@ -128,9 +128,6 @@
 <TaskDialog bind:open={dialogOpen} task={editing} companyId={fixedCompany} dealId={fixedDeal} {people} {today} onsaved={reload} />
 
 <style>
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .seg button { border: 0; background: var(--surface); padding: 5px 12px; cursor: pointer; font: inherit; color: var(--text-2); }
-  .seg button.on { background: var(--accent); color: #fff; }
   .who { width: auto; }
   .error-box { margin-bottom: 10px; }
   .list { padding: 6px 14px 8px; margin-bottom: 12px; }

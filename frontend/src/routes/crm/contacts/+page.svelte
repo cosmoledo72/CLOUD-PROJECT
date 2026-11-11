@@ -1,4 +1,7 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import ContactIcon from '@lucide/svelte/icons/contact';
+  import SearchX from '@lucide/svelte/icons/search-x';
   import { api, contactName, type CompanyListItem, type Contact } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
 
@@ -68,7 +71,7 @@
 {#if error && !open}<div class="error-box">{error}</div>{/if}
 
 {#if loaded && contacts.length === 0}
-  <div class="card empty"><p class="muted">{query ? 'Ничего не найдено.' : 'Контактных лиц пока нет.'}</p></div>
+  <div class="card">{#if query}<EmptyState icon={SearchX} title="Ничего не найдено" />{:else}<EmptyState icon={ContactIcon} title="Контактных лиц пока нет" text="Добавьте сотрудников заказчиков и подрядчиков, с кем ведёте переписку." />{/if}</div>
 {:else}
   <div class="card scroll">
     <table class="list">
@@ -125,8 +128,6 @@
   .scroll { overflow-x: auto; }
   .click { cursor: pointer; }
   .click:hover { background: var(--surface-2); }
-  .empty { padding: 40px; text-align: center; }
-  .empty p { margin: 0; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
   @media (max-width: 760px) { .hide-sm { display: none; } .search { width: 100%; } }

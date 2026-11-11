@@ -239,9 +239,6 @@
 <style>
   .toolbar { margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
   .search { max-width: 320px; margin-bottom: 12px; }
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; padding: 2px; background: var(--surface); }
-  .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 6px; font: inherit; color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
   .n { font-size: 11.5px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--text-3); line-height: 18px; }
   .n.hot { background: var(--danger); color: #fff; }
   .ok-box, .error-box { margin-bottom: 12px; }

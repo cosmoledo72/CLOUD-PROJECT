@@ -1,4 +1,6 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import FileText from '@lucide/svelte/icons/file-text';
   // «Финансы → Документы»: registry of sales documents (contracts, invoices, acts) for CRM users.
   import { api, docKindLabel, docStatusLabel, formatDate, formatMoney, localToday, type DocKind, type DocStatus, type SalesDoc } from '$lib/api';
   import Search from '@lucide/svelte/icons/search';
@@ -173,7 +175,7 @@
     </select>
   </div>
   {#if loaded && !docs.length}
-    <p class="empty muted">Документов за выбранный период нет. Счета, акты и договоры создаются в карточке сделки.</p>
+    <EmptyState icon={FileText} title="Документов за период нет" text="Счета, акты и договоры создаются в карточке сделки." />
   {:else}
     <div class="scroll">
       <table>
@@ -222,9 +224,6 @@
 
 <style>
   .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; flex-wrap: wrap; }
-  .seg button { border: 0; background: var(--surface); padding: 5px 12px; cursor: pointer; font: inherit; color: var(--text-2); }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
   .date { width: 150px; }
   .filters .btn { display: inline-flex; gap: 6px; align-items: center; }
   .filters .spacer { flex: 1; }

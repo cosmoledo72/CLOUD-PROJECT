@@ -59,7 +59,7 @@ const BRANDING_SELECT: &str = "SELECT t.slug::text AS tenant_slug,
         COALESCE(b.logo_plate, false) AS logo_plate,
         COALESCE(b.login_logo_plate, true) AS login_logo_plate,
         COALESCE(b.login_bg_overlay, 45::smallint) AS login_bg_overlay,
-        COALESCE(b.font_family, 'system') AS font_family,
+        COALESCE(b.font_family, 'inter') AS font_family,
         COALESCE(b.font_size, 'default') AS font_size,
         (b.logo_key IS NOT NULL) AS has_logo,
         (b.icon_key IS NOT NULL) AS has_icon,
@@ -135,7 +135,7 @@ pub const FONTS: &[&str] = &[
 ];
 
 fn default_font() -> String {
-    "system".into()
+    "inter".into()
 }
 
 fn default_size() -> String {

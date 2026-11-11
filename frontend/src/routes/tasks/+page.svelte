@@ -318,11 +318,6 @@
 
 <style>
   .page-head { flex-wrap: wrap; gap: 10px; }
-  .seg { display: inline-flex; }
-  .seg .btn { border-radius: 0; margin-left: -1px; gap: 5px; }
-  .seg .btn:first-child { border-radius: var(--radius) 0 0 var(--radius); margin-left: 0; }
-  .seg .btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
-  .seg .btn.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); position: relative; z-index: 1; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 12px; }
   .search { position: relative; display: flex; align-items: center; color: var(--text-3); }
   .search :global(svg) { position: absolute; left: 9px; pointer-events: none; }

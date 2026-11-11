@@ -1,4 +1,6 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import Handshake from '@lucide/svelte/icons/handshake';
   // Sales pipeline. Board: open stages fit the screen width; won/lost are drop
   // zones under the board. List: a sortable table with a stage filter.
   import { goto } from '$app/navigation';
@@ -390,7 +392,7 @@
         </tfoot>
       </table>
     {:else}
-      <p class="empty muted">Сделок нет.</p>
+      <EmptyState icon={Handshake} title="Сделок нет" text="Создайте сделку или измените фильтры." />
     {/if}
   </div>
   <p class="faint small hint">Закрытые сделки показываются 30 дней после закрытия.</p>
@@ -446,9 +448,6 @@
   .summary { font-size: 13px; }
   .search { width: 240px; }
   .error-box { margin-bottom: 10px; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; height: 34px; }
-  .seg button { border: 0; background: var(--surface); padding: 0 10px; cursor: pointer; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
 
   /* Funnel strip */
   .funnel { display: flex; gap: 10px; margin-bottom: 12px; align-items: stretch; }

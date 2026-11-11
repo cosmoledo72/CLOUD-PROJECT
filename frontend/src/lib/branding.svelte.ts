@@ -79,8 +79,8 @@ export function applyBranding(
   el.style.setProperty('--on-brand-dark', textOn(darkAccent(brand)));
   el.dataset.theme = b.color_scheme;
   el.dataset.corners = b.corner_style;
-  const font = FONTS[b.font_family ?? 'system'] ?? FONTS.system;
-  loadFont(b.font_family ?? 'system');
+  const font = FONTS[b.font_family ?? 'inter'] ?? FONTS.inter;
+  loadFont(b.font_family ?? 'inter');
   el.style.setProperty('--font', font.stack);
   el.style.setProperty('--fs', `${(FONT_SIZES[b.font_size ?? 'default'] ?? FONT_SIZES.default).px}px`);
 }
@@ -132,7 +132,7 @@ class BrandingStore {
     delete root.dataset.theme;
     delete root.dataset.corners;
     setFavicon(DEFAULT_FAVICON);
-    document.title = 'WorkHub';
+    document.title = 'CLOUD-PROJECT';
   }
 }
 

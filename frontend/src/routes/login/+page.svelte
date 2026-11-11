@@ -5,6 +5,9 @@
   import { branding, type Branding } from '$lib/branding.svelte';
   import AuthShell from '$lib/AuthShell.svelte';
   import { session } from '$lib/session.svelte';
+  import Building2 from '@lucide/svelte/icons/building-2';
+  import Lock from '@lucide/svelte/icons/lock';
+  import Mail from '@lucide/svelte/icons/mail';
 
   type Mode = 'login' | 'mfa' | 'signup' | 'forgot' | 'sent';
   let mode = $state<Mode>('login');
@@ -95,10 +98,13 @@
 <AuthShell {brand}>
   {#if mode === 'login'}
     <form onsubmit={(e) => { e.preventDefault(); login(); }}>
-      <h2>Вход</h2>
-      <label class="field">Портал <input class="input" bind:value={tenant} required autocomplete="organization" placeholder="company" /></label>
-      <label class="field">Email <input class="input" type="email" bind:value={email} required autocomplete="username" /></label>
-      <label class="field">Пароль <input class="input" type="password" bind:value={password} required autocomplete="current-password" /></label>
+      <div class="intro">
+        <h2>Вход в портал</h2>
+        <p class="muted">Рады видеть вас снова</p>
+      </div>
+      <label class="field">Портал <span class="with-icon"><Building2 size={17} /><input class="input" bind:value={tenant} required autocomplete="organization" placeholder="company" /></span></label>
+      <label class="field">Email <span class="with-icon"><Mail size={17} /><input class="input" type="email" bind:value={email} required autocomplete="username" placeholder="name@company.ru" /></span></label>
+      <label class="field">Пароль <span class="with-icon"><Lock size={17} /><input class="input" type="password" bind:value={password} required autocomplete="current-password" /></span></label>
       <button type="button" class="linkish forgot" onclick={() => { mode = 'forgot'; error = ''; }}>Забыли пароль?</button>
       {#if error}<div class="error-box">{error}</div>{/if}
       <button class="btn primary full" disabled={busy}>Войти</button>
@@ -163,4 +169,5 @@
   .linkish:hover { text-decoration: underline; }
   .forgot { justify-self: end; font-size: 13px; margin-top: -4px; }
   .join { margin: 0; text-align: center; font-size: 13.5px; color: var(--text-2); }
+  .intro { display: grid; gap: 2px; margin-bottom: 6px; }
 </style>

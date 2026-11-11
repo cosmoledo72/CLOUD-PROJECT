@@ -166,9 +166,6 @@
   .search { position: relative; flex: 1; }
   .search :global(svg) { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
   .search input { padding-left: 34px; width: 100%; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .seg button { border: 0; background: var(--surface); padding: 0 10px; cursor: pointer; color: var(--text-2); display: grid; place-items: center; }
-  .seg button.on { background: var(--accent); color: var(--on-accent); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
   .person { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .person.off, .row.off { opacity: .55; }

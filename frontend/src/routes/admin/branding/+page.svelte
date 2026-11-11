@@ -9,7 +9,7 @@
     'logo_plate', 'login_logo_plate', 'login_bg_overlay', 'font_family', 'font_size'];
   const DEFAULTS: Editable = {
     display_name: '', accent_color: DEFAULT_ACCENT, sidebar_style: 'light', color_scheme: 'auto', corner_style: 'default', login_title: '', login_subtitle: '',
-    logo_plate: false, login_logo_plate: true, login_bg_overlay: 45, font_family: 'system', font_size: 'default'
+    logo_plate: false, login_logo_plate: true, login_bg_overlay: 45, font_family: 'inter', font_size: 'default'
   };
 
   let saved = $state<Branding | null>(null);
@@ -399,10 +399,6 @@
 
   .sticky { position: sticky; top: 16px; display: grid; gap: 10px; }
   .prev-head { flex-wrap: wrap; }
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; }
-  .seg button { border: 0; background: var(--surface); padding: 4px 10px; font-size: 13px; cursor: pointer; color: var(--text-2); }
-  .seg button + button { border-left: 1px solid var(--border-strong); }
-  .seg button.on { background: var(--accent-soft); color: var(--accent); }
   .seg button:disabled { opacity: .4; cursor: default; }
   .actions { flex-wrap: wrap; }
   .actions + p { margin: 0; }

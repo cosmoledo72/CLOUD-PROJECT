@@ -322,11 +322,6 @@
 
 <style>
   .toolbar { margin-bottom: 8px; flex-wrap: wrap; }
-  .seg { display: inline-flex; }
-  .seg .btn { border-radius: 0; margin-left: -1px; }
-  .seg .btn:first-child { border-radius: var(--radius) 0 0 var(--radius); margin-left: 0; }
-  .seg .btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
-  .seg .btn.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); position: relative; z-index: 1; }
   .hint { font-size: 12px; }
   .gantt { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; overflow: hidden; }
   .left { border-right: 1px solid var(--border); background: var(--surface); }

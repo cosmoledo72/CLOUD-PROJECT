@@ -218,9 +218,7 @@
 </Modal>
 
 <style>
-  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
-  .seg button { border: 0; background: var(--surface); padding: 6px 14px; cursor: pointer; font: inherit; color: var(--text-2); }
-  .seg button.on { background: var(--accent); color: #fff; }
+  .seg { margin-bottom: 12px; }
   .toolbar { margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .intro { margin: 0; max-width: 640px; }
   .ok-box, .error-box { margin-bottom: 12px; }

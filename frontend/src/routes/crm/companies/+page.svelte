@@ -1,4 +1,7 @@
 <script lang="ts">
+  import EmptyState from '$lib/EmptyState.svelte';
+  import Building2 from '@lucide/svelte/icons/building-2';
+  import SearchX from '@lucide/svelte/icons/search-x';
   import { goto } from '$app/navigation';
   import { api, formatDate, formatMoney, upload, type CompanyInput, type CompanyListItem, type UserItem } from '$lib/api';
   import CompanyForm from '$lib/crm/CompanyForm.svelte';
@@ -102,8 +105,9 @@
 {#if error && !createOpen && !importOpen}<div class="error-box">{error}</div>{/if}
 
 {#if loaded && companies.length === 0}
-  <div class="card empty">
-    <p class="muted">{query || tag ? 'Ничего не найдено.' : 'Контрагентов пока нет. Добавьте вручную или загрузите список из Excel.'}</p>
+  <div class="card">
+    {#if query || tag}<EmptyState icon={SearchX} title="Ничего не найдено" text="Измените условия поиска." />
+    {:else}<EmptyState icon={Building2} title="Контрагентов пока нет" text="Добавьте заказчиков и подрядчиков вручную или загрузите список из Excel." />{/if}
   </div>
 {:else}
   <div class="card scroll">
@@ -176,8 +180,6 @@
   .scroll { overflow-x: auto; }
   .name { font-weight: 500; color: var(--text); margin-right: 6px; }
   td .badge { margin-right: 4px; }
-  .empty { padding: 40px; text-align: center; }
-  .empty p { margin: 0; }
   .file { padding: 4px 6px; height: auto; }
   .link { justify-self: start; }
   .skipped { max-height: 240px; overflow-y: auto; font-size: 13px; }
