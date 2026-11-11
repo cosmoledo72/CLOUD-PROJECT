@@ -21,7 +21,7 @@
 
   async function load() {
     try {
-      data = await api.get<BackupStatus>('/admin/backups');
+      data = await api.get<BackupStatus>('/admin/reserve');
       error = '';
     } catch (e) {
       error = (e as Error).message;
@@ -42,7 +42,7 @@
   async function makeNow() {
     busy = true;
     try {
-      data = await api.post<BackupStatus>('/admin/backups/now');
+      data = await api.post<BackupStatus>('/admin/reserve/now');
       error = '';
     } catch (e) {
       error = (e as Error).message;
@@ -151,8 +151,8 @@
                   <td class="num"><b>{formatSize(total(b))}</b></td>
                   <td class="dl">
                     {#if b.state === 'ready'}
-                      <a class="btn ghost sm" href="/api/admin/backups/{b.name}/db.dump" download title="Дамп базы данных PostgreSQL"><Download size={14} />База</a>
-                      {#if b.files_bytes !== null}<a class="btn ghost sm" href="/api/admin/backups/{b.name}/files.tar.gz" download title="Архив документов и файлов портала"><Download size={14} />Файлы</a>{/if}
+                      <a class="btn ghost sm" href="/api/admin/reserve/{b.name}/db.dump" download title="Дамп базы данных PostgreSQL"><Download size={14} />База</a>
+                      {#if b.files_bytes !== null}<a class="btn ghost sm" href="/api/admin/reserve/{b.name}/files.tar.gz" download title="Архив документов и файлов портала"><Download size={14} />Файлы</a>{/if}
                     {/if}
                   </td>
                 </tr>

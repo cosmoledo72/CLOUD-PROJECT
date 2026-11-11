@@ -165,13 +165,13 @@ fn status(state: &AppState) -> Value {
     })
 }
 
-/// `GET /api/admin/backups`
+/// `GET /api/admin/reserve`
 pub async fn list(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     require(&state, &user).await?;
     Ok(Json(status(&state)))
 }
 
-/// `POST /api/admin/backups/now` — ask the service for a backup right away.
+/// `POST /api/admin/reserve/now` — ask the service for a backup right away.
 pub async fn request_now(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     require(&state, &user).await?;
     let dir = PathBuf::from(&state.cfg.backup_dir);
@@ -189,7 +189,7 @@ pub async fn request_now(State(state): State<AppState>, user: CurrentUser) -> Ap
     Ok(Json(status(&state)))
 }
 
-/// `GET /api/admin/backups/{name}/{file}` — download `db.dump` or `files.tar.gz`
+/// `GET /api/admin/reserve/{name}/{file}` — download `db.dump` or `files.tar.gz`
 /// of a ready backup, streamed from disk.
 pub async fn download(State(state): State<AppState>, user: CurrentUser, Path((name, part)): Path<(String, String)>) -> ApiResult<Response> {
     require(&state, &user).await?;

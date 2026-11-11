@@ -15,7 +15,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     init.body = JSON.stringify(body);
     (init.headers as Record<string, string>)['Content-Type'] = 'application/json';
   }
-  const res = await fetch(`/api${path}`, init);
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, init);
+  } catch {
+    // The request did not reach the server: the connection dropped (the
+    // portal is restarting) or a browser extension blocked it.
+    throw new ApiError(0, 'network',
+      'Нет связи с сервером. Обновите страницу через несколько секунд; если ошибка повторяется — проверьте, не блокирует ли запрос расширение браузера (блокировщик рекламы).');
+  }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
