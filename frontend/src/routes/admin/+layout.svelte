@@ -4,6 +4,7 @@
   import { session } from '$lib/session.svelte';
   import Blocks from '@lucide/svelte/icons/blocks';
   import Building from '@lucide/svelte/icons/building';
+  import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import ClipboardList from '@lucide/svelte/icons/clipboard-list';
   import FileStack from '@lucide/svelte/icons/file-stack';
   import Gauge from '@lucide/svelte/icons/gauge';
@@ -24,6 +25,7 @@
       { href: '/admin/portal', label: 'Портал и регистрация', icon: Globe },
       { href: '/admin/modules', label: 'Модули', icon: Blocks },
       { href: '/admin/branding', label: 'Оформление', icon: Palette },
+      { href: '/admin/calendar', label: 'Рабочий календарь', icon: CalendarDays },
       { href: '/admin/mail', label: 'Почта', icon: Mail }
     ] },
     { title: 'Люди', items: [

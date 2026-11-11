@@ -82,6 +82,8 @@ pub struct ProjectRow {
     pub fields: Value,
     /// Move dependent tasks automatically when dates change.
     pub auto_schedule: bool,
+    /// Durations count `work` (working) or `calendar` days.
+    pub day_mode: String,
     pub baseline_saved_at: Option<DateTime<Utc>>,
     /// Customer (CRM company) and the deal the project came from.
     pub company_id: Option<Uuid>,
@@ -97,7 +99,7 @@ const PROJECT_SELECT: &str = "SELECT p.id, p.name, p.description, p.status, p.ow
         (SELECT COALESCE(jsonb_object_agg(d.key, v.value), '{}'::jsonb)
            FROM project_field_values v JOIN project_field_defs d ON d.id = v.field_id
           WHERE v.project_id = p.id) AS fields,
-        p.auto_schedule, p.baseline_saved_at,
+        p.auto_schedule, p.day_mode, p.baseline_saved_at,
         p.company_id, (SELECT c.name FROM crm_companies c WHERE c.id = p.company_id) AS company_name, p.deal_id
    FROM projects p";
 
@@ -229,6 +231,7 @@ pub struct UpdateProject {
     pub description: Option<String>,
     pub status: Option<String>,
     pub auto_schedule: Option<bool>,
+    pub day_mode: Option<String>,
 }
 
 pub async fn update_project(
@@ -244,16 +247,22 @@ pub async fn update_project(
             return bad_request("status must be active, paused or closed");
         }
     }
+    if let Some(m) = req.day_mode.as_deref() {
+        if !matches!(m, "work" | "calendar") {
+            return bad_request("day_mode must be work or calendar");
+        }
+    }
     let mut tx = state.db.begin().await?;
     sqlx::query(
         "UPDATE projects SET description = COALESCE($2, description), status = COALESCE($3, status),
-                auto_schedule = COALESCE($4, auto_schedule)
+                auto_schedule = COALESCE($4, auto_schedule), day_mode = COALESCE($5, day_mode)
           WHERE id = $1",
     )
     .bind(id)
     .bind(req.description.as_deref().map(str::trim))
     .bind(&req.status)
     .bind(req.auto_schedule)
+    .bind(&req.day_mode)
     .execute(&mut *tx)
     .await?;
     let mut renamed = None;
@@ -451,6 +460,8 @@ pub struct TaskRow {
     pub number: i64,
     pub project_id: Uuid,
     pub project_name: String,
+    /// The project's day mode (`work` / `calendar`) — how the chart moves the task.
+    pub day_mode: String,
     pub parent_id: Option<Uuid>,
     pub title: String,
     pub description: String,
@@ -472,7 +483,7 @@ pub struct TaskRow {
     pub comment_count: i64,
 }
 
-pub const TASK_SELECT: &str = "SELECT t.id, t.number, t.project_id, p.name AS project_name, t.parent_id, t.title, t.description, t.status, t.priority, t.is_milestone,
+pub const TASK_SELECT: &str = "SELECT t.id, t.number, t.project_id, p.name AS project_name, p.day_mode, t.parent_id, t.title, t.description, t.status, t.priority, t.is_milestone,
         t.assignee_id, u.display_name AS assignee_name, t.start_date, t.due_date, t.progress, t.sort_order,
         COALESCE((SELECT sum(minutes) FROM time_entries te WHERE te.task_id = t.id), 0)::bigint AS spent_minutes,
         t.updated_at,
@@ -506,7 +517,8 @@ pub async fn list_tasks(State(state): State<AppState>, user: CurrentUser, Path(i
     .fetch_all(&state.db)
     .await?;
     let (nodes, graph) = load_graph(&state, id).await?;
-    let cp = scheduling::critical_path(&nodes, &graph);
+    let cal = crate::calendar::for_project(&state, id).await?;
+    let cp = scheduling::critical_path(&cal, &nodes, &graph);
     let mut critical: Vec<Uuid> = cp.critical.into_iter().collect();
     critical.sort();
     let baseline = sqlx::query_as::<_, BaselineRow>("SELECT task_id, start_date, due_date FROM task_baselines WHERE project_id = $1")
@@ -592,6 +604,12 @@ pub async fn create_task(
     }
     // A milestone is a zero-length point in time.
     let (start, due) = if req.is_milestone { (req.due_date.or(req.start_date), req.due_date.or(req.start_date)) } else { (req.start_date, req.due_date) };
+    // In "working days" projects tasks start and end on working days.
+    let (start, due) = if start.is_some() || due.is_some() {
+        crate::calendar::for_project(&state, project_id).await?.snap(start, due)
+    } else {
+        (start, due)
+    };
     let id: Uuid = sqlx::query_scalar(
         "INSERT INTO tasks (tenant_id, project_id, parent_id, title, description, assignee_id, start_date, due_date,
                             is_milestone, priority, created_by, sort_order)
@@ -706,6 +724,15 @@ pub async fn update_task(
     if t.is_milestone {
         t.start_date = t.due_date.or(t.start_date);
         t.due_date = t.start_date;
+    }
+    if (t.start_date, t.due_date, t.is_milestone) != before && (t.start_date.is_some() || t.due_date.is_some()) {
+        // In "working days" projects tasks start and end on working days.
+        let (s, d) = crate::calendar::for_project(&state, t.project_id).await?.snap(t.start_date, t.due_date);
+        t.start_date = s;
+        t.due_date = d;
+        if t.is_milestone {
+            t.due_date = t.start_date;
+        }
     }
     check_dates(t.start_date, t.due_date)?;
     let dates_changed = (t.start_date, t.due_date, t.is_milestone) != before;
@@ -947,7 +974,8 @@ async fn auto_shift(state: &AppState, user: &CurrentUser, project_id: Uuid, chan
         }
     }
     let (nodes, deps) = load_graph(state, project_id).await?;
-    let moved = if all { scheduling::propagate_all(&nodes, &deps) } else { scheduling::propagate(&nodes, &deps, changed) };
+    let cal = crate::calendar::for_project(state, project_id).await?;
+    let moved = if all { scheduling::propagate_all(&cal, &nodes, &deps) } else { scheduling::propagate(&cal, &nodes, &deps, changed) };
     if moved.is_empty() {
         return Ok(vec![]);
     }

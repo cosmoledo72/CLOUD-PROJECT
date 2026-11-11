@@ -1,10 +1,14 @@
 <script lang="ts">
   // SVG Gantt chart: task list on the left, timeline on the right.
   // Bars can be dragged (move) or resized from the right edge; dates snap to
-  // whole days. Dependencies are drawn as elbow arrows. Optional overlays:
+  // whole days (working days in projects that count working days: a moved
+  // bar keeps its working-day length and lands on working days). Weekends and
+  // holidays of the working calendar are shaded. Dependencies are drawn as
+  // elbow arrows. Optional overlays:
   // critical path (red outline), float in tooltips and the baseline plan
   // (thin grey bar under each task).
   import { formatDate, localToday, type BaselineEntry, type Dependency, type Task } from './api';
+  import { durationLabel, workCalendar as wc } from './workCalendar.svelte';
 
   let { tasks, dependencies, canEdit = false, canEditTask, groupOf, critical = [], slack = {}, baseline = [], onchange, onselect }: {
     tasks: Task[];
@@ -51,10 +55,12 @@
   }
 
   function tooltip(t: Task): string {
-    const lines = [t.title, `${formatDate(t.start_date ?? t.due_date)} — ${formatDate(t.due_date ?? t.start_date)}`];
+    const dur = durationLabel(t.start_date, t.due_date, t.day_mode);
+    const lines = [t.title, `${formatDate(t.start_date ?? t.due_date)} — ${formatDate(t.due_date ?? t.start_date)}${dur && !t.is_milestone ? ` (${dur})` : ''}`];
     const f = slack[t.id];
+    const u = unit(t);
     if (f !== undefined && t.status !== 'done') {
-      lines.push(f < 0 ? `Нарушена связь: не хватает ${-f} дн.` : f === 0 ? 'Критическая задача: резерва нет' : `Резерв: ${f} дн.`);
+      lines.push(f < 0 ? `Нарушена связь: не хватает ${-f} ${u}` : f === 0 ? 'Критическая задача: резерва нет' : `Резерв: ${f} ${u}`);
     }
     const b = baseSpan(t.id);
     const cur = span(t);
@@ -64,6 +70,8 @@
     }
     return lines.join('\n');
   }
+
+  const unit = (t: Task) => (t.day_mode === 'work' ? 'раб. дн.' : 'дн.');
 
   const ROW = 34;
   const HEAD = 48;
@@ -91,12 +99,21 @@
 
   // Live drag override.
   let drag = $state<{ id: string; mode: 'move' | 'resize'; x0: number; s: number; e: number; ds: number } | null>(null);
-  const spanOf = (t: Task): [number, number] | null => {
-    if (drag && drag.id === t.id) {
-      return drag.mode === 'move' ? [drag.s + drag.ds, drag.e + drag.ds] : [drag.s, Math.max(drag.s, drag.e + drag.ds)];
+  const spanOf = (t: Task): [number, number] | null => (drag && drag.id === t.id ? dragged(t, drag) : span(t));
+
+  /** Where a drag puts the bar. Working-day projects keep the working-day
+   *  length and stay on working days. */
+  function dragged(t: Task, d: { mode: 'move' | 'resize'; s: number; e: number; ds: number }): [number, number] {
+    if (t.day_mode !== 'work') {
+      return d.mode === 'move' ? [d.s + d.ds, d.e + d.ds] : [d.s, Math.max(d.s, d.e + d.ds)];
     }
-    return span(t);
-  };
+    if (d.mode === 'move') {
+      const s = wc.snap(d.s + d.ds);
+      const len = Math.max(0, wc.count(wc.snap(d.s), d.e) - 1);
+      return [s, t.is_milestone ? s : wc.add(s, len)];
+    }
+    return [d.s, Math.max(d.s, wc.snap(d.e + d.ds, -1))];
+  }
 
   const range = $derived.by(() => {
     const spans = tasks.map(span).filter((x): x is [number, number] => x !== null);
@@ -106,6 +123,17 @@
     return { start: min - pad, end: max + pad * 2 };
   });
   const days = $derived(range.end - range.start + 1);
+  $effect(() => {
+    void wc.ensure(range.start, range.end);
+  });
+  /** Non-working day of the working calendar (weekend, holiday, day off). */
+  const off = (d: number) => !wc.isWork(d);
+  function dayTitle(d: number): string {
+    const i = wc.info(d);
+    const date = new Date(d * DAY_MS).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+    if (i?.title) return `${date}: ${i.title}`;
+    return `${date}: ${off(d) ? 'выходной' : 'рабочий день'}`;
+  }
   const width = $derived(days * dayW);
   const height = $derived(HEAD + Math.max(rows.length, 1) * ROW);
   const x = (d: number) => (d - range.start) * dayW;
@@ -152,7 +180,8 @@
         ? `M${x1},${y1} H${mid} V${y2} H${x2}`
         : `M${x1},${y1} H${x1 + 8} V${y1 + (y2 > y1 ? ROW / 2 : -ROW / 2)} H${x2 - 10} V${y2} H${x2}`;
       // Violated when the successor starts before the predecessor finishes.
-      const violated = dep.kind === 'FS' && sb[0] <= sa[1] + dep.lag_days;
+      const limit = b.day_mode === 'work' ? wc.add(wc.snap(sa[1], -1), dep.lag_days) : sa[1] + dep.lag_days;
+      const violated = dep.kind === 'FS' && sb[0] <= limit;
       return [{ key: `${dep.task_id}-${dep.depends_on_id}`, path, violated }];
     })
   );
@@ -176,12 +205,14 @@
     if (!drag) return;
     const d = drag;
     drag = null;
+    const t = tasks.find((t) => t.id === d.id);
+    if (!t) return;
     if (d.ds === 0) {
-      const t = tasks.find((t) => t.id === d.id);
-      if (t) onselect?.(t);
+      onselect?.(t);
       return;
     }
-    const [s, e] = d.mode === 'move' ? [d.s + d.ds, d.e + d.ds] : [d.s, Math.max(d.s, d.e + d.ds)];
+    const [s, e] = dragged(t, d);
+    if (s === d.s && e === d.e) return;
     onchange?.(d.id, fromDay(s), fromDay(e));
   }
 
@@ -230,10 +261,10 @@
 
   <div class="right" bind:this={scroller}>
     <svg {width} {height} role="img" aria-label="Диаграмма Ганта" onpointermove={moveDrag} onpointerup={endDrag} onpointercancel={endDrag}>
-      <!-- Weekend shading and grid -->
+      <!-- Non-working days (weekends, holidays, days off) and grid -->
       {#each dayTicks as d}
-        {#if dayW >= 12 && (weekday(d) === 0 || weekday(d) === 6)}
-          <rect x={x(d)} y={HEAD} width={dayW} height={height - HEAD} class="weekend" />
+        {#if dayW >= 12 && off(d)}
+          <rect x={x(d)} y={HEAD} width={dayW} height={height - HEAD} class="weekend" class:holiday={wc.info(d)?.kind === 'holiday' || wc.info(d)?.kind === 'off'}><title>{dayTitle(d)}</title></rect>
         {/if}
         {#if zoom === 'day' || (zoom === 'week' && weekday(d) === 1)}
           <line x1={x(d)} x2={x(d)} y1={24} y2={height} class="grid" />
@@ -251,7 +282,7 @@
       {/each}
       {#each dayTicks as d}
         {#if zoom === 'day'}
-          <text x={x(d) + dayW / 2} y="40" class="day" class:we={weekday(d) === 0 || weekday(d) === 6} text-anchor="middle">{new Date(d * DAY_MS).getUTCDate()}</text>
+          <text x={x(d) + dayW / 2} y="40" class="day" class:we={off(d)} class:short={wc.info(d)?.kind === 'short'} text-anchor="middle">{new Date(d * DAY_MS).getUTCDate()}<title>{dayTitle(d)}</title></text>
         {:else if zoom === 'week' && weekday(d) === 1}
           <text x={x(d) + 3} y="40" class="day">{new Date(d * DAY_MS).getUTCDate()}</text>
         {/if}
@@ -311,7 +342,7 @@
                 <rect x={bx + bw - 6} y={y + 6} width="6" height={ROW - 16} class="handle" role="presentation"
                       onpointerdown={(e) => startDrag(e, t, 'resize')} />
               {/if}
-              <text x={bx + bw + 6} y={y + ROW / 2 + 2} class="label">{t.title}{#if showCritical && slack[t.id] > 0 && t.status !== 'done'}<tspan class="float">{` · резерв ${slack[t.id]} дн.`}</tspan>{/if}</text>
+              <text x={bx + bw + 6} y={y + ROW / 2 + 2} class="label">{t.title}{#if showCritical && slack[t.id] > 0 && t.status !== 'done'}<tspan class="float">{` · резерв ${slack[t.id]} ${unit(t)}`}</tspan>{/if}</text>
             </g>
           {/if}
         {/if}
@@ -345,9 +376,11 @@
   .grid { stroke: var(--border); stroke-width: 1; }
   .grid.strong { stroke: var(--border-strong); }
   .weekend { fill: var(--surface-2); }
+  .weekend.holiday { fill: color-mix(in srgb, var(--danger) 7%, var(--surface-2)); }
   .month { font-size: 12px; font-weight: 600; fill: var(--text-2); }
   .day { font-size: 11px; fill: var(--text-3); }
   .day.we { fill: var(--danger); opacity: .7; }
+  .day.short { text-decoration: underline dotted; }
   .today { stroke: var(--danger); stroke-width: 1.5; stroke-dasharray: 3 3; }
   .dep { fill: none; stroke: var(--text-3); stroke-width: 1.3; }
   .dep.bad { stroke: var(--danger); }

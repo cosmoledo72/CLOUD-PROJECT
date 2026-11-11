@@ -136,6 +136,8 @@ export interface Project {
   end_date: string | null;
   fields: FieldValues;
   auto_schedule: boolean;
+  /** Durations count working days (`work`) or every day (`calendar`). */
+  day_mode: DayMode;
   baseline_saved_at: string | null;
   company_id: string | null;
   company_name: string | null;
@@ -149,6 +151,8 @@ export interface Member {
   role: 'manager' | 'member' | 'viewer';
 }
 
+export type DayMode = 'work' | 'calendar';
+
 export type TaskStatus = 'open' | 'in_progress' | 'review' | 'done';
 
 export interface Task {
@@ -157,6 +161,7 @@ export interface Task {
   number: number;
   project_id: string;
   project_name: string;
+  day_mode: DayMode;
   parent_id: string | null;
   title: string;
   description: string;

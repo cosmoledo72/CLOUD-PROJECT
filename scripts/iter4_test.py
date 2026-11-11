@@ -26,6 +26,8 @@ def main():
     viewer.call("POST", "/auth/login", {"tenant": slug, "email": "v@example.com", "password": "viewer-password-1"})
 
     pid = owner.call("POST", "/projects", {"name": "График"})["id"]
+    # This test checks scheduling in calendar days (working days: calendar_test.py).
+    owner.call("PATCH", f"/projects/{pid}", {"day_mode": "calendar"})
     owner.call("POST", f"/projects/{pid}/members", {"user_id": mid, "role": "member"})
     owner.call("POST", f"/projects/{pid}/members", {"user_id": viewer_id, "role": "viewer"})
 

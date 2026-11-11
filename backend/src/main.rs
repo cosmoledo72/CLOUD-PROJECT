@@ -5,6 +5,7 @@ mod acl;
 mod admin;
 mod auth;
 mod branding;
+mod calendar;
 mod chat;
 mod comments;
 mod config;
@@ -101,6 +102,9 @@ fn router(state: AppState) -> Router {
         .route("/admin/project-fields/{id}", put(fields::update_def).delete(fields::delete_def))
         // Branding (public by slug for the login page)
         .route("/branding", get(branding::get_own))
+        .route("/calendar", get(calendar::get))
+        .route("/admin/calendar/days/{date}", put(calendar::set_day).delete(calendar::reset_day))
+        .route("/admin/calendar/{year}/holidays", post(calendar::fill_holidays))
         .route("/finance/settings", get(finance::get_settings).put(finance::save_settings))
         .route("/finance/categories", get(finance::list_categories).post(finance::create_category))
         .route("/finance/categories/{id}", patch(finance::update_category))

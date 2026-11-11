@@ -5,7 +5,7 @@
   import { page } from '$app/state';
   import {
     api, formatDate, nameDef, roleLabel,
-    localToday, type CompanyListItem, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
+    localToday, type CompanyListItem, type DayMode, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
   } from '$lib/api';
   import Gantt from '$lib/Gantt.svelte';
   import TaskRows from '$lib/TaskRows.svelte';
@@ -72,6 +72,17 @@
     await guarded(async () => {
       await api.patch(`/projects/${id}`, { auto_schedule: value });
       if (project) project.auto_schedule = value;
+    });
+  }
+  async function setDayMode(mode: DayMode) {
+    if (!project || project.day_mode === mode) return;
+    await guarded(async () => {
+      await api.patch(`/projects/${id}`, { day_mode: mode });
+      if (project) project.day_mode = mode;
+      await loadTasks();
+      info = mode === 'work'
+        ? 'Сроки считаются в рабочих днях: выходные и праздники пропускаются. Чтобы перенести задачи с нерабочих дней, нажмите «Выровнять по связям» или сдвиньте их на диаграмме.'
+        : 'Сроки считаются в календарных днях.';
     });
   }
   async function alignAll() {
@@ -355,6 +366,14 @@
         {/if}
         {#if violations > 0}<span class="badge danger">нарушено связей: {violations}</span>{/if}
         <div class="spacer"></div>
+        {#if isManager}
+          <div class="seg" role="radiogroup" aria-label="Как считать сроки" title="Как считать длительность задач и задержки связей">
+            <button class="btn sm" role="radio" aria-checked={project.day_mode === 'work'} class:on={project.day_mode === 'work'} onclick={() => setDayMode('work')}>Рабочие дни</button>
+            <button class="btn sm" role="radio" aria-checked={project.day_mode === 'calendar'} class:on={project.day_mode === 'calendar'} onclick={() => setDayMode('calendar')}>Календарные</button>
+          </div>
+        {:else}
+          <span class="faint small">{project.day_mode === 'work' ? 'Сроки в рабочих днях' : 'Сроки в календарных днях'}</span>
+        {/if}
         {#if isManager}
           <label class="check small" title="При переносе задачи зависящие от неё задачи сдвигаются автоматически">
             <input type="checkbox" checked={project.auto_schedule} onchange={toggleAuto} />Автосдвиг связанных задач

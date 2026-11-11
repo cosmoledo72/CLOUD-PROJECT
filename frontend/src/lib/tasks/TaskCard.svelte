@@ -11,6 +11,7 @@
   import Modal from '$lib/Modal.svelte';
   import { session } from '$lib/session.svelte';
   import { isOverdue, rangeLabel } from './dates';
+  import { durationLabel, toDay, workCalendar } from '$lib/workCalendar.svelte';
   import { LABEL_COLORS, labels } from './labels.svelte';
   import LabelChip from './LabelChip.svelte';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
@@ -65,6 +66,17 @@
   const canManage = $derived(isNew ? true : !!card?.can_manage);
   const meId = $derived(session.me?.id);
   const today = localToday();
+
+  // Working calendar: the project's day mode and hints about non-working dates.
+  const dayMode = $derived(task?.day_mode ?? projectTasks[0]?.day_mode ?? 'work');
+  $effect(() => {
+    const ds = [draft.start_date, draft.due_date].filter(Boolean).map(toDay);
+    if (ds.length) void workCalendar.ensure(Math.min(...ds), Math.max(...ds));
+  });
+  const duration = $derived(draft.is_milestone ? '' : durationLabel(draft.start_date || null, draft.due_date || null, dayMode));
+  const offDates = $derived(
+    dayMode !== 'work' ? [] : [draft.start_date, draft.due_date].filter((d) => d && !workCalendar.isWork(toDay(d)))
+  );
 
   function fill(t: Task) {
     draft = {
@@ -396,6 +408,12 @@
         <label class="field">Готовность, % <input class="input" type="number" min="0" max="100" bind:value={draft.progress} disabled={!canEdit} /></label>
       {/if}
     </div>
+    {#if duration || offDates.length}
+      <p class="dur faint small">
+        {#if duration}Длительность: {duration}{/if}
+        {#if offDates.length}<span class="offday">{duration ? ' · ' : ''}{offDates.length > 1 || draft.is_milestone ? 'Выбраны нерабочие дни' : 'Выбран нерабочий день'} — при сохранении срок перенесётся на рабочий</span>{/if}
+      </p>
+    {/if}
 
     {#if task}
       <section class="sec">
@@ -457,7 +475,7 @@
           <h3>Предшествующие задачи</h3>
           {#each predecessors as p}
             <div class="row dep">
-              <span>{titleOf(p.depends_on_id)}</span><span class="faint">({p.kind}{p.lag_days ? ` +${p.lag_days} дн.` : ''})</span>
+              <span>{titleOf(p.depends_on_id)}</span><span class="faint">({p.kind}{p.lag_days ? ` +${p.lag_days} ${dayMode === 'work' ? 'раб. ' : ''}дн.` : ''})</span>
               <div class="spacer"></div>
               {#if canManage}<button class="btn ghost sm danger" onclick={() => removeDep(p.depends_on_id)}>Убрать</button>{/if}
             </div>
@@ -549,6 +567,8 @@
   .sw { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; }
   .sw.on { border-color: var(--text); box-shadow: inset 0 0 0 2px var(--surface); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .dur { margin: -4px 0 0; }
+  .offday { color: var(--warn); }
   .sec { display: grid; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
   h3 { margin: 0; display: flex; align-items: center; gap: 6px; }
   h3 .faint { font-weight: 500; font-size: 13px; }
