@@ -73,6 +73,7 @@ API=http://localhost:8080 python3 scripts/crm_tasks_test.py # CRM to-dos: links,
 API=http://localhost:8080 python3 scripts/sales_docs_test.py # sales documents: numbering, templates, VAT, amounts in words, folders
 API=http://localhost:8080 python3 scripts/kb_chat_test.py   # knowledge base, chats, team directory, finance filters
 API=http://localhost:8080 python3 scripts/tasks_test.py     # "All tasks" board, task numbers, labels, checklists
+API=http://localhost:8080 python3 scripts/project_edit_test.py  # project rename, folder rename, validation
 cd backend && cargo test                                   # unit tests (SVG filter, OOXML, limiter, scheduling, requisites validation, import)
 ```
 

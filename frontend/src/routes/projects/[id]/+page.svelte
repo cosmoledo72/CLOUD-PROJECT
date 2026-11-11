@@ -222,22 +222,32 @@
   let defs = $state<FieldDef[]>([]);
   let reqEditing = $state(false);
   let reqValues = $state<FieldValues>({});
+  let reqName = $state('');
+  let reqDescription = $state('');
   $effect(() => {
     if (tab === 'requisites' && defs.length === 0) api.get<{ fields: FieldDef[] }>('/project-fields').then((r) => (defs = r.fields));
   });
   function editRequisites() {
     reqValues = { ...(project?.fields ?? {}) };
+    reqName = project?.name ?? '';
+    reqDescription = project?.description ?? '';
     reqEditing = true;
   }
   async function saveRequisites() {
     await guarded(async () => {
+      // Name and description belong to the project itself, not to the requisites.
+      const name = reqName.trim();
+      if (!name) throw new Error('Укажите название проекта');
+      if (name !== project?.name || reqDescription.trim() !== (project?.description ?? '')) {
+        await api.patch(`/projects/${id}`, { name, description: reqDescription.trim() });
+      }
       // Send every editable field so that cleared values are removed on the server.
       const values: FieldValues = {};
       for (const d of defs.filter((d) => !d.is_archived)) {
         const v = reqValues[d.key];
         values[d.key] = v === '' || v === undefined ? null : v;
       }
-      await api.put<{ values: FieldValues }>(`/projects/${id}/fields`, { values });
+      if (defs.some((d) => !d.is_archived)) await api.put<{ values: FieldValues }>(`/projects/${id}/fields`, { values });
       // The customer requisite may have changed the project's CRM link.
       await loadProject();
       reqEditing = false;
@@ -351,6 +361,10 @@
     {:else if tab === 'requisites'}
       <div class="card req-card">
         {#if reqEditing}
+          <div class="proj-main">
+            <label class="field">Название проекта <input class="input" bind:value={reqName} maxlength="255" required /></label>
+            <label class="field">Описание <textarea class="input" rows="2" bind:value={reqDescription}></textarea></label>
+          </div>
           <RequisitesForm {defs} bind:values={reqValues} {users} />
           <div class="row req-actions">
             <div class="spacer"></div>
@@ -367,7 +381,7 @@
             {#if isManager && session.crm}<button class="btn ghost sm" onclick={openCustomer}>{project.company_id ? 'Изменить' : 'Выбрать из CRM'}</button>{/if}
           </div>
           {/if}
-          {#if isManager && defs.some((d) => !d.is_archived)}
+          {#if isManager}
             <div class="row req-actions top"><div class="spacer"></div><button class="btn" onclick={editRequisites}>Редактировать</button></div>
           {/if}
           {#if defs.length === 0}
@@ -526,4 +540,5 @@
   .role { width: 170px; flex: none; }
   .addm { padding: 12px; }
   .danger-zone { margin-top: 16px; }
+  .proj-main { display: grid; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 </style>

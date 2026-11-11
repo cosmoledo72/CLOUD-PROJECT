@@ -145,7 +145,7 @@ pub async fn create_project_inner(
     if user.is_guest() {
         return Err(ApiError::Forbidden);
     }
-    let name = validate_name(name)?;
+    let name = project_name_checked(name)?;
     let mut tx = state.db.begin().await?;
     // Every project gets its own document root, governed by project roles.
     let folder_id: Uuid = sqlx::query_scalar(
@@ -224,20 +224,51 @@ pub async fn update_project(
     Json(req): Json<UpdateProject>,
 ) -> ApiResult<Json<Value>> {
     project_role(&state, &user, id).await?.require(ProjectRole::Manager)?;
-    let name = req.name.as_deref().map(validate_name).transpose()?;
+    let name = req.name.as_deref().map(project_name_checked).transpose()?;
+    if let Some(s) = req.status.as_deref() {
+        if !matches!(s, "active" | "paused" | "closed") {
+            return bad_request("status must be active, paused or closed");
+        }
+    }
+    let mut tx = state.db.begin().await?;
+    let (old_name, folder_id): (String, Option<Uuid>) = sqlx::query_as("SELECT name, folder_id FROM projects WHERE id = $1 FOR UPDATE")
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
     sqlx::query(
         "UPDATE projects SET name = COALESCE($2, name), description = COALESCE($3, description), status = COALESCE($4, status),
                 auto_schedule = COALESCE($5, auto_schedule)
           WHERE id = $1",
     )
     .bind(id)
-    .bind(name)
-    .bind(req.description)
-    .bind(req.status)
+    .bind(&name)
+    .bind(req.description.as_deref().map(str::trim))
+    .bind(&req.status)
     .bind(req.auto_schedule)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
+    // The project's document root carries the project name, so rename it too.
+    let renamed = name.filter(|n| *n != old_name);
+    if let (Some(n), Some(folder)) = (&renamed, folder_id) {
+        sqlx::query("UPDATE folders SET name = $2 WHERE id = $1 AND kind = 'project'")
+            .bind(folder)
+            .bind(n)
+            .execute(&mut *tx)
+            .await?;
+    }
+    tx.commit().await?;
+    if let Some(n) = renamed {
+        state
+            .audit(user.tenant_id, Some(user.user_id), "project.renamed", Some("project"), Some(id), json!({ "from": old_name, "to": n }))
+            .await;
+    }
     Ok(Json(json!({ "ok": true })))
+}
+
+/// Project names follow folder-name rules (the project root folder bears the
+/// same name), with a message the user can act on.
+fn project_name_checked(name: &str) -> ApiResult<String> {
+    validate_name(name).map_err(|_| ApiError::BadRequest("Название проекта: от 1 до 255 символов, без «/» и «\\»".into()))
 }
 
 pub async fn delete_project(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {
