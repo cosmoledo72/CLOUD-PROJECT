@@ -16,6 +16,7 @@
   import FolderBrowser from '$lib/FolderBrowser.svelte';
   import Modal from '$lib/Modal.svelte';
   import RequisitesForm from '$lib/RequisitesForm.svelte';
+  import RequisitesView from '$lib/RequisitesView.svelte';
   import { session } from '$lib/session.svelte';
 
   const id = $derived(page.params.id);
@@ -365,8 +366,8 @@
       <Gantt {tasks} dependencies={deps} {canEdit} critical={schedule.critical} slack={schedule.slack} {baseline}
              onchange={reschedule} onselect={openTask} />
     {:else if tab === 'requisites'}
-      <div class="card req-card">
-        {#if reqEditing}
+      {#if reqEditing}
+        <div class="card req-card">
           <div class="proj-main">
             {#if !nd}<label class="field">Название проекта <input class="input" bind:value={reqName} maxlength="1000" required /></label>{/if}
             <label class="field">Описание <textarea class="input" rows="2" bind:value={reqDescription}></textarea></label>
@@ -377,26 +378,28 @@
             <button class="btn" onclick={() => (reqEditing = false)}>Отмена</button>
             <button class="btn primary" onclick={saveRequisites}>Сохранить</button>
           </div>
-        {:else}
+        </div>
+      {:else}
+        <div class="row req-bar">
           {#if !defs.some((d) => d.field_type === 'company' && !d.is_archived)}
-          <div class="row cust-row">
             <span class="faint">Заказчик:</span>
             {#if project.company_id}
               {#if session.crm}<a href="/crm/companies/{project.company_id}">{project.company_name}</a>{:else}<b>{project.company_name}</b>{/if}
             {:else}<span class="faint">не привязан к контрагенту CRM</span>{/if}
             {#if isManager && session.crm}<button class="btn ghost sm" onclick={openCustomer}>{project.company_id ? 'Изменить' : 'Выбрать из CRM'}</button>{/if}
+          {/if}
+          <div class="spacer"></div>
+          {#if isManager}<button class="btn" onclick={editRequisites}>Редактировать</button>{/if}
+        </div>
+        {#if defs.length === 0}
+          <div class="card req-card">
+            <p class="faint none">Реквизиты проектов не настроены.{#if isManager}{' '}Администратор портала задаёт их в разделе «Администрирование → Реквизиты проектов».{/if}</p>
           </div>
-          {/if}
-          {#if isManager}
-            <div class="row req-actions top"><div class="spacer"></div><button class="btn" onclick={editRequisites}>Редактировать</button></div>
-          {/if}
-          {#if defs.length === 0}
-            <p class="faint">Реквизиты проектов не настроены.{#if isManager}{' '}Администратор портала задаёт их в разделе «Администрирование → Реквизиты проектов».{/if}</p>
-          {:else}
-            <RequisitesForm {defs} values={project.fields} {users} readonly />
-          {/if}
+        {:else}
+          <RequisitesView {defs} values={project.fields} {users} startDate={project.start_date ?? project.created_at.slice(0, 10)}
+                          onfill={isManager ? editRequisites : undefined} />
         {/if}
-      </div>
+      {/if}
     {:else if tab === 'files' && project.folder_id}
       <FolderBrowser folderId={project.folder_id} root={project.folder_id} embedded />
     {:else if tab === 'list' || tab === 'gantt'}
@@ -512,7 +515,6 @@
 <style>
   .desc { margin: -8px 0 12px; }
   .cust { text-decoration: none; }
-  .cust-row { gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
   .pcode { background: var(--surface-2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--text-2); }
   .tpl-list { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
   .tpl-opt { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
@@ -530,7 +532,6 @@
   .info-box { background: var(--accent-soft); color: var(--accent); padding: 8px 12px; border-radius: var(--radius); font-size: 13px; margin-bottom: 10px; }
   .req-card { padding: 18px; display: grid; gap: 14px; }
   .req-card p { margin: 0; }
-  .req-actions.top { margin-bottom: -6px; }
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
   .tabs button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 0; background: none; color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
   .tabs button.on { color: var(--accent); border-color: var(--accent); }
@@ -547,4 +548,6 @@
   .addm { padding: 12px; }
   .danger-zone { margin-top: 16px; }
   .proj-main { display: grid; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .req-bar { margin-bottom: 12px; min-height: 34px; }
+  .none { margin: 0; }
 </style>
