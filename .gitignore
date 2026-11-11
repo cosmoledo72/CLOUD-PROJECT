@@ -9,3 +9,4 @@ __pycache__/
 
 # Local backups and HTTPS proxy state
 backups/
+deploy/caddy-local-root.crt

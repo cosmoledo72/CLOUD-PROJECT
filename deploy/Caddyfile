@@ -1,12 +1,25 @@
-# HTTPS reverse proxy for the office server (docker-compose.prod.yml).
-# Certificates come from Let's Encrypt automatically: both names must resolve
-# to the office's public IP, and ports 80 and 443 must be forwarded to this host.
+# HTTPS reverse proxy (docker-compose.prod.yml).
+#
+# CADDY_TLS=acme (office server): Let's Encrypt certificates; both names must
+#   resolve to the office's public IP, ports 80 and 443 forwarded to this host.
+# CADDY_TLS=internal (developer PC, docker-compose.local.yml): certificates from
+#   Caddy's own local CA; the names point to 127.0.0.1 in the hosts file and the
+#   CA root is trusted with scripts\trust-local-cert.cmd.
 {
-	email {$ACME_EMAIL}
+	email {$ACME_EMAIL:admin@cloud-project.online}
+}
+
+(tls_acme) {
+}
+
+(tls_internal) {
+	tls internal
 }
 
 # Portal: SPA and API (nginx in the "web" service proxies /api to the backend).
 {$PORTAL_DOMAIN} {
+	import tls_{$CADDY_TLS:acme}
+
 	# Live notifications (server-sent events): no compression, flush every event.
 	@stream path /api/notifications/stream
 	handle @stream {
@@ -26,6 +39,7 @@
 
 # ONLYOFFICE Docs: the browser loads the editor from here (WebSockets included).
 {$DOCS_DOMAIN} {
+	import tls_{$CADDY_TLS:acme}
 	reverse_proxy onlyoffice:80
 	header -Server
 }

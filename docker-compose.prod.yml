@@ -1,10 +1,14 @@
-# Production overlay for the office server: HTTPS on the domain via Caddy.
+# HTTPS overlay: the portal on cloud-project.online via Caddy.
 #
+# Office server (Let's Encrypt certificates):
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #   (or scripts\start.cmd prod)
+#   DNS: both names -> office public IP; router: forward TCP 80, 443 (and UDP 443) here.
 #
-# Requires in .env: ACME_EMAIL, and optionally PORTAL_DOMAIN / DOCS_DOMAIN.
-# DNS: both names -> office public IP; router: forward TCP 80, 443 (and UDP 443) here.
+# Developer PC (local certificates, hosts file): add docker-compose.local.yml
+#   (or scripts\start.cmd local), see docs/SPEC.md, section 12.
+#
+# Optional in .env: PORTAL_DOMAIN, DOCS_DOMAIN, ACME_EMAIL.
 
 services:
   caddy:
@@ -14,7 +18,9 @@ services:
     environment:
       PORTAL_DOMAIN: ${PORTAL_DOMAIN:-cloud-project.online}
       DOCS_DOMAIN: ${DOCS_DOMAIN:-docs.cloud-project.online}
-      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env (Let's Encrypt notices)}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@cloud-project.online}
+      # acme = Let's Encrypt, internal = Caddy's local CA (developer PC).
+      CADDY_TLS: ${CADDY_TLS:-acme}
     ports:
       - "80:80"
       - "443:443"
@@ -29,8 +35,9 @@ services:
       PUBLIC_URL: https://${PORTAL_DOMAIN:-cloud-project.online}
       DOCS_PUBLIC_URL: https://${DOCS_DOMAIN:-docs.cloud-project.online}
       COOKIE_SECURE: "true"
-      # New portals are not created from the internet; set true once to create the first one.
-      SIGNUP_ENABLED: ${SIGNUP_ENABLED:-false}
+      # New portals are not created from the internet (SIGNUP_ENABLED in .env is
+      # ignored here); set PROD_SIGNUP_ENABLED=true once to create the first one.
+      SIGNUP_ENABLED: ${PROD_SIGNUP_ENABLED:-false}
 
   web:
     environment:

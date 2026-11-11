@@ -21,10 +21,20 @@ docker compose up -d --build
 | Web UI | http://localhost:8080 — create a portal on the login page |
 | ONLYOFFICE Docs | http://localhost:8081 (first start takes 1–2 minutes) |
 
+### Developer PC: https://cloud-project.online locally
+
+```bat
+scripts\hosts-local.cmd          :: once, as administrator: the domain -> 127.0.0.1
+scripts\start.cmd local          :: HTTPS with Caddy's local CA (docker-compose.local.yml)
+scripts\trust-local-cert.cmd     :: once, after the first start: trust the local CA
+```
+
+Same setup as the office server (HTTPS, secure cookies, public URLs) except for the certificate source.
+
 ### Office server: HTTPS on cloud-project.online
 
 ```bash
-# .env: real secrets + ACME_EMAIL=you@example.com (optional PORTAL_DOMAIN, DOCS_DOMAIN)
+# .env: real secrets (optional PORTAL_DOMAIN, DOCS_DOMAIN, ACME_EMAIL)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 # Windows: scripts\start.cmd prod
 ```
@@ -32,7 +42,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 Caddy (`deploy/Caddyfile`) obtains Let's Encrypt certificates for `cloud-project.online` (portal) and
 `docs.cloud-project.online` (ONLYOFFICE). Both DNS names must point to the office's public IP and the router
 must forward TCP 80/443 (and UDP 443) to the server. The overlay sets `COOKIE_SECURE=true`, the public URLs,
-`SIGNUP_ENABLED=false` (set `true` once to create the first portal), and binds ports 8080/8081 to
+portal sign-up off (set `PROD_SIGNUP_ENABLED=true` once to create the first portal), and binds ports 8080/8081 to
 `127.0.0.1` only. Step-by-step guide (in Russian): `docs/SPEC.md`, section 12.
 
 ### Backups

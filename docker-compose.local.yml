@@ -1,0 +1,19 @@
+# Developer PC: the same HTTPS setup as the office server, but with
+# certificates from Caddy's local CA instead of Let's Encrypt.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.local.yml up -d --build
+#   (or scripts\start.cmd local)
+#
+# Once per PC:
+#   scripts\hosts-local.cmd        (as administrator) cloud-project.online -> 127.0.0.1
+#   scripts\trust-local-cert.cmd   trust Caddy's local CA in Windows (after the first start)
+
+services:
+  caddy:
+    environment:
+      CADDY_TLS: internal
+
+  backend:
+    environment:
+      # Creating test portals is allowed on the developer PC.
+      SIGNUP_ENABLED: ${SIGNUP_ENABLED:-true}

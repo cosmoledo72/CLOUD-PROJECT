@@ -668,7 +668,24 @@ ONLYOFFICE Docs Community распространяется под AGPL v3 и о�
 
 ## 12. Развёртывание на сервере офиса
 
-Файлы: `docker-compose.yml` (весь комплект), `docker-compose.prod.yml` (HTTPS на домене), `deploy/Caddyfile` (обратный прокси), `scripts/backup.sh` (резервные копии), `scripts/start.cmd`, `scripts/backup-now.cmd`, `scripts/restore.cmd` (команды для Windows), `scripts/onlyoffice_live_test.py` (проверка ONLYOFFICE).
+Файлы: `docker-compose.yml` (весь комплект), `docker-compose.prod.yml` (HTTPS на домене), `docker-compose.local.yml` (тот же домен на компьютере разработчика), `deploy/Caddyfile` (обратный прокси), `scripts/backup.sh` (резервные копии), `scripts/start.cmd`, `scripts/hosts-local.cmd`, `scripts/trust-local-cert.cmd`, `scripts/backup-now.cmd`, `scripts/restore.cmd` (команды для Windows), `scripts/onlyoffice_live_test.py` (проверка ONLYOFFICE).
+
+### Три режима запуска
+| Команда | Где | Адрес | Сертификат |
+|---|---|---|---|
+| `scripts\start.cmd` | любой компьютер | `http://localhost:8080`, документы `:8081` | нет (HTTP) |
+| `scripts\start.cmd local` | компьютер разработчика (сейчас — основной режим) | `https://cloud-project.online`, `https://docs.cloud-project.online` | локальный центр сертификации Caddy |
+| `scripts\start.cmd prod` | сервер офиса | те же адреса из интернета | Let's Encrypt |
+
+Режимы `local` и `prod` отличаются только источником сертификата (`CADDY_TLS=internal` / `acme`) и разрешением создавать порталы: всё остальное (HTTPS, `COOKIE_SECURE=true`, адреса, прокси) одинаково, поэтому на компьютере разработчика проверяется ровно то, что потом заработает на сервере.
+
+### Локальный режим (компьютер разработчика)
+Один раз на компьютере:
+1. `scripts\hosts-local.cmd` **от имени администратора** — добавляет в файл `hosts` строки `127.0.0.1 cloud-project.online` и `127.0.0.1 docs.cloud-project.online` (с пометкой `# cloud-project-local`; `hosts-local.cmd remove` удаляет их).
+2. `scripts\start.cmd local` — запуск. Порты 80 и 443 компьютера должны быть свободны (их могут занимать IIS, другие веб-серверы).
+3. `scripts\trust-local-cert.cmd` — добавляет корневой сертификат локального центра Caddy в хранилище Windows текущего пользователя (Windows спросит подтверждение). После этого Edge и Chrome открывают `https://cloud-project.online` без предупреждений; Firefox — при `security.enterprise_roots.enabled = true`. Корневой сертификат хранится в томе `caddy-data`: если том удалить, шаг 3 нужно повторить.
+
+Далее — просто `scripts\start.cmd local`. Создавать порталы в этом режиме можно (`SIGNUP_ENABLED`). Домен в этом режиме открывается только на этом компьютере; другим сотрудникам офиса он станет доступен в режиме `prod` на сервере. При переходе на сервер офиса выполнить `scripts\hosts-local.cmd remove`, иначе этот компьютер продолжит открывать свой локальный портал.
 
 ### Состав
 | Сервис | Назначение |
@@ -688,17 +705,17 @@ ONLYOFFICE Docs Community распространяется под AGPL v3 и о�
   1. постоянный «белый» IP-адрес офиса;
   2. DNS-записи типа A: `cloud-project.online` и `docs.cloud-project.online` → этот IP;
   3. на роутере проброс TCP 80 и 443 (и UDP 443 для HTTP/3) на сервер;
-  4. в `.env` — `ACME_EMAIL` (адрес для уведомлений Let's Encrypt).
+  4. по желанию в `.env` — `ACME_EMAIL` (учётная запись Let's Encrypt; по умолчанию admin@cloud-project.online).
 - Внутри офиса домен должен открываться тоже. Если роутер не умеет «петлю» NAT (обращение из локальной сети на свой внешний IP), на роутере или в локальном DNS направьте оба имени на локальный адрес сервера.
-- Режим prod: `COOKIE_SECURE=true`, `PUBLIC_URL`/`DOCS_PUBLIC_URL` на домены, `SIGNUP_ENABLED=false` (для создания первого портала один раз запустить с `SIGNUP_ENABLED=true`), порты 8080/8081 открыты только на самом сервере (`127.0.0.1`), снаружи — только через Caddy.
+- Режим prod: `COOKIE_SECURE=true`, `PUBLIC_URL`/`DOCS_PUBLIC_URL` на домены, создание порталов выключено независимо от `SIGNUP_ENABLED` в `.env` (для создания первого портала один раз запустить с `PROD_SIGNUP_ENABLED=true`), порты 8080/8081 открыты только на самом сервере (`127.0.0.1`), снаружи — только через Caddy.
 - Адрес клиента для защиты входа: Caddy передаёт его в `X-Forwarded-For`, nginx берёт его только от адресов из `REAL_IP_FROM` (в prod — сеть Docker `172.16.0.0/12`; без прокси никому не доверяет). На Docker Desktop для Windows входящие соединения могут приходить с одного адреса шлюза — тогда ограничения входа считаются общими для всех; для сервера лучше Linux.
 - Поток уведомлений (`/api/notifications/stream`) проксируется без сжатия и буферизации; WebSocket сервера документов Caddy пропускает сам.
 
 ### Порядок запуска на сервере
 1. Установить Docker (на Linux — Docker Engine с плагином compose; на Windows — Docker Desktop с автозапуском, без сна и гибернации).
-2. Скопировать папку проекта; создать `.env` из `.env.example`, задать секреты (`openssl rand -hex 32`) и `ACME_EMAIL`.
+2. Скопировать папку проекта; создать `.env` из `.env.example`, задать секреты (`openssl rand -hex 32`).
 3. `scripts\start.cmd prod` (Windows) или `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`.
-4. Открыть `https://cloud-project.online`, создать портал (при `SIGNUP_ENABLED=true`), затем вернуть `SIGNUP_ENABLED=false` и повторить шаг 3.
+4. Открыть `https://cloud-project.online`, создать портал (при `PROD_SIGNUP_ENABLED=true`), затем убрать эту строку из `.env` и повторить шаг 3.
 5. Проверить ONLYOFFICE: `python scripts/onlyoffice_live_test.py --tenant <портал> --email <почта>` (на сервере — адреса по умолчанию `http://localhost:8080` и `:8081`; снаружи — `--portal https://cloud-project.online --docs https://docs.cloud-project.online`).
 6. Сделать резервную копию вручную (`scripts\backup-now.cmd`) и убедиться, что она появилась в `backups`.
 

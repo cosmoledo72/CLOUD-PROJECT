@@ -143,6 +143,13 @@ SPEC.md из знаний проекта, затем сверь их с кодо
 - Команды для Windows: `scripts\start.cmd [prod]`, `scripts\backup-now.cmd`, `scripts\restore.cmd`. Пошаговая инструкция — SPEC, раздел 12.
 - Docker-образы в облачной среде Claude не скачиваются (Docker Hub закрыт), поэтому сам `docker compose up` проверяется уже на вашей машине; конфигурация проверена `docker compose config`, Caddyfile — `caddy validate`.
 
+### Локальный режим на домене (11.11.2026)
+Решение: **на время разработки портал работает на компьютере Дмитрия по адресу cloud-project.online**; сервер офиса — позже.
+- `docker-compose.local.yml` + `scripts\start.cmd local`: тот же HTTPS-прокси Caddy, что и на сервере, но сертификаты выдаёт локальный центр сертификации Caddy (`CADDY_TLS=internal`); создавать порталы можно.
+- `scripts\hosts-local.cmd` (от администратора) направляет `cloud-project.online` и `docs.cloud-project.online` на 127.0.0.1, `remove` — убирает; `scripts\trust-local-cert.cmd` добавляет корневой сертификат Caddy в Windows, чтобы браузер не ругался.
+- `ACME_EMAIL` стал необязательным; в режиме prod создание порталов выключено независимо от `SIGNUP_ENABLED` в `.env` (включается `PROD_SIGNUP_ENABLED=true`).
+- Проверено с Caddy 2.10: в локальном режиме выдаётся сертификат на cloud-project.online от «Caddy Local Authority», браузерная проверка цепочки проходит; режим Let's Encrypt не изменился.
+
 ## Проверки
 
 Сквозные тесты (Python, `scripts/*_test.py`): smoke, admin, iter3, iter4, crm, mail, notify, crm_tasks, sales_docs, kb_chat, tasks, project_edit — проходят. `cargo test` — 40 тестов; `svelte-check` — без ошибок и предупреждений; сборка фронтенда проходит.
@@ -150,9 +157,10 @@ SPEC.md из знаний проекта, затем сверь их с кодо
 ## Следующие шаги
 
 По дорожной карте в `docs/PLAN.md`:
-1. **Остаток волны 1** (до 04.12.2026): запустить на сервере офиса по SPEC, раздел 12 — Docker, `.env` с `ACME_EMAIL`, DNS-записи и проброс портов 80/443, `scripts\start.cmd prod`; прогнать `scripts/onlyoffice_live_test.py` и прислать результат; проверить ночную копию. F1, F2 и подготовка A1–A4 сделаны.
-2. **Волна 2** (07.12 – 25.12.2026): F3 таймер и отчёты; F4 платежи, расходы, аналитика (вместо B10); F5 бюджет и оплачено в проектах; пилот A5–A6.
-3. Дальше — волны 3–8 (график и проекты, поиск и база знаний, CRM, готовность к SaaS, расширение, в конце — просмотр DWG).
+1. **Сейчас:** запустить у себя `scripts\hosts-local.cmd` (от администратора), `scripts\start.cmd local`, `scripts\trust-local-cert.cmd`, открыть https://cloud-project.online и прогнать `scripts/onlyoffice_live_test.py --portal https://cloud-project.online --docs https://docs.cloud-project.online …` (A2).
+2. **Остаток волны 1** (до 04.12.2026): запустить на сервере офиса по SPEC, раздел 12 — Docker, `.env`, DNS-записи и проброс портов 80/443, `scripts\start.cmd prod`; прогнать `scripts/onlyoffice_live_test.py` и прислать результат; проверить ночную копию. F1, F2 и подготовка A1–A4 сделаны.
+3. **Волна 2** (07.12 – 25.12.2026): F3 таймер и отчёты; F4 платежи, расходы, аналитика (вместо B10); F5 бюджет и оплачено в проектах; пилот A5–A6.
+4. Дальше — волны 3–8 (график и проекты, поиск и база знаний, CRM, готовность к SaaS, расширение, в конце — просмотр DWG).
 
 ## Открытые вопросы
 
