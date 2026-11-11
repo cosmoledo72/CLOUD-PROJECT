@@ -85,11 +85,11 @@
     </div>
   {:else}
     <form onsubmit={(e) => { e.preventDefault(); submit(); }}>
-      <h2>Регистрация в портале</h2>
+      <h2>Регистрация на портале</h2>
       <label class="field">Портал <input class="input" bind:value={tenant} required autocomplete="organization" placeholder="company" /></label>
       {#if closed}
         <div class="info-box">
-          {brand ? `Регистрация в портале ${quoted(brand.display_name)} закрыта. Попросите администратора прислать приглашение.` : 'Портал не найден. Проверьте адрес портала.'}
+          {brand ? `Регистрация на портале ${quoted(brand.display_name)} закрыта. Попросите администратора прислать приглашение.` : 'Портал не найден. Проверьте адрес портала.'}
         </div>
       {/if}
       <label class="field">Имя и фамилия <input class="input" bind:value={name} required maxlength="200" autocomplete="name" /></label>
