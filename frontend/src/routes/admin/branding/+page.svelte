@@ -1,22 +1,36 @@
 <script lang="ts">
   import { api, upload } from '$lib/api';
-  import { applyBranding, branding, DEFAULT_ACCENT, FONT_SIZES, FONTS, loadFont, type Branding, type FontKey } from '$lib/branding.svelte';
-  import { contrast, isHex, textOn } from '$lib/color';
+  import { applyBranding, branding, DEFAULT_ACCENT, FONT_SIZES, FONTS, loadFont, LOGIN_BASES, loginHero, type Branding, type FontKey } from '$lib/branding.svelte';
+  import { contrast, isHex, LIGHT_TEXT, textOn } from '$lib/color';
 
   type Editable = Pick<Branding, 'display_name' | 'accent_color' | 'sidebar_style' | 'color_scheme' | 'corner_style' | 'login_title' | 'login_subtitle'
-    | 'logo_plate' | 'login_logo_plate' | 'login_bg_overlay' | 'font_family' | 'font_size'>;
+    | 'logo_plate' | 'login_logo_plate' | 'login_bg_overlay' | 'login_bg_tone' | 'login_bg_base' | 'font_family' | 'font_size'>;
   const EDITABLE: (keyof Editable)[] = ['display_name', 'accent_color', 'sidebar_style', 'color_scheme', 'corner_style', 'login_title', 'login_subtitle',
-    'logo_plate', 'login_logo_plate', 'login_bg_overlay', 'font_family', 'font_size'];
+    'logo_plate', 'login_logo_plate', 'login_bg_overlay', 'login_bg_tone', 'login_bg_base', 'font_family', 'font_size'];
   const DEFAULTS: Editable = {
     display_name: '', accent_color: DEFAULT_ACCENT, sidebar_style: 'light', color_scheme: 'auto', corner_style: 'default', login_title: '', login_subtitle: '',
-    logo_plate: false, login_logo_plate: true, login_bg_overlay: 45, font_family: 'inter', font_size: 'default'
+    logo_plate: false, login_logo_plate: true, login_bg_overlay: 45, login_bg_tone: 'dark', login_bg_base: 'brand', font_family: 'inter', font_size: 'default'
   };
+
 
   let saved = $state<Branding | null>(null);
   let draft = $state<Editable>({ ...DEFAULTS });
   let error = $state('');
   let notice = $state('');
   let busy = $state(false);
+
+  // Login panel base: a light base suggests the light tone (dark text), the brand gradient — the dark one.
+  const customBase = $derived(draft.login_bg_base.startsWith('#'));
+  function setBase(key: string) {
+    draft.login_bg_base = key;
+    if (key === 'light' || key === 'white') draft.login_bg_tone = 'light';
+    else if (key === 'brand') draft.login_bg_tone = 'dark';
+  }
+  function setCustomBase(hex: string) {
+    draft.login_bg_base = hex.toLowerCase();
+    // Pick the tone that keeps the text readable on this colour.
+    draft.login_bg_tone = textOn(hex) === LIGHT_TEXT ? 'dark' : 'light';
+  }
 
   function take(b: Branding) {
     saved = b;
@@ -263,13 +277,35 @@
             {#if bgUrl}<button class="btn ghost sm danger" onclick={() => removeAsset('login_bg')}>Удалить</button>{/if}
           </div>
         </div>
-        {#if bgUrl}
-          <label class="field range">Затемнение фона: {draft.login_bg_overlay}%
-            <input type="range" min="0" max="85" step="5" bind:value={draft.login_bg_overlay} />
-            <span class="faint small">Затемнение делает заголовок читаемым на светлых и пёстрых фото.</span>
-          </label>
-        {/if}
       </div>
+      <div class="field">
+        <span>Подложка</span>
+        <div class="bases" role="radiogroup" aria-label="Подложка под фоном">
+          {#each LOGIN_BASES as b (b.key)}
+            <button class="base" class:on={draft.login_bg_base === b.key} role="radio" aria-checked={draft.login_bg_base === b.key} onclick={() => setBase(b.key)}>
+              <i class="sw-b" style={b.key === 'brand' ? 'background: linear-gradient(155deg, var(--brand), color-mix(in srgb, var(--brand) 70%, black))' : `background: ${'color' in b ? b.color : ''}`}></i>{b.label}
+            </button>
+          {/each}
+          <label class="base" class:on={customBase} title="Свой цвет">
+            <input type="color" value={customBase ? draft.login_bg_base : '#e8eef6'} oninput={(e) => setCustomBase(e.currentTarget.value)} aria-label="Свой цвет подложки" />Свой цвет
+          </label>
+        </div>
+        <span class="faint small">Видна под прозрачными частями фонового изображения (PNG или SVG с прозрачностью), а без изображения — заливает всю панель.</span>
+      </div>
+      <div class="field">
+        <span>Тон фона</span>
+        <div class="seg tone" role="radiogroup" aria-label="Тон фона">
+          <button role="radio" aria-checked={draft.login_bg_tone === 'dark'} class:on={draft.login_bg_tone === 'dark'} onclick={() => (draft.login_bg_tone = 'dark')}>Тёмный</button>
+          <button role="radio" aria-checked={draft.login_bg_tone === 'light'} class:on={draft.login_bg_tone === 'light'} onclick={() => (draft.login_bg_tone = 'light')}>Светлый</button>
+        </div>
+        <span class="faint small">{draft.login_bg_tone === 'light' ? 'Тёмный текст и значки — для светлой подложки и светлых изображений.' : 'Светлый текст — для фирменного цвета, тёмной подложки и фотографий.'}</span>
+      </div>
+      {#if bgUrl}
+        <label class="field range">{draft.login_bg_tone === 'light' ? 'Осветление' : 'Затемнение'} фона: {draft.login_bg_overlay}%
+          <input type="range" min="0" max="85" step="5" bind:value={draft.login_bg_overlay} />
+          <span class="faint small">{draft.login_bg_tone === 'light' ? 'Белая вуаль делает тёмный текст читаемым на пёстрых изображениях; для узоров на прозрачном фоне обычно хватает 0–20%.' : 'Затемнение делает заголовок читаемым на светлых и пёстрых фото.'}</span>
+        </label>
+      {/if}
       {#if loginLink}
         <div class="field">
           <span class="muted small">Ссылка на вход для сотрудников (портал подставится автоматически)</span>
@@ -324,8 +360,7 @@
           </div>
         {:else}
           <div class="p-login">
-            <div class="p-hero" class:photo={!!bgUrl}
-                 style={bgUrl ? `background-image: linear-gradient(rgb(0 0 0 / ${draft.login_bg_overlay}%), rgb(0 0 0 / ${draft.login_bg_overlay}%)), url('${bgUrl}')` : ''}>
+            <div class="p-hero" class:photo={!!bgUrl} class:light={draft.login_bg_tone === 'light'} style={loginHero(draft, bgUrl)}>
               {#if logoUrl}<span class="p-plate" class:bare={!draft.login_logo_plate}><img src={logoUrl} alt="" /></span>{:else if iconUrl}<img src={iconUrl} alt="" width="28" height="28" />{/if}
               {#if draft.login_title.trim() || !(logoUrl || iconUrl)}<b>{draft.login_title.trim() || previewName}</b>{/if}
               {#if draft.login_subtitle.trim()}<span>{draft.login_subtitle}</span>{/if}
@@ -397,6 +432,9 @@
   .mini-side.accent { background: var(--sw); }
   .mini-corner { width: 18px; height: 14px; border: 2px solid currentColor; }
 
+  /* The column stretches to the full height so the preview can stay in view while scrolling. */
+  .layout > .side { align-self: stretch; }
+  .seg.tone { justify-self: start; width: auto; }
   .sticky { position: sticky; top: 16px; display: grid; gap: 10px; }
   .prev-head { flex-wrap: wrap; }
   .seg button:disabled { opacity: .4; cursor: default; }
@@ -436,15 +474,21 @@
   .p-bar div { width: 62%; height: 100%; background: var(--accent); }
   .p-login { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
   .p-hero {
-    background: linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 70%, black));
-    color: var(--on-brand); padding: 16px; display: grid; align-content: center; gap: 6px;
+    background: var(--hero-bg, linear-gradient(160deg, var(--brand), color-mix(in srgb, var(--brand) 70%, black)));
+    color: var(--hero-fg, var(--on-brand)); padding: 16px; display: grid; align-content: center; gap: 6px;
   }
   .p-hero b { font-size: 14px; line-height: 1.2; }
   .p-hero span { opacity: .85; }
   .p-plate { background: #fff; border-radius: var(--radius); padding: 5px 8px; justify-self: start; }
   .p-plate img { height: 26px; width: auto; max-width: 110px; display: block; object-fit: contain; }
   .p-plate.bare { background: none; padding: 0; }
-  .p-hero.photo { background-size: cover; background-position: center; color: #fff; }
+  .bases { display: flex; flex-wrap: wrap; gap: 6px; }
+  .base { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 8px; border: 1px solid var(--border); border-radius: var(--radius);
+          background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+  .base:hover { border-color: var(--border-strong); }
+  .base.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .sw-b { width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border); display: inline-block; }
+  .base input[type='color'] { width: 22px; height: 22px; padding: 0; border: 1px solid var(--border); border-radius: 5px; background: none; cursor: pointer; }
   .preview { font-family: var(--font); }
   .fonts { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
   .font-opt { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; position: relative; }

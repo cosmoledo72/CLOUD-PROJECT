@@ -40,6 +40,10 @@ pub struct Branding {
     pub logo_plate: bool,
     pub login_logo_plate: bool,
     pub login_bg_overlay: i16,
+    /// `dark`: light text, darkening veil; `light`: dark text, lightening veil.
+    pub login_bg_tone: String,
+    /// Base under a transparent image: `brand` (gradient), `light`, `white` or `#rrggbb`.
+    pub login_bg_base: String,
     pub font_family: String,
     pub font_size: String,
     pub has_logo: bool,
@@ -59,6 +63,8 @@ const BRANDING_SELECT: &str = "SELECT t.slug::text AS tenant_slug,
         COALESCE(b.logo_plate, false) AS logo_plate,
         COALESCE(b.login_logo_plate, true) AS login_logo_plate,
         COALESCE(b.login_bg_overlay, 45::smallint) AS login_bg_overlay,
+        COALESCE(b.login_bg_tone, 'dark') AS login_bg_tone,
+        COALESCE(b.login_bg_base, 'brand') AS login_bg_base,
         COALESCE(b.font_family, 'inter') AS font_family,
         COALESCE(b.font_size, 'default') AS font_size,
         (b.logo_key IS NOT NULL) AS has_logo,
@@ -123,6 +129,10 @@ pub struct UpdateBranding {
     pub login_logo_plate: bool,
     #[serde(default = "default_overlay")]
     pub login_bg_overlay: i16,
+    #[serde(default = "default_tone")]
+    pub login_bg_tone: String,
+    #[serde(default = "default_base")]
+    pub login_bg_base: String,
     #[serde(default = "default_font")]
     pub font_family: String,
     #[serde(default = "default_size")]
@@ -150,6 +160,14 @@ fn default_overlay() -> i16 {
     45
 }
 
+fn default_tone() -> String {
+    "dark".into()
+}
+
+fn default_base() -> String {
+    "brand".into()
+}
+
 fn normalize_color(c: &str) -> ApiResult<String> {
     let c = c.trim().to_lowercase();
     let ok = c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|ch| ch.is_ascii_hexdigit());
@@ -171,21 +189,29 @@ pub async fn update(State(state): State<AppState>, user: CurrentUser, Json(req):
     if !(0..=85).contains(&req.login_bg_overlay) {
         return bad_request("background darkening must be 0..85%");
     }
+    if !matches!(req.login_bg_tone.as_str(), "dark" | "light") {
+        return bad_request("login_bg_tone must be dark or light");
+    }
+    let base = match req.login_bg_base.trim() {
+        b @ ("brand" | "light" | "white") => b.to_string(),
+        other => normalize_color(other)?,
+    };
     if req.display_name.chars().count() > 120 || req.login_title.chars().count() > 120 || req.login_subtitle.chars().count() > 400 {
         return bad_request("text is too long");
     }
     sqlx::query(
         "INSERT INTO tenant_branding (tenant_id, display_name, accent_color, sidebar_style, color_scheme, corner_style,
                                       login_title, login_subtitle, logo_plate, login_logo_plate, login_bg_overlay,
-                                      font_family, font_size, updated_at)
-         VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
+                                      font_family, font_size, login_bg_tone, login_bg_base, updated_at)
+         VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
          ON CONFLICT (tenant_id) DO UPDATE SET
             display_name = EXCLUDED.display_name, accent_color = EXCLUDED.accent_color,
             sidebar_style = EXCLUDED.sidebar_style, color_scheme = EXCLUDED.color_scheme,
             corner_style = EXCLUDED.corner_style, login_title = EXCLUDED.login_title,
             login_subtitle = EXCLUDED.login_subtitle, logo_plate = EXCLUDED.logo_plate,
             login_logo_plate = EXCLUDED.login_logo_plate, login_bg_overlay = EXCLUDED.login_bg_overlay,
-            font_family = EXCLUDED.font_family, font_size = EXCLUDED.font_size, updated_at = now()",
+            font_family = EXCLUDED.font_family, font_size = EXCLUDED.font_size,
+            login_bg_tone = EXCLUDED.login_bg_tone, login_bg_base = EXCLUDED.login_bg_base, updated_at = now()",
     )
     .bind(user.tenant_id)
     .bind(req.display_name.trim())
@@ -200,6 +226,8 @@ pub async fn update(State(state): State<AppState>, user: CurrentUser, Json(req):
     .bind(req.login_bg_overlay)
     .bind(&req.font_family)
     .bind(&req.font_size)
+    .bind(&req.login_bg_tone)
+    .bind(&base)
     .execute(&state.db)
     .await?;
     state.audit(user.tenant_id, Some(user.user_id), "branding.updated", None, None, json!({ "accent_color": color })).await;

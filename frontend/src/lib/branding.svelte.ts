@@ -15,6 +15,10 @@ export interface Branding {
   logo_plate: boolean;
   login_logo_plate: boolean;
   login_bg_overlay: number;
+  /** dark: light text over a darkening veil; light: dark text over a lightening veil. */
+  login_bg_tone: 'dark' | 'light';
+  /** Base under a transparent background image: brand gradient, light, white or #rrggbb. */
+  login_bg_base: string;
   font_family: FontKey;
   font_size: 'small' | 'default' | 'large';
   has_logo: boolean;
@@ -26,6 +30,36 @@ export interface Branding {
   login_bg_url: string | null;
   /** Self-registration is open (public lookup only). */
   registration_open?: boolean;
+}
+
+/** Base colours offered under the login panel's background. */
+export const LOGIN_BASES = [
+  { key: 'brand', label: 'Фирменный цвет' },
+  { key: 'light', label: 'Светлая', color: '#f5f7fa' },
+  { key: 'white', label: 'Белая', color: '#ffffff' }
+] as const;
+
+/**
+ * Background and text colour of the login page's left panel:
+ * a veil (darkening or lightening) over the image over the base colour.
+ */
+export function loginHero(b: Pick<Branding, 'login_bg_tone' | 'login_bg_base' | 'login_bg_overlay'>, imageUrl: string | null): string {
+  const base =
+    b.login_bg_base === 'light' ? '#f5f7fa'
+    : b.login_bg_base === 'white' ? '#ffffff'
+    : isHex(b.login_bg_base) ? b.login_bg_base
+    : 'linear-gradient(155deg, color-mix(in srgb, var(--brand) 92%, white), color-mix(in srgb, var(--brand) 72%, black))';
+  const light = b.login_bg_tone === 'light';
+  const o = imageUrl ? b.login_bg_overlay ?? 0 : 0;
+  const veil = light ? `rgb(255 255 255 / ${o}%)` : `rgb(0 0 0 / ${o}%)`;
+  const layers = [
+    `linear-gradient(${veil}, ${veil})`,
+    ...(imageUrl ? [`url('${imageUrl}') center / cover no-repeat`] : []),
+    base.startsWith('linear') ? base : `linear-gradient(${base}, ${base})`
+  ];
+  // Text: dark tone on the brand gradient keeps the brand's readable text colour.
+  const fg = light ? 'color-mix(in srgb, var(--brand) 45%, #0b1726)' : b.login_bg_base === 'brand' && !imageUrl ? 'var(--on-brand)' : '#ffffff';
+  return `--hero-bg: ${layers.join(', ')}; --hero-fg: ${fg}`;
 }
 
 /**

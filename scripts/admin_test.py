@@ -140,6 +140,18 @@ def main():
     admin.call("PUT", "/admin/branding", {**payload, "font_family": "comic_sans"}, expect=400)
     admin.call("PUT", "/admin/branding", {**payload, "font_size": "huge"}, expect=400)
     admin.call("PUT", "/admin/branding", {**payload, "login_bg_overlay": 95}, expect=400)
+    # Login panel tone and base colour under a transparent background.
+    assert pub["login_bg_tone"] == "dark" and pub["login_bg_base"] == "brand"
+    b = admin.call("PUT", "/admin/branding", {**payload, "login_bg_tone": "light", "login_bg_base": "white"})
+    assert (b["login_bg_tone"], b["login_bg_base"]) == ("light", "white")
+    b = admin.call("PUT", "/admin/branding", {**payload, "login_bg_tone": "light", "login_bg_base": "#E8EEF6"})
+    assert b["login_bg_base"] == "#e8eef6"
+    assert anon.call("GET", f"/public/branding/{slug}")["login_bg_tone"] == "light"
+    admin.call("PUT", "/admin/branding", {**payload, "login_bg_tone": "grey"}, expect=400)
+    admin.call("PUT", "/admin/branding", {**payload, "login_bg_base": "blue"}, expect=400)
+    b = admin.call("PUT", "/admin/branding", {**payload, "login_logo_plate": False, "login_bg_overlay": 60,
+                                              "font_family": "golos", "font_size": "large"})
+    assert (b["login_bg_tone"], b["login_bg_base"]) == ("dark", "brand"), "omitted fields fall back to the defaults"
     # Background photos may be up to 3 MB, logos stay at 512 KB.
     big = PNG_1PX + b"0" * (2 * 1024 * 1024)
     b = upload_asset(admin, "login_bg", "bg.png", big)
