@@ -484,7 +484,68 @@ export function authError(e: unknown): string {
   if (!(e instanceof ApiError)) return 'Сервер недоступен';
   if (e.status === 429) return 'Слишком много запросов. Повторите позже.';
   if (/at least 10/.test(e.message)) return 'Пароль должен быть не короче 10 символов.';
-  return e.message;
+  return plainMessage(e.message);
+}
+
+/** Server message without the technical prefix ("bad request: …"), capitalised. */
+export function plainMessage(m: string): string {
+  const s = m.replace(/^(bad request|conflict): /, '');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// --- Registration and invitations ---------------------------------------------
+
+export type RegistrationMode = 'off' | 'request' | 'domain';
+
+export interface RegistrationSettings {
+  mode: RegistrationMode;
+  domains: string[];
+  role: 'member' | 'guest';
+  group_ids: string[];
+  mail_available: boolean;
+  /** Requests waiting for a decision. */
+  pending: number;
+}
+
+export interface RegistrationRequest {
+  id: string;
+  email: string;
+  display_name: string;
+  comment: string;
+  status: 'unconfirmed' | 'pending' | 'approved' | 'rejected';
+  email_confirmed: boolean;
+  created_at: string;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  reject_reason: string;
+  /** The address belongs to one of the registration domains. */
+  domain_match: boolean;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  display_name: string;
+  role: string;
+  invited_by_name: string | null;
+  message: string;
+  created_at: string;
+  sent_at: string | null;
+  expires_at: string | null;
+  expired: boolean;
+  is_active: boolean;
+  projects: { id: string; name: string; role: string }[];
+  groups: string[];
+}
+
+export interface InviteResult {
+  email?: string;
+  input?: string;
+  display_name?: string;
+  status: 'invited' | 'exists' | 'already_invited' | 'invalid';
+  id?: string;
+  invite_url?: string;
+  emailed?: boolean;
 }
 
 export interface DocTemplate {

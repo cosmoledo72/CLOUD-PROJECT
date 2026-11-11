@@ -102,6 +102,9 @@
       <button type="button" class="linkish forgot" onclick={() => { mode = 'forgot'; error = ''; }}>Забыли пароль?</button>
       {#if error}<div class="error-box">{error}</div>{/if}
       <button class="btn primary full" disabled={busy}>Войти</button>
+      {#if brand?.registration_open}
+        <p class="join">Нет учётной записи? <a href="/register?portal={encodeURIComponent(brand.tenant_slug)}">Зарегистрироваться в портале</a></p>
+      {/if}
       <button type="button" class="btn ghost full" onclick={() => { mode = 'signup'; error = ''; }}>Создать новый портал</button>
     </form>
   {:else if mode === 'forgot'}
@@ -159,4 +162,5 @@
   .linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; }
   .linkish:hover { text-decoration: underline; }
   .forgot { justify-self: end; font-size: 13px; margin-top: -4px; }
+  .join { margin: 0; text-align: center; font-size: 13.5px; color: var(--text-2); }
 </style>

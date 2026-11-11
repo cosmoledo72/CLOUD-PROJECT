@@ -1,22 +1,43 @@
 <script lang="ts">
-  import { api, crmRoleLabel, formatDate, roleLabel, type UserItem } from '$lib/api';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import { api, crmRoleLabel, formatDate, plainMessage, roleLabel, type Invitation, type RegistrationSettings, type UserItem } from '$lib/api';
+  import InvitationsPanel from '$lib/admin/InvitationsPanel.svelte';
+  import InviteDialog from '$lib/admin/InviteDialog.svelte';
+  import RequestsPanel from '$lib/admin/RequestsPanel.svelte';
   import Modal from '$lib/Modal.svelte';
   import { session } from '$lib/session.svelte';
 
   let users = $state<UserItem[]>([]);
+  let invitations = $state<Invitation[]>([]);
+  let registration = $state<RegistrationSettings | null>(null);
   let error = $state('');
   let notice = $state('');
   let filter = $state('');
 
+  // Sub-tabs: people, invitations, registration requests (?tab=… — used by notification links).
+  type Tab = 'people' | 'invites' | 'requests';
+  const tab = $derived<Tab>((['invites', 'requests'] as const).find((t) => t === page.url.searchParams.get('tab')) ?? 'people');
+  const setTab = (t: Tab) => goto(t === 'people' ? '/admin/users' : `/admin/users?tab=${t}`, { replaceState: true, noScroll: true, keepFocus: true });
+
   async function load() {
-    users = (await api.get<{ users: UserItem[] }>('/users')).users;
+    const [u, i, r] = await Promise.all([
+      api.get<{ users: UserItem[] }>('/users'),
+      api.get<{ invitations: Invitation[] }>('/admin/invitations'),
+      api.get<RegistrationSettings>('/admin/registration')
+    ]);
+    users = u.users;
+    invitations = i.invitations;
+    registration = r;
   }
   $effect(() => {
-    load();
+    load().catch((e) => (error = plainMessage(e.message)));
   });
+  const people = $derived(users.filter((u) => !u.invite_pending));
+  let inviteOpen = $state(false);
 
   const shown = $derived(
-    users.filter((u) => {
+    users.filter((u) => !u.invite_pending).filter((u) => {
       const q = filter.trim().toLowerCase();
       return !q || u.display_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
     })
@@ -37,7 +58,7 @@
       notice = ok;
       await load();
     } catch (e) {
-      error = (e as Error).message;
+      error = plainMessage((e as Error).message);
     }
   }
 
@@ -45,47 +66,18 @@
   const manageable = (u: UserItem) =>
     u.id !== session.me?.id && u.role !== 'owner' && (u.role !== 'admin' || session.me?.role === 'owner');
 
-  // --- Create ------------------------------------------------------------------
+  // --- Create with a password (handed over in person) ---------------------------
   let createOpen = $state(false);
   let form = $state({ email: '', display_name: '', password: '', role: 'member' });
-  let invite = $state(true);
-  let mailReady = $state(false);
   function openCreate() {
     form = { email: '', display_name: '', password: generatePassword(), role: 'member' };
-    invite = true;
     error = '';
     createOpen = true;
-    api.get<{ available: boolean }>('/admin/mail').then((r) => (mailReady = r.available)).catch(() => {});
   }
-  // Link shown when the invitation could not be emailed (or for copying).
-  let inviteLink = $state<{ name: string; url: string; emailed: boolean } | null>(null);
   async function create() {
     const name = form.display_name;
-    if (invite) {
-      error = '';
-      notice = '';
-      try {
-        const r = await api.post<{ invite_url: string; emailed: boolean }>('/users', { ...form, password: null });
-        createOpen = false;
-        inviteLink = { name, url: r.invite_url, emailed: r.emailed };
-        await load();
-      } catch (e) {
-        error = (e as Error).message;
-      }
-      return;
-    }
     await act(() => api.post('/users', form), `Пользователь ${name} создан. Передайте ему пароль: ${form.password}`);
     if (!error) createOpen = false;
-  }
-  async function resendInvite(u: UserItem) {
-    error = '';
-    notice = '';
-    try {
-      const r = await api.post<{ invite_url: string; emailed: boolean }>(`/admin/users/${u.id}/invite`);
-      inviteLink = { name: u.display_name, url: r.invite_url, emailed: r.emailed };
-    } catch (e) {
-      error = (e as Error).message;
-    }
   }
 
   // --- Password reset ---------------------------------------------------------
@@ -125,30 +117,24 @@
 </script>
 
 <div class="row toolbar">
-  <input class="input search" placeholder="Поиск по имени или email" bind:value={filter} aria-label="Поиск" />
+  <div class="seg" role="tablist" aria-label="Пользователи портала">
+    <button role="tab" aria-selected={tab === 'people'} class:on={tab === 'people'} onclick={() => setTab('people')}>Сотрудники <span class="n">{people.length}</span></button>
+    <button role="tab" aria-selected={tab === 'invites'} class:on={tab === 'invites'} onclick={() => setTab('invites')}>Приглашения{#if invitations.length}<span class="n">{invitations.length}</span>{/if}</button>
+    <button role="tab" aria-selected={tab === 'requests'} class:on={tab === 'requests'} onclick={() => setTab('requests')}>Заявки{#if registration?.pending}<span class="n hot">{registration.pending}</span>{/if}</button>
+  </div>
   <div class="spacer"></div>
-  <button class="btn primary" onclick={openCreate}>Добавить пользователя</button>
+  <button class="btn" onclick={openCreate}>Создать с паролем</button>
+  <button class="btn primary" onclick={() => (inviteOpen = true)}>Пригласить</button>
 </div>
 {#if error && !createOpen}<div class="error-box">{error}</div>{/if}
-{#if notice}<div class="ok-box">{notice}</div>{/if}
-{#if inviteLink}
-  <div class="ok-box invite">
-    <div>
-      {#if inviteLink.emailed}
-        Приглашение для {inviteLink.name} отправлено на почту. Ссылку можно передать и вручную — она действует 7 дней:
-      {:else}
-        Пользователь {inviteLink.name} создан, но почта портала не настроена — письмо не отправлено.
-        Передайте ссылку-приглашение сами (действует 7 дней) или <a href="/admin/mail">настройте почту</a>:
-      {/if}
-    </div>
-    <div class="row">
-      <input class="input mono" readonly value={inviteLink.url} aria-label="Ссылка-приглашение" onfocus={(e) => e.currentTarget.select()} />
-      <button class="btn sm" onclick={() => copy(inviteLink!.url)}>Копировать</button>
-      <button class="btn ghost sm" onclick={() => (inviteLink = null)} aria-label="Скрыть">×</button>
-    </div>
-  </div>
-{/if}
 
+{#if tab === 'invites'}
+  <InvitationsPanel items={invitations} onchange={() => load()} />
+{:else if tab === 'requests'}
+  <RequestsPanel settings={registration} onchange={() => load()} />
+{:else}
+{#if notice}<div class="ok-box">{notice}</div>{/if}
+<input class="input search" placeholder="Поиск по имени или email" bind:value={filter} aria-label="Поиск" />
 <div class="card scroll">
   <table class="list">
     <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>CRM</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
@@ -181,9 +167,6 @@
           <td>{#if u.totp_enabled}<span class="badge ok">вкл.</span>{:else}<span class="badge grey">нет</span>{/if}</td>
           <td class="muted">{formatDate(u.created_at)}</td>
           <td class="actions">
-            {#if manageable(u) && u.invite_pending && u.is_active}
-              <button class="btn ghost sm" onclick={() => resendInvite(u)}>Пригласить снова</button>
-            {/if}
             {#if manageable(u)}
               <button class="btn ghost sm" onclick={() => openReset(u)}>{u.invite_pending ? 'Задать пароль' : 'Сбросить пароль'}</button>
               {#if u.totp_enabled}<button class="btn ghost sm" onclick={() => resetMfa(u)}>Сбросить 2FA</button>{/if}
@@ -198,27 +181,21 @@
     </tbody>
   </table>
 </div>
+{/if}
 
-<Modal bind:open={createOpen} title="Новый пользователь">
+<InviteDialog bind:open={inviteOpen} ondone={() => load()} />
+
+<Modal bind:open={createOpen} title="Новый пользователь с паролем">
   <label class="field">Имя <input class="input" bind:value={form.display_name} /></label>
   <label class="field">Email <input class="input" type="email" bind:value={form.email} /></label>
-  <div class="field" role="radiogroup" aria-label="Способ входа">
-    <label class="check"><input type="radio" bind:group={invite} value={true} /> Пригласить по ссылке — пользователь сам задаст пароль</label>
-    <label class="check"><input type="radio" bind:group={invite} value={false} /> Задать начальный пароль и передать его самому</label>
-  </div>
-  {#if invite}
-    <p class="faint small">
-      {mailReady ? 'Письмо с приглашением уйдёт на указанный адрес.' : 'Почта портала не настроена: после создания покажем ссылку, которую нужно передать пользователю.'}
-    </p>
-  {:else}
-    <label class="field">Начальный пароль
-      <div class="row">
-        <input class="input mono" bind:value={form.password} />
-        <button class="btn" type="button" onclick={() => (form.password = generatePassword())}>Новый</button>
-        <button class="btn" type="button" onclick={() => copy(form.password)}>Копировать</button>
-      </div>
-    </label>
-  {/if}
+  <p class="faint small">Учётная запись сразу активна. Передайте пароль сотруднику лично — при первом входе его лучше сменить. Чтобы человек задал пароль сам, используйте «Пригласить».</p>
+  <label class="field">Начальный пароль
+    <div class="row">
+      <input class="input mono" bind:value={form.password} />
+      <button class="btn" type="button" onclick={() => (form.password = generatePassword())}>Новый</button>
+      <button class="btn" type="button" onclick={() => copy(form.password)}>Копировать</button>
+    </div>
+  </label>
   <label class="field">Роль
     <select class="input" bind:value={form.role}>
       <option value="member">Сотрудник</option>
@@ -229,7 +206,7 @@
   {#if error}<div class="error-box">{error}</div>{/if}
   {#snippet footer()}
     <button class="btn" onclick={() => (createOpen = false)}>Отмена</button>
-    <button class="btn primary" disabled={!form.email || !form.display_name || (!invite && form.password.length < 10)} onclick={create}>{invite ? 'Пригласить' : 'Создать'}</button>
+    <button class="btn primary" disabled={!form.email || !form.display_name || form.password.length < 10} onclick={create}>Создать</button>
   {/snippet}
 </Modal>
 
@@ -249,16 +226,17 @@
 </Modal>
 
 <style>
-  .toolbar { margin-bottom: 12px; flex-wrap: wrap; }
-  .search { max-width: 320px; }
+  .toolbar { margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .search { max-width: 320px; margin-bottom: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; padding: 2px; background: var(--surface); }
+  .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 6px; font: inherit; color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .n { font-size: 11.5px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--text-3); line-height: 18px; }
+  .n.hot { background: var(--danger); color: #fff; }
   .ok-box, .error-box { margin-bottom: 12px; }
   .scroll { overflow-x: auto; }
   .input.sm { height: 26px; width: auto; padding: 0 6px; }
   .actions { text-align: right; white-space: nowrap; }
   tr.inactive td:not(.actions) { opacity: .55; }
   p { margin: 0; }
-  .invite { display: grid; gap: 8px; }
-  .invite .row { gap: 6px; }
-  .invite .mono { flex: 1; min-width: 0; }
-  .check { display: flex; gap: 8px; align-items: center; }
 </style>

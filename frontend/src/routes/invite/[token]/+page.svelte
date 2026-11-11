@@ -6,7 +6,10 @@
   import { branding, type Branding } from '$lib/branding.svelte';
   import { session } from '$lib/session.svelte';
 
-  type Info = { email: string; display_name: string; tenant_slug: string; tenant_name: string };
+  type Info = {
+    email: string; display_name: string; tenant_slug: string; tenant_name: string;
+    invited_by_name: string | null; message: string; projects: string[]; groups: string[];
+  };
   const token = $derived(page.params.token ?? '');
   let info = $state<Info | null>(null);
   let invalid = $state(false);
@@ -66,7 +69,16 @@
   {:else if info}
     <form onsubmit={(e) => { e.preventDefault(); accept(); }}>
       <h2>Добро пожаловать</h2>
-      <p class="muted">Вас пригласили в портал {quoted(info.tenant_name)}. Задайте пароль — и можно начинать работу.</p>
+      <p class="muted">
+        {info.invited_by_name ? `${info.invited_by_name} приглашает вас` : 'Вас пригласили'} в портал {quoted(info.tenant_name)}. Задайте пароль — и можно начинать работу.
+      </p>
+      {#if info.message}<blockquote class="msg">{info.message}{#if info.invited_by_name}<span class="from">— {info.invited_by_name}</span>{/if}</blockquote>{/if}
+      {#if info.projects.length}
+        <div class="where">
+          <span class="faint small">{info.projects.length === 1 ? 'Проект' : 'Проекты'}</span>
+          <div class="chips">{#each info.projects as p}<span class="chip">{p}</span>{/each}</div>
+        </div>
+      {/if}
       <div class="field"><span>Логин</span><div class="ro">{info.email}</div></div>
       <label class="field">Как вас называть <input class="input" bind:value={name} required autocomplete="name" /></label>
       <label class="field">Пароль
@@ -89,4 +101,10 @@
   .stack { display: grid; gap: 12px; }
   .ro { padding: 6px 0; font-weight: 500; }
   .err { color: var(--danger); }
+  .msg { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 6px 6px 0;
+         white-space: pre-wrap; font-size: 14px; }
+  .from { display: block; margin-top: 4px; font-size: 12.5px; color: var(--text-3); }
+  .where { display: grid; gap: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 500; }
 </style>

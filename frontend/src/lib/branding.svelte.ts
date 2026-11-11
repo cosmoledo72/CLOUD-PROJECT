@@ -24,6 +24,8 @@ export interface Branding {
   logo_url: string | null;
   icon_url: string | null;
   login_bg_url: string | null;
+  /** Self-registration is open (public lookup only). */
+  registration_open?: boolean;
 }
 
 /**

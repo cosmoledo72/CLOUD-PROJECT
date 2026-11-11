@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api, formatDate, formatSize, type Overview } from '$lib/api';
+  import RegistrationSettings from '$lib/admin/RegistrationSettings.svelte';
   import { session } from '$lib/session.svelte';
 
   interface Portal {
@@ -118,16 +119,18 @@
       <dl>
         <dt>Длительность сеанса</dt><dd>{portal.session_ttl_hours / 24} дн.</dd>
         <dt>Максимальный размер загрузки</dt><dd>{portal.max_upload_mb} МБ</dd>
-        <dt>Регистрация новых порталов</dt><dd>{portal.signup_enabled ? 'открыта' : 'закрыта'}</dd>
+        <dt>Создание новых порталов</dt><dd>{portal.signup_enabled ? 'открыта' : 'закрыта'}</dd>
       </dl>
     </section>
   </div>
+  <div class="reg"><RegistrationSettings /></div>
 {/if}
 
 <style>
   .ok-box, .error-box { margin-bottom: 12px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; align-items: start; }
   .sec { padding: 16px; display: grid; gap: 12px; }
+  .reg { margin-top: 12px; max-width: 760px; }
   .sec h2, .sec p { margin: 0; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
   dt { color: var(--text-2); }
