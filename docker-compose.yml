@@ -1,10 +1,17 @@
-# WorkHub full stack: Postgres, Rust API, SvelteKit web (nginx) and ONLYOFFICE Docs.
+# CLOUD-PROJECT (WorkHub) full stack: Postgres, Rust API, SvelteKit web (nginx),
+# ONLYOFFICE Docs and nightly backups.
 #
-#   cp .env.example .env   # then set real secrets
+#   copy .env.example .env      # then set real secrets
 #   docker compose up -d --build
 #
 # Web UI:            http://localhost:8080
 # Document Server:   http://localhost:8081  (browser loads the editor from here)
+# Backups:           ./backups  (see README, "Резервные копии")
+#
+# On the office server with the domain and HTTPS add the production overlay:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+name: cloud-project
 
 services:
   db:
@@ -54,22 +61,35 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
-      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-WorkHub}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-CLOUD-PROJECT}
       # Unread notifications are emailed after this delay (seconds).
       NOTIFY_EMAIL_DELAY_SECS: ${NOTIFY_EMAIL_DELAY_SECS:-180}
       RUST_LOG: workhub_server=info,tower_http=info
     volumes:
       - blobs:/data/blobs
+    healthcheck:
+      test: ["CMD", "workhub-server", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
 
   web:
     build: ./frontend
     restart: unless-stopped
-    depends_on: [backend]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # Proxies allowed to report the client address (X-Forwarded-For).
+      # Without the HTTPS proxy nobody is trusted; the prod overlay trusts Caddy.
+      REAL_IP_FROM: ${REAL_IP_FROM:-127.0.0.1}
     ports:
       - "${WEB_PORT:-8080}:80"
 
   onlyoffice:
-    image: onlyoffice/documentserver:latest
+    # Pinned: update deliberately (see README, "Обновление ONLYOFFICE").
+    image: onlyoffice/documentserver:${ONLYOFFICE_VERSION:-9.2.1}
     restart: unless-stopped
     environment:
       JWT_ENABLED: "true"
@@ -82,6 +102,36 @@ services:
     volumes:
       - oo-data:/var/www/onlyoffice/Data
       - oo-logs:/var/log/onlyoffice
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost/healthcheck | grep -q true"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
+  # Nightly database dump and file archive into ./backups, kept BACKUP_KEEP_DAYS days.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: workhub
+      PGDATABASE: workhub
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_HOUR: ${BACKUP_HOUR:-03}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BLOBS_DIR: /data/blobs
+      BACKUP_DIR: /backups
+      TZ: ${TZ:-Asia/Sakhalin}
+    volumes:
+      - blobs:/data/blobs
+      - ${BACKUP_PATH:-./backups}:/backups
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    entrypoint: ["sh", "/usr/local/bin/backup.sh"]
+    command: ["loop"]
 
 volumes:
   db-data:

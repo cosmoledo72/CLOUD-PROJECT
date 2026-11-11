@@ -1,0 +1,31 @@
+# HTTPS reverse proxy for the office server (docker-compose.prod.yml).
+# Certificates come from Let's Encrypt automatically: both names must resolve
+# to the office's public IP, and ports 80 and 443 must be forwarded to this host.
+{
+	email {$ACME_EMAIL}
+}
+
+# Portal: SPA and API (nginx in the "web" service proxies /api to the backend).
+{$PORTAL_DOMAIN} {
+	# Live notifications (server-sent events): no compression, flush every event.
+	@stream path /api/notifications/stream
+	handle @stream {
+		reverse_proxy web:80 {
+			flush_interval -1
+		}
+	}
+	handle {
+		encode zstd gzip
+		reverse_proxy web:80
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}
+
+# ONLYOFFICE Docs: the browser loads the editor from here (WebSockets included).
+{$DOCS_DOMAIN} {
+	reverse_proxy onlyoffice:80
+	header -Server
+}

@@ -1,4 +1,4 @@
-# WorkHub
+# CLOUD-PROJECT (WorkHub)
 
 Multi-tenant collaboration platform: document management with real-time co-editing in **ONLYOFFICE Docs**, projects and tasks with a **Gantt chart**, and an **admin panel** with configurable project requisites and portal branding.
 
@@ -20,6 +20,44 @@ docker compose up -d --build
 |---|---|
 | Web UI | http://localhost:8080 — create a portal on the login page |
 | ONLYOFFICE Docs | http://localhost:8081 (first start takes 1–2 minutes) |
+
+### Office server: HTTPS on cloud-project.online
+
+```bash
+# .env: real secrets + ACME_EMAIL=you@example.com (optional PORTAL_DOMAIN, DOCS_DOMAIN)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Windows: scripts\start.cmd prod
+```
+
+Caddy (`deploy/Caddyfile`) obtains Let's Encrypt certificates for `cloud-project.online` (portal) and
+`docs.cloud-project.online` (ONLYOFFICE). Both DNS names must point to the office's public IP and the router
+must forward TCP 80/443 (and UDP 443) to the server. The overlay sets `COOKIE_SECURE=true`, the public URLs,
+`SIGNUP_ENABLED=false` (set `true` once to create the first portal), and binds ports 8080/8081 to
+`127.0.0.1` only. Step-by-step guide (in Russian): `docs/SPEC.md`, section 12.
+
+### Backups
+
+The `backup` service dumps the database and archives the portal files into `./backups` every night at
+`BACKUP_HOUR` (default 03, time zone `TZ`, default Asia/Sakhalin) and keeps `BACKUP_KEEP_DAYS` (14) days.
+
+```bash
+docker compose exec backup sh /usr/local/bin/backup.sh now        # backup now   (scripts\backup-now.cmd)
+docker compose exec backup sh /usr/local/bin/backup.sh list       # list
+docker compose stop web backend                                   # restore      (scripts\restore.cmd NAME)
+docker compose exec backup sh /usr/local/bin/backup.sh restore cloud-project-2026-11-12_0300
+docker compose start backend web
+```
+
+Keep a copy of `.env` separately: `APP_SECRET` decrypts stored SMTP passwords. Copy `./backups` to another disk.
+
+### Live ONLYOFFICE check (task A2)
+
+```bash
+python scripts/onlyoffice_live_test.py --tenant <portal> --email <e-mail>
+```
+
+Checks the Document Server health and JWT secret, makes it download and convert a new document from the
+backend, then guides through forced save and co-editing in two browsers and verifies the new versions.
 
 ## Local development
 

@@ -209,6 +209,10 @@ fn router(state: AppState) -> Router {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // `workhub-server healthcheck` — used by the Docker healthcheck (the runtime image has no curl).
+    if std::env::args().nth(1).as_deref() == Some("healthcheck") {
+        std::process::exit(if healthcheck() { 0 } else { 1 });
+    }
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "workhub_server=info,tower_http=info".into()))
         .init();
@@ -238,4 +242,19 @@ async fn main() -> anyhow::Result<()> {
         })
         .await?;
     Ok(())
+}
+
+/// Ask the running server for `/api/health` over plain TCP; true on HTTP 200.
+fn healthcheck() -> bool {
+    use std::io::{Read, Write};
+    let addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:8080".into());
+    let port = addr.rsplit(':').next().unwrap_or("8080");
+    let Ok(mut s) = std::net::TcpStream::connect(format!("127.0.0.1:{port}")) else { return false };
+    let _ = s.set_read_timeout(Some(std::time::Duration::from_secs(3)));
+    if s.write_all(b"GET /api/health HTTP/1.0\r\nHost: localhost\r\n\r\n").is_err() {
+        return false;
+    }
+    let mut head = [0u8; 16];
+    let n = s.read(&mut head).unwrap_or(0);
+    std::str::from_utf8(&head[..n]).is_ok_and(|h| h.starts_with("HTTP/1.1 200") || h.starts_with("HTTP/1.0 200"))
 }

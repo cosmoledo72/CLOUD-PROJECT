@@ -1,0 +1,4 @@
+# The host build output is large and not used by the image build.
+target
+data
+.env*

@@ -1,0 +1,5 @@
+# Keep the build context small and platform-neutral (host node_modules may be Windows binaries).
+node_modules
+.svelte-kit
+build
+.env*

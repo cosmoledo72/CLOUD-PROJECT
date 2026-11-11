@@ -1,0 +1,49 @@
+# Production overlay for the office server: HTTPS on the domain via Caddy.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#   (or scripts\start.cmd prod)
+#
+# Requires in .env: ACME_EMAIL, and optionally PORTAL_DOMAIN / DOCS_DOMAIN.
+# DNS: both names -> office public IP; router: forward TCP 80, 443 (and UDP 443) here.
+
+services:
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    depends_on: [web, onlyoffice]
+    environment:
+      PORTAL_DOMAIN: ${PORTAL_DOMAIN:-cloud-project.online}
+      DOCS_DOMAIN: ${DOCS_DOMAIN:-docs.cloud-project.online}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env (Let's Encrypt notices)}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  backend:
+    environment:
+      PUBLIC_URL: https://${PORTAL_DOMAIN:-cloud-project.online}
+      DOCS_PUBLIC_URL: https://${DOCS_DOMAIN:-docs.cloud-project.online}
+      COOKIE_SECURE: "true"
+      # New portals are not created from the internet; set true once to create the first one.
+      SIGNUP_ENABLED: ${SIGNUP_ENABLED:-false}
+
+  web:
+    environment:
+      # Caddy runs on the compose network: trust its X-Forwarded-For.
+      REAL_IP_FROM: 172.16.0.0/12
+    # Reachable from the internet only through Caddy; locally for checks.
+    ports: !override
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+
+  onlyoffice:
+    ports: !override
+      - "127.0.0.1:${DOCS_PORT:-8081}:80"
+
+volumes:
+  caddy-data:
+  caddy-config:
