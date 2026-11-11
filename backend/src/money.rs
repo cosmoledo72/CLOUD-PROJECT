@@ -18,7 +18,8 @@ pub fn vat_included(amount: f64, rate: &str) -> f64 {
 }
 
 pub fn round2(v: f64) -> f64 {
-    (v * 100.0).round() / 100.0
+    // `+ 0.0` turns a negative zero into zero (shown as "-0" otherwise).
+    (v * 100.0).round() / 100.0 + 0.0
 }
 
 /// "В том числе НДС 22% — 270 491,80 руб." / "НДС не облагается".

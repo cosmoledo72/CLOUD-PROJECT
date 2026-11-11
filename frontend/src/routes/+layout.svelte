@@ -43,7 +43,7 @@
     { href: '/projects', label: 'Проекты', icon: FolderKanban, match: ['/projects'], show: () => session.has('projects') },
     { href: '/tasks', label: 'Задачи', icon: ListTodo, match: ['/tasks'], show: () => session.has('projects') },
     { href: '/kb', label: 'База знаний', icon: BookOpen, match: ['/kb'], show: () => session.has('kb') },
-    { href: '/finance', label: 'Финансы', icon: Wallet, match: ['/finance'], show: () => session.crm },
+    { href: '/finance', label: 'Финансы', icon: Wallet, match: ['/finance'], show: () => session.has('finance') && (session.finance || session.crm) },
     {
       href: '/crm', label: 'CRM', icon: BriefcaseBusiness, match: ['/crm'], show: () => session.crm,
       count: () => crmDue.count, hot: () => crmDue.overdue > 0
@@ -56,7 +56,7 @@
   // Sections of switched-off modules (Администрирование → Модули) show a notice instead.
   const SECTION_MODULES: [string, ModuleKey, string][] = [
     ['/projects', 'projects', 'Проекты'], ['/tasks', 'projects', 'Проекты'], ['/kb', 'kb', 'База знаний'],
-    ['/chats', 'chats', 'Чаты'], ['/crm', 'crm', 'CRM'], ['/finance', 'crm', 'CRM'],
+    ['/chats', 'chats', 'Чаты'], ['/crm', 'crm', 'CRM'], ['/finance', 'finance', 'Финансы'],
     ['/files', 'storage', 'Хранилище'], ['/shared', 'storage', 'Хранилище'], ['/trash', 'storage', 'Хранилище'],
     ['/team', 'team', 'Команда']
   ];

@@ -107,7 +107,7 @@
     act(() => api.post(`/admin/users/${u.id}/revoke-sessions`), `Сеансы ${u.display_name} завершены.`);
   }
 
-  function update(u: UserItem, patch: Partial<Pick<UserItem, 'role' | 'is_active' | 'crm_role'>>) {
+  function update(u: UserItem, patch: Partial<Pick<UserItem, 'role' | 'is_active' | 'crm_role' | 'finance_role'>>) {
     act(() => api.patch(`/users/${u.id}`, patch), 'Изменения сохранены.');
   }
 
@@ -137,7 +137,7 @@
 <input class="input search" placeholder="Поиск по имени или email" bind:value={filter} aria-label="Поиск" />
 <div class="card scroll">
   <table class="list">
-    <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>CRM</th><th>2FA</th><th>Создан</th><th></th></tr></thead>
+    <thead><tr><th>Имя</th><th>Email</th><th>Роль</th><th>CRM</th>{#if session.has('finance')}<th>Финансы</th>{/if}<th>2FA</th><th>Создан</th><th></th></tr></thead>
     <tbody>
       {#each shown as u (u.id)}
         <tr class:inactive={!u.is_active}>
@@ -164,6 +164,17 @@
               </select>
             {:else}{crmRoleLabel[u.crm_role]}{/if}
           </td>
+          {#if session.has('finance')}
+            <td>
+              {#if u.role === 'guest'}<span class="faint">—</span>
+              {:else if u.role === 'owner' || u.role === 'admin'}<span class="muted small">полный</span>
+              {:else}
+                <select class="input sm" value={u.finance_role} onchange={(e) => update(u, { finance_role: e.currentTarget.value as UserItem['finance_role'] })} aria-label="Доступ к финансам">
+                  <option value="none">Нет</option><option value="view">Просмотр</option><option value="edit">Внесение платежей</option>
+                </select>
+              {/if}
+            </td>
+          {/if}
           <td>{#if u.totp_enabled}<span class="badge ok">вкл.</span>{:else}<span class="badge grey">нет</span>{/if}</td>
           <td class="muted">{formatDate(u.created_at)}</td>
           <td class="actions">

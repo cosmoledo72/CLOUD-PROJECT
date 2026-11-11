@@ -50,13 +50,16 @@ export interface Me {
   role: 'owner' | 'admin' | 'member' | 'guest';
   totp_enabled: boolean;
   crm_role: CrmRole;
+  /** Effective finance access (administrators: edit). */
+  finance_role: FinanceRole;
   position: string;
   phone: string;
   /** Portal modules that are on: projects, planning, time, templates, storage, kb, chats, crm, team. */
   modules: ModuleKey[];
 }
 
-export type ModuleKey = 'projects' | 'planning' | 'time' | 'templates' | 'storage' | 'kb' | 'chats' | 'crm' | 'team';
+export type ModuleKey = 'projects' | 'planning' | 'time' | 'templates' | 'storage' | 'kb' | 'chats' | 'crm' | 'finance' | 'team';
+export type FinanceRole = 'none' | 'view' | 'edit';
 
 export type CrmRole = 'none' | 'user' | 'manager';
 
@@ -113,6 +116,7 @@ export interface UserItem {
   is_active: boolean;
   totp_enabled: boolean;
   crm_role: CrmRole;
+  finance_role: FinanceRole;
   /** Invited and has not set a password yet. */
   invite_pending: boolean;
   created_at: string;
@@ -753,7 +757,8 @@ export const crmRoleLabel: Record<CrmRole, string> = {
 
 /** Money in roubles: 1 250 000 ₽ (kopecks shown only when present). */
 export function formatMoney(n: number): string {
-  return n.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '\u00a0₽';
+  // `+ 0` turns -0 into 0.
+  return (Math.abs(n) < 0.005 ? 0 : n + 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '\u00a0₽';
 }
 
 export function contactName(c: Pick<Contact, 'last_name' | 'first_name' | 'middle_name'>): string {
@@ -899,6 +904,8 @@ export interface SalesDoc {
   file_name: string | null;
   created_by_name: string | null;
   created_at: string;
+  /** Actual income recorded against the invoice. */
+  paid_amount: number;
 }
 
 export const vatLabel = (r: string) => (r === 'none' ? 'Без НДС' : `НДС ${r}%`);
@@ -1001,4 +1008,95 @@ export function avatarHue(id: string): number {
   let h = 0;
   for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return h;
+}
+
+// ---------------------------------------------------------------------------
+// Finance
+// ---------------------------------------------------------------------------
+
+export type PayKind = 'income' | 'expense';
+export type PayStatus = 'plan' | 'fact';
+
+export interface FinanceCategory {
+  id: string;
+  kind: PayKind;
+  name: string;
+  sort: number;
+  is_archived: boolean;
+}
+
+export interface Payment {
+  id: string;
+  kind: PayKind;
+  status: PayStatus;
+  pay_date: string;
+  amount: number;
+  vat_rate: string;
+  vat_amount: number;
+  category_id: string | null;
+  category_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  company_id: string | null;
+  company_name: string;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  description: string;
+  created_by: string | null;
+  created_by_name: string | null;
+}
+
+export interface PaymentTotals {
+  income: number;
+  expense: number;
+  income_plan: number;
+  expense_plan: number;
+}
+
+export type InvoiceState = 'paid' | 'partial' | 'overdue' | 'issued';
+export const invoiceStateLabel: Record<InvoiceState, string> = {
+  paid: 'оплачен', partial: 'оплачен частично', overdue: 'просрочен', issued: 'выставлен'
+};
+
+export interface InvoiceDebt {
+  id: string;
+  number: string;
+  doc_date: string;
+  company_id: string | null;
+  company_name: string;
+  project_id: string | null;
+  project_name: string | null;
+  subject: string;
+  amount: number;
+  paid: number;
+  debt: number;
+  due_date: string;
+  state: InvoiceState;
+  days_overdue: number;
+}
+
+export interface ProjectFinance {
+  budget: number | null;
+  budget_source: 'field' | 'deal' | null;
+  budget_label: string | null;
+  paid: number;
+  due: number | null;
+  income_plan: number;
+  plan_overdue: number;
+  spent: number;
+  expense_plan: number;
+  profit: number | null;
+  cash: number;
+  payments: Payment[];
+  invoices: InvoiceDebt[];
+  can_edit: boolean;
+  can_add_expense: boolean;
+}
+
+export interface ProjectMoney {
+  project_id: string;
+  budget: number | null;
+  paid: number;
+  spent: number;
+  due: number | null;
 }

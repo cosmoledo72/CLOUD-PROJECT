@@ -10,6 +10,15 @@ class Session {
     return !!this.me && this.me.crm_role !== 'none';
   }
 
+  /** Sees the finance section (payments, analytics, receivables). */
+  get finance() {
+    return !!this.me && this.has('finance') && (this.me.finance_role ?? 'none') !== 'none';
+  }
+
+  get financeEdit() {
+    return this.finance && this.me?.finance_role === 'edit';
+  }
+
   get crmManager() {
     return this.crm && (this.isAdmin || this.me?.crm_role === 'manager');
   }

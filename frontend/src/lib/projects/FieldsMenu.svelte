@@ -13,6 +13,7 @@
     view,
     own,
     isAdmin = false,
+    money = false,
     onreset,
     onmakedefault
   }: {
@@ -22,6 +23,8 @@
     /** The user has an own setting (otherwise the portal default is in use). */
     own: boolean;
     isAdmin?: boolean;
+    /** Project money columns are available (finance module and access). */
+    money?: boolean;
     onreset: () => void;
     onmakedefault: () => void;
   } = $props();
@@ -47,10 +50,11 @@
   const labelOf = (k: string) => (k in BUILTIN ? BUILTIN[k as keyof typeof BUILTIN] : usable.find((d) => d.key === k)?.label ?? k);
   // Everything that can be listed in the current tab.
   const candidates = $derived(
-    [...(tab === 'rows' ? ['$name'] : []), ...usable.map((d) => d.key), '$status', '$progress', '$dates', ...(tab === 'cards' ? ['$description'] : [])]
+    [...(tab === 'rows' ? ['$name'] : []), ...usable.map((d) => d.key), '$status', '$progress', '$dates',
+     ...(money ? ['$budget', '$paid', '$due'] : []), ...(tab === 'cards' ? ['$description'] : [])]
   );
   const chosen = $derived(tab === 'rows' ? config.columns : config.card);
-  const items = $derived([...chosen, ...candidates.filter((k) => !chosen.includes(k))]);
+  const items = $derived([...chosen.filter((k) => candidates.includes(k)), ...candidates.filter((k) => !chosen.includes(k))]);
 
   function setChosen(list: string[]) {
     if (tab === 'rows') config = { ...config, columns: list };

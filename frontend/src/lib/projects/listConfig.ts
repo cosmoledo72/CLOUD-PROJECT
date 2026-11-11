@@ -13,8 +13,13 @@ export const BUILTIN = {
   $status: 'Статус',
   $progress: 'Задачи',
   $dates: 'Сроки по задачам',
-  $description: 'Описание'
+  $description: 'Описание',
+  $budget: 'Бюджет',
+  $paid: 'Оплачено',
+  $due: 'Остаток к оплате'
 } as const;
+/** Money columns (finance module): shown only to those who may see project money. */
+export const MONEY_KEYS = ['$budget', '$paid', '$due'] as const;
 export type Builtin = keyof typeof BUILTIN;
 
 export interface ListConfig {

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ProjectFinance from '$lib/finance/ProjectFinance.svelte';
+  import Wallet from '@lucide/svelte/icons/wallet';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
@@ -25,9 +27,9 @@
   let myRole = $state<'manager' | 'member' | 'viewer'>('viewer');
   let tasks = $state<Task[]>([]);
   let deps = $state<Dependency[]>([]);
-  type Tab = 'requisites' | 'list' | 'gantt' | 'files' | 'members';
+  type Tab = 'requisites' | 'list' | 'gantt' | 'finance' | 'files' | 'members';
   // A project opens on its requisites; ?tab= links straight to another tab.
-  let tab = $state<Tab>((['requisites', 'list', 'gantt', 'files', 'members'] as const).find((t) => t === page.url.searchParams.get('tab')) ?? 'requisites');
+  let tab = $state<Tab>((['requisites', 'list', 'gantt', 'finance', 'files', 'members'] as const).find((t) => t === page.url.searchParams.get('tab')) ?? 'requisites');
   function setTab(t: Tab) {
     tab = t;
   }
@@ -35,6 +37,8 @@
 
   const canEdit = $derived(myRole !== 'viewer');
   const isManager = $derived(myRole === 'manager');
+  // Money of the project: finance users and the project's managers.
+  const showFinance = $derived(session.has('finance') && (session.finance || isManager) && session.me?.role !== 'guest');
 
   async function loadProject() {
     const r = await api.get<{ project: Project; members: Member[]; my_role: typeof myRole }>(`/projects/${id}`);
@@ -333,6 +337,7 @@
       <button role="tab" aria-selected={tab === 'requisites'} class:on={tab === 'requisites'} onclick={() => setTab('requisites')}><ClipboardList size={16} strokeWidth={1.75} />Реквизиты</button>
       <button role="tab" aria-selected={tab === 'list'} class:on={tab === 'list'} onclick={() => setTab('list')}><ListTodo size={16} strokeWidth={1.75} />Задачи <span class="cnt">{tasks.length}</span></button>
       {#if session.has('planning')}<button role="tab" aria-selected={tab === 'gantt'} class:on={tab === 'gantt'} onclick={() => setTab('gantt')}><ChartGantt size={16} strokeWidth={1.75} />Гант</button>{/if}
+      {#if showFinance}<button role="tab" aria-selected={tab === 'finance'} class:on={tab === 'finance'} onclick={() => setTab('finance')}><Wallet size={16} strokeWidth={1.75} />Финансы</button>{/if}
       {#if project.folder_id}<button role="tab" aria-selected={tab === 'files'} class:on={tab === 'files'} onclick={() => setTab('files')}><FolderOpen size={16} strokeWidth={1.75} />Файлы</button>{/if}
       <button role="tab" aria-selected={tab === 'members'} class:on={tab === 'members'} onclick={() => setTab('members')}><UsersRound size={16} strokeWidth={1.75} />Участники <span class="cnt">{members.length}</span></button>
     </div>
@@ -400,6 +405,8 @@
                           onfill={isManager ? editRequisites : undefined} />
         {/if}
       {/if}
+    {:else if tab === 'finance' && showFinance}
+      <ProjectFinance projectId={project.id} />
     {:else if tab === 'files' && project.folder_id}
       <FolderBrowser folderId={project.folder_id} root={project.folder_id} embedded />
     {:else if tab === 'list' || tab === 'gantt'}

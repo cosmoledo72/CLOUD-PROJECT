@@ -1,13 +1,13 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { api, formatDate, formatFieldValue, localToday, nameDef, type FieldDef, type FieldValues, type Project, type UserItem } from '$lib/api';
+  import { api, formatDate, formatFieldValue, localToday, nameDef, type ProjectMoney, type FieldDef, type FieldValues, type Project, type UserItem } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
   import RequisitesForm from '$lib/RequisitesForm.svelte';
   import { session } from '$lib/session.svelte';
-  import { avatarHue, daysBetween, initials, isDeadline, isMoney, moneyShort } from '$lib/fieldLook';
+  import { avatarHue, daysBetween, initials, isDeadline, isMoney, money as fmtMoney, moneyShort } from '$lib/fieldLook';
   import FieldValue from '$lib/projects/FieldValue.svelte';
   import FieldsMenu from '$lib/projects/FieldsMenu.svelte';
-  import { BUILTIN, groupable, normalize, type ListConfig } from '$lib/projects/listConfig';
+  import { BUILTIN, MONEY_KEYS, groupable, normalize, type ListConfig } from '$lib/projects/listConfig';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -162,6 +162,22 @@
   }
 
   const defByKey = $derived(new Map(defs.map((d) => [d.key, d])));
+
+  // --- Project money (finance module): budget, paid, due for the projects the user may see ---
+  let moneyById = $state<Map<string, ProjectMoney>>(new Map());
+  const hasMoney = $derived(moneyById.size > 0);
+  $effect(() => {
+    if (!session.has('finance') || session.me?.role === 'guest') return;
+    api.get<{ projects: ProjectMoney[] }>('/finance/projects')
+      .then((r) => (moneyById = new Map(r.projects.map((m) => [m.project_id, m]))))
+      .catch(() => {});
+  });
+  const moneyVal = (p: Project, k: string): number | null => {
+    const m = moneyById.get(p.id);
+    if (!m) return null;
+    return k === '$budget' ? m.budget : k === '$paid' ? m.paid : k === '$due' ? m.due : null;
+  };
+  const isMoneyCol = (k: string) => (MONEY_KEYS as readonly string[]).includes(k);
   const groupDefs = $derived(groupable(defs));
 
   // --- Due dates, urgency, money ---------------------------------------------------
@@ -203,6 +219,7 @@
   });
   const late = $derived(searched.filter((p) => urgencyOf(p) === 'late'));
   const soon = $derived(searched.filter((p) => urgencyOf(p) === 'soon'));
+  const toCollect = $derived(searched.filter((p) => p.status === 'active').reduce((s, p) => s + (moneyById.get(p.id)?.due ?? 0), 0));
   const inWork = $derived(searched.filter((p) => p.status === 'active').reduce((s, p) => s + amountOf(p), 0));
   const filtered = $derived(
     searched.filter((p) => (status === 'all' || p.status === status) && (!urgency || urgencyOf(p) === urgency))
@@ -224,6 +241,7 @@
       case '$progress': return progress(p);
       case '$dates': return p.end_date ?? '';
       case '$description': return p.description ?? '';
+      case '$budget': case '$paid': case '$due': return moneyVal(p, k) ?? '';
       default: {
         const d = defByKey.get(k);
         const v = p.fields?.[k];
@@ -276,8 +294,8 @@
   });
 
   const labelOf = (k: string) => (k in BUILTIN ? BUILTIN[k as keyof typeof BUILTIN] : defByKey.get(k)?.label ?? k);
-  const cols = $derived(config.columns.filter((k) => k in BUILTIN || defByKey.has(k)));
-  const isRight = (k: string) => { const d = defByKey.get(k); return !!d && (d.field_type === 'number'); };
+  const cols = $derived(config.columns.filter((k) => (k in BUILTIN && (!isMoneyCol(k) || hasMoney)) || defByKey.has(k)));
+  const isRight = (k: string) => { const d = defByKey.get(k); return isMoneyCol(k) || (!!d && d.field_type === 'number'); };
   const subtitleOf = (p: Project) => {
     const k = config.subtitle;
     if (!k) return '';
@@ -288,7 +306,7 @@
   };
 
   // --- Cards -------------------------------------------------------------------------
-  const cardKeys = $derived(config.card.filter((k) => k in BUILTIN || defByKey.has(k)));
+  const cardKeys = $derived(config.card.filter((k) => (k in BUILTIN && (!isMoneyCol(k) || hasMoney)) || defByKey.has(k)));
   const cardPerson = $derived(cardKeys.find((k) => defByKey.get(k)?.field_type === 'user') ?? null);
   const cardDeadline = $derived(cardKeys.find((k) => { const d = defByKey.get(k); return !!d && isDeadline(d); }) ?? null);
   const cardGrid = $derived(
@@ -312,7 +330,7 @@
           {#each groupDefs as d (d.id)}<option value={d.key}>{d.label}</option>{/each}
         </select>
       </label>
-      <FieldsMenu {defs} bind:config view={shownView} {own} isAdmin={session.isAdmin} onreset={resetConfig} onmakedefault={makeDefault} />
+      <FieldsMenu {defs} bind:config view={shownView} {own} isAdmin={session.isAdmin} money={hasMoney} onreset={resetConfig} onmakedefault={makeDefault} />
       {#if !narrow}
         <div class="seg" role="radiogroup" aria-label="Вид">
           <button role="radio" aria-checked={view === 'rows'} class:on={view === 'rows'} title="Строками" onclick={() => setView('rows')}><List size={16} /></button>
@@ -338,6 +356,11 @@
       <button class="card tile" class:on={urgency === 'soon'} class:zero={!soon.length} onclick={() => (urgency = urgency === 'soon' ? null : 'soon')}>
         <b class:soon={soon.length > 0}>{soon.length}</b><span>сдача в ближайшие 14 дней</span>
       </button>
+      {#if hasMoney && toCollect > 0}
+        <div class="card tile static" title="Остаток к оплате по активным проектам: бюджет − поступления">
+          <b>{moneyShort(toCollect)}</b><span>к получению от заказчиков</span>
+        </div>
+      {/if}
       {#if moneyDef}
         <div class="card tile static" title="Сумма «{moneyDef.label}» по активным проектам">
           <b>{moneyShort(inWork)}</b><span>в работе по договорам</span>
@@ -407,6 +430,9 @@
                         </td>
                       {:else if k === '$description'}
                         <td class="small c-desc">{p.description}</td>
+                      {:else if isMoneyCol(k)}
+                        {@const v = moneyVal(p, k)}
+                        <td class="c-f right nums" class:due={k === '$due' && !!v}>{#if v != null}{fmtMoney(v)}{:else}<span class="faint">—</span>{/if}</td>
                       {:else if k === 'code' && p.fields?.code}
                         <td class="c-code"><span class="code mono">{p.fields.code}</span></td>
                       {:else}
@@ -455,6 +481,7 @@
                           <dt>{labelOf(k)}</dt>
                           <dd>
                             {#if k === '$dates'}{#if p.start_date || p.end_date}{formatDate(p.start_date)} — {formatDate(p.end_date)}{:else}<span class="faint">—</span>{/if}
+                            {:else if isMoneyCol(k)}{#if moneyVal(p, k) != null}<span class="nums">{fmtMoney(moneyVal(p, k))}</span>{:else}<span class="faint">—</span>{/if}
                             {:else if defByKey.get(k)}<FieldValue def={defByKey.get(k)!} value={p.fields?.[k]} {users} {today} active={p.status === 'active'} short />{/if}
                           </dd>
                         </div>
@@ -576,6 +603,7 @@
   .dates { line-height: 1.35; color: var(--text-2); white-space: nowrap; }
   .nums { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .late { color: var(--danger); font-weight: 500; }
+  td.due { color: var(--warn); font-weight: 500; }
   .st { display: inline-flex; align-items: center; gap: 6px; padding: 1px 9px 1px 7px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
   .st i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .st-active { background: var(--ok-soft); color: var(--ok); }
