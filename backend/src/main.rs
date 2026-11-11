@@ -14,6 +14,7 @@ mod fields;
 mod kb;
 mod files;
 mod mail;
+mod modules;
 mod money;
 mod notify;
 mod ooxml;
@@ -85,6 +86,7 @@ fn router(state: AppState) -> Router {
         .route("/admin/overview", get(admin::overview))
         .route("/admin/audit", get(admin::audit))
         .route("/admin/portal", get(admin::get_portal).patch(admin::update_portal))
+        .route("/admin/modules", get(modules::get_modules).put(modules::set_modules))
         .route("/admin/users/{id}/reset-password", post(admin::reset_password))
         .route("/admin/users/{id}/reset-mfa", post(admin::reset_mfa))
         .route("/admin/users/{id}/revoke-sessions", post(admin::revoke_sessions))
@@ -189,7 +191,9 @@ fn router(state: AppState) -> Router {
         .route("/task-labels/{id}", patch(task_board::update_label).delete(task_board::delete_label))
         .route("/tasks/{id}/dependencies", post(projects::add_dependency))
         .route("/tasks/{id}/dependencies/{dep_id}", delete(projects::remove_dependency))
-        .route("/tasks/{id}/time", get(projects::list_time).post(projects::add_time));
+        .route("/tasks/{id}/time", get(projects::list_time).post(projects::add_time))
+        // Switched-off portal modules answer 403 module_disabled.
+        .layer(axum::middleware::from_fn_with_state(state.clone(), modules::guard));
 
     let mut app = Router::new()
         .nest("/api", api)

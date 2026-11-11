@@ -320,7 +320,7 @@
       {/if}
       {#if project.deal_id && session.crm}<a class="small" href="/crm/deals/{project.deal_id}">сделка</a>{/if}
       <div class="spacer"></div>
-      {#if canEdit && project.folder_id}<button class="btn" onclick={openGenerate}>Документ из шаблона</button>{/if}
+      {#if canEdit && project.folder_id && session.has('templates')}<button class="btn" onclick={openGenerate}>Документ из шаблона</button>{/if}
       {#if canEdit}
         <button class="btn" onclick={() => openNew(true)}>Веха</button>
         <button class="btn primary" onclick={() => openNew()}>Задача</button>
@@ -331,7 +331,7 @@
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected={tab === 'requisites'} class:on={tab === 'requisites'} onclick={() => setTab('requisites')}><ClipboardList size={16} strokeWidth={1.75} />Реквизиты</button>
       <button role="tab" aria-selected={tab === 'list'} class:on={tab === 'list'} onclick={() => setTab('list')}><ListTodo size={16} strokeWidth={1.75} />Задачи <span class="cnt">{tasks.length}</span></button>
-      <button role="tab" aria-selected={tab === 'gantt'} class:on={tab === 'gantt'} onclick={() => setTab('gantt')}><ChartGantt size={16} strokeWidth={1.75} />Гант</button>
+      {#if session.has('planning')}<button role="tab" aria-selected={tab === 'gantt'} class:on={tab === 'gantt'} onclick={() => setTab('gantt')}><ChartGantt size={16} strokeWidth={1.75} />Гант</button>{/if}
       {#if project.folder_id}<button role="tab" aria-selected={tab === 'files'} class:on={tab === 'files'} onclick={() => setTab('files')}><FolderOpen size={16} strokeWidth={1.75} />Файлы</button>{/if}
       <button role="tab" aria-selected={tab === 'members'} class:on={tab === 'members'} onclick={() => setTab('members')}><UsersRound size={16} strokeWidth={1.75} />Участники <span class="cnt">{members.length}</span></button>
     </div>
@@ -339,7 +339,7 @@
     {#if error}<div class="error-box">{error}</div>{/if}
     {#if info}<div class="info-box" role="status">{info}</div>{/if}
 
-    {#if tab === 'gantt'}
+    {#if tab === 'gantt' && session.has('planning')}
       <div class="sched row">
         {#if schedule.project_end}
           <span>Окончание: <b>{formatDate(schedule.project_end)}</b></span>
@@ -399,7 +399,7 @@
       </div>
     {:else if tab === 'files' && project.folder_id}
       <FolderBrowser folderId={project.folder_id} root={project.folder_id} embedded />
-    {:else if tab === 'list'}
+    {:else if tab === 'list' || tab === 'gantt'}
       <TaskRows {tasks} {canEdit} meId={session.me?.id} onopen={openTask} onstatus={setStatus} />
     {:else}
       <div class="card scroll">

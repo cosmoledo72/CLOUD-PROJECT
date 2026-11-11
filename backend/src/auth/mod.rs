@@ -30,6 +30,8 @@ pub struct CurrentUser {
     pub role: String,
     /// CRM access: none | user | manager.
     pub crm_role: String,
+    /// Portal modules switched off by the administrator (see `modules`).
+    pub disabled_modules: Vec<String>,
 }
 
 impl CurrentUser {
@@ -39,9 +41,13 @@ impl CurrentUser {
     pub fn is_guest(&self) -> bool {
         self.role == "guest"
     }
-    /// May use the CRM at all (guests never can).
+    /// Is the portal module on (`modules::MODULES`)?
+    pub fn module_on(&self, key: &str) -> bool {
+        crate::modules::enabled(&self.disabled_modules, key)
+    }
+    /// May use the CRM at all (guests never can; the module may be off).
     pub fn crm_enabled(&self) -> bool {
-        !self.is_guest() && self.crm_role != "none"
+        !self.is_guest() && self.crm_role != "none" && self.module_on("crm")
     }
     /// Sees every CRM record and manages pipeline settings.
     pub fn crm_manager(&self) -> bool {
@@ -156,9 +162,14 @@ impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+        // Already resolved for this request (e.g. by the module guard).
+        if let Some(u) = parts.extensions.get::<CurrentUser>() {
+            return Ok(u.clone());
+        }
         let token = token_from_parts(parts).ok_or(ApiError::Unauthorized)?;
         let user = sqlx::query_as::<_, CurrentUser>(
-            "SELECT u.id AS user_id, u.tenant_id, u.email::text AS email, u.display_name, u.role, u.crm_role
+            "SELECT u.id AS user_id, u.tenant_id, u.email::text AS email, u.display_name, u.role, u.crm_role,
+                    t.disabled_modules
                FROM sessions s
                JOIN users u   ON u.id = s.user_id
                JOIN tenants t ON t.id = s.tenant_id
@@ -172,6 +183,7 @@ impl FromRequestParts<AppState> for CurrentUser {
         .fetch_optional(&state.db)
         .await?
         .ok_or(ApiError::Unauthorized)?;
+        parts.extensions.insert(user.clone());
         Ok(user)
     }
 }

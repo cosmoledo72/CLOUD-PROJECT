@@ -122,6 +122,7 @@ API=http://localhost:8080 python3 scripts/sales_docs_test.py # sales documents: 
 API=http://localhost:8080 python3 scripts/kb_chat_test.py   # knowledge base, chats, team directory, finance filters
 API=http://localhost:8080 python3 scripts/tasks_test.py     # "All tasks" board, task numbers, labels, checklists
 API=http://localhost:8080 python3 scripts/project_edit_test.py  # project rename, folder rename, validation
+API=http://localhost:8080 TEST_DATABASE_URL=postgres://... python3 scripts/modules_test.py  # portal modules on/off
 cd backend && cargo test                                   # unit tests (SVG filter, OOXML, limiter, scheduling, requisites validation, import)
 ```
 

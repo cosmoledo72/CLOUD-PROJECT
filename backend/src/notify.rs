@@ -91,6 +91,13 @@ async fn notify_inner(state: &AppState, tenant_id: Uuid, actor: Option<Uuid>, re
     let Some(k) = kind(note.kind) else {
         return Err(anyhow::anyhow!("unknown notification kind {}", note.kind).into());
     };
+    // A switched-off module sends nothing.
+    if let Some(m) = kind_module(k.key, note.entity_type) {
+        let disabled = crate::modules::load_disabled(state, tenant_id).await?;
+        if !crate::modules::enabled(&disabled, m) {
+            return Ok(());
+        }
+    }
     let mut ids: Vec<Uuid> = recipients.iter().copied().filter(|u| Some(*u) != actor).collect();
     ids.sort();
     ids.dedup();
@@ -277,7 +284,23 @@ pub async fn get_prefs(State(state): State<AppState>, user: CurrentUser) -> ApiR
 }
 
 fn crm_visible(user: &CurrentUser, k: &Kind) -> bool {
-    k.group != "CRM" || user.crm_enabled()
+    (k.group != "CRM" || user.crm_enabled()) && kind_module(k.key, None).is_none_or(|m| user.module_on(m))
+}
+
+/// Portal module a notification kind belongs to (`None` — always available).
+/// Mentions follow the object they were made in.
+fn kind_module(kind: &str, entity_type: Option<&str>) -> Option<&'static str> {
+    match kind {
+        "mention" => match entity_type {
+            Some("task") => Some("projects"),
+            Some(_) => Some("crm"),
+            None => None,
+        },
+        "file_shared" => None,
+        k if k.starts_with("task_") || k == "checklist_assigned" || k == "project_added" => Some("projects"),
+        k if k.starts_with("crm_") || k.starts_with("deal_") || k == "company_assigned" => Some("crm"),
+        _ => None,
+    }
 }
 
 #[derive(Deserialize)]
@@ -443,6 +466,7 @@ async fn scan_due(state: &AppState) -> anyhow::Result<()> {
               JOIN tenants ten ON ten.id = t.tenant_id
              WHERE t.status <> 'done' AND t.assignee_id IS NOT NULL AND t.due_date IS NOT NULL
                AND p.status = 'active' AND ten.status = 'active'
+               AND NOT ('projects' = ANY(ten.disabled_modules))
                AND extract(hour FROM now() AT TIME ZONE ten.timezone) >= $1
                AND t.due_date BETWEEN current_date - 9 AND current_date + 2
          ) x WHERE due_date BETWEEN today - 7 AND today + 1",

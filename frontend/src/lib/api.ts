@@ -52,7 +52,11 @@ export interface Me {
   crm_role: CrmRole;
   position: string;
   phone: string;
+  /** Portal modules that are on: projects, planning, time, templates, storage, kb, chats, crm, team. */
+  modules: ModuleKey[];
 }
+
+export type ModuleKey = 'projects' | 'planning' | 'time' | 'templates' | 'storage' | 'kb' | 'chats' | 'crm' | 'team';
 
 export type CrmRole = 'none' | 'user' | 'manager';
 

@@ -11,6 +11,7 @@
   import TaskBlock from '$lib/crm/TaskBlock.svelte';
   import Modal from '$lib/Modal.svelte';
   import RequisitesForm from '$lib/RequisitesForm.svelte';
+  import { session } from '$lib/session.svelte';
 
   const id = $derived(page.params.id);
   let deal = $state<Deal | null>(null);
@@ -146,7 +147,7 @@
     <div class="spacer"></div>
     {#if deal.project_id}
       <a class="btn" href="/projects/{deal.project_id}">Проект: {deal.project_name}</a>
-    {:else if canEdit}
+    {:else if canEdit && session.has('projects')}
       <button class="btn" class:primary={deal.stage_kind === 'won'} onclick={openProject}>Создать проект</button>
     {/if}
     {#if canEdit}<button class="btn danger" onclick={remove}>Удалить</button>{/if}

@@ -452,7 +452,7 @@ pub async fn scan_reminders(state: &AppState) -> anyhow::Result<()> {
            JOIN tenants ten ON ten.id = t.tenant_id
            LEFT JOIN crm_companies c ON c.id = t.company_id
            LEFT JOIN crm_deals d ON d.id = t.deal_id
-          WHERE t.done_at IS NULL AND ten.status = 'active'
+          WHERE t.done_at IS NULL AND ten.status = 'active' AND NOT ('crm' = ANY(ten.disabled_modules))
             AND t.due_date BETWEEN current_date - 9 AND current_date + 2",
     )
     .fetch_all(&state.db)

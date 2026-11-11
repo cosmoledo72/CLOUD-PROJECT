@@ -37,12 +37,15 @@ pub struct MeResponse {
     pub crm_role: String,
     pub position: String,
     pub phone: String,
+    /// Portal modules that are on (see `modules::MODULES`).
+    pub modules: Vec<&'static str>,
 }
 
 async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
-    let row: (Uuid, Uuid, String, String, String, String, String, bool, String, String, String) = sqlx::query_as(
+    let row: (Uuid, Uuid, String, String, String, String, String, bool, String, String, String, Vec<String>) = sqlx::query_as(
         "SELECT u.id, t.id, t.slug::text, t.name, u.email::text, u.display_name, u.role, u.totp_enabled,
-                CASE WHEN u.role = 'guest' THEN 'none' ELSE u.crm_role END, u.position, u.phone
+                CASE WHEN u.role = 'guest' OR 'crm' = ANY(t.disabled_modules) THEN 'none' ELSE u.crm_role END,
+                u.position, u.phone, t.disabled_modules
            FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1",
     )
     .bind(user_id)
@@ -60,6 +63,7 @@ async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
         crm_role: row.8,
         position: row.9,
         phone: row.10,
+        modules: crate::modules::enabled_keys(&row.11),
     })
 }
 

@@ -1,6 +1,6 @@
 // Global session state (Svelte 5 runes).
 
-import { api, ApiError, type Me } from './api';
+import { api, ApiError, type Me, type ModuleKey } from './api';
 
 class Session {
   me = $state<Me | null>(null);
@@ -12,6 +12,17 @@ class Session {
 
   get crmManager() {
     return this.crm && (this.isAdmin || this.me?.crm_role === 'manager');
+  }
+
+  /** Is the portal module on (Администрирование → Модули)? */
+  has(module: ModuleKey): boolean {
+    return !!this.me && (this.me.modules ?? []).includes(module);
+  }
+
+  /** Start page: the first section whose module is on. */
+  get home(): string {
+    const order: [ModuleKey, string][] = [['projects', '/projects'], ['kb', '/kb'], ['chats', '/chats'], ['storage', '/files'], ['crm', '/crm'], ['team', '/team']];
+    return order.find(([m]) => this.has(m) && (m !== 'crm' || this.crm))?.[1] ?? '/settings';
   }
 
   get isAdmin() {

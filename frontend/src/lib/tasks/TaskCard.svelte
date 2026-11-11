@@ -452,28 +452,34 @@
         {/if}
       </section>
 
-      <section class="sec">
-        <h3>Предшествующие задачи</h3>
-        {#each predecessors as p}
-          <div class="row dep">
-            <span>{titleOf(p.depends_on_id)}</span><span class="faint">({p.kind}{p.lag_days ? ` +${p.lag_days} дн.` : ''})</span>
-            <div class="spacer"></div>
-            {#if canManage}<button class="btn ghost sm danger" onclick={() => removeDep(p.depends_on_id)}>Убрать</button>{/if}
-          </div>
-        {:else}
-          <p class="faint none">Нет</p>
-        {/each}
-        {#if canManage}
-          <div class="row">
-            <select class="input" bind:value={newDep}>
-              <option value="">Задача должна начаться после…</option>
-              {#each projectTasks.filter((t) => t.id !== taskId && !predecessors.some((p) => p.depends_on_id === t.id)) as t}
-                <option value={t.id}>#{t.number} {t.title}</option>
-              {/each}
-            </select>
-            <button class="btn" disabled={!newDep} onclick={addDep}>Связать</button>
-          </div>
+      {#if session.has('planning')}
+        <section class="sec">
+          <h3>Предшествующие задачи</h3>
+          {#each predecessors as p}
+            <div class="row dep">
+              <span>{titleOf(p.depends_on_id)}</span><span class="faint">({p.kind}{p.lag_days ? ` +${p.lag_days} дн.` : ''})</span>
+              <div class="spacer"></div>
+              {#if canManage}<button class="btn ghost sm danger" onclick={() => removeDep(p.depends_on_id)}>Убрать</button>{/if}
+            </div>
+          {:else}
+            <p class="faint none">Нет</p>
+          {/each}
+          {#if canManage}
+            <div class="row">
+              <select class="input" bind:value={newDep}>
+                <option value="">Задача должна начаться после…</option>
+                {#each projectTasks.filter((t) => t.id !== taskId && !predecessors.some((p) => p.depends_on_id === t.id)) as t}
+                  <option value={t.id}>#{t.number} {t.title}</option>
+                {/each}
+              </select>
+              <button class="btn" disabled={!newDep} onclick={addDep}>Связать</button>
+            </div>
+          {/if}
+        </section>
+      {/if}
 
+      {#if session.has('time') && canManage}
+        <section class="sec">
           <h3>Учёт времени <span class="faint">— всего {(task.spent_minutes / 60).toFixed(1)} ч</span></h3>
           <div class="row">
             <input class="input" type="date" bind:value={timeDate} aria-label="Дата" />
@@ -481,8 +487,8 @@
             <span class="faint">мин</span>
             <button class="btn" onclick={logTime}>Записать</button>
           </div>
-        {/if}
-      </section>
+        </section>
+      {/if}
 
       <section class="sec">
         <h3><MessageSquare size={16} strokeWidth={2} />Обсуждение {#if comments.length}<span class="faint">{comments.length}</span>{/if}</h3>

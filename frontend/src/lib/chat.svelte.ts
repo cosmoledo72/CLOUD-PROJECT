@@ -27,6 +27,10 @@ class Chats {
   private listeners = new Set<(ev: ChatEvent) => void>();
 
   async refreshUnread() {
+    if (!session.has('chats')) {
+      this.unreadTotal = 0;
+      return;
+    }
     try {
       this.unreadTotal = (await api.get<{ total: number }>('/chats/unread')).total;
     } catch {

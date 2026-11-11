@@ -228,7 +228,7 @@
     <div class="seg" role="tablist" aria-label="Вид">
       <button class="btn sm" role="tab" aria-selected={view === 'list'} class:on={view === 'list'} onclick={() => (view = 'list')}><List size={15} strokeWidth={2} />Список</button>
       <button class="btn sm" role="tab" aria-selected={view === 'calendar'} class:on={view === 'calendar'} onclick={() => (view = 'calendar')}><CalendarDays size={15} strokeWidth={2} />Календарь</button>
-      <button class="btn sm" role="tab" aria-selected={view === 'gantt'} class:on={view === 'gantt'} onclick={() => (view = 'gantt')}><ChartGantt size={15} strokeWidth={2} />Гант</button>
+      {#if session.has('planning')}<button class="btn sm" role="tab" aria-selected={view === 'gantt'} class:on={view === 'gantt'} onclick={() => (view = 'gantt')}><ChartGantt size={15} strokeWidth={2} />Гант</button>{/if}
     </div>
     <div class="spacer"></div>
     {#if labels.canManage}<button class="btn" onclick={() => (labelsOpen = true)}><Tags size={16} strokeWidth={1.75} />Метки</button>{/if}
@@ -266,7 +266,7 @@
     </div>
   {:else if view === 'list'}
     <TaskRows {tasks} canEdit={false} {canEditTask} showProject search={false} storageKey="wh_task_rows_all" meId={session.me?.id} onopen={openTask} onstatus={setStatus} />
-  {:else if view === 'calendar'}
+  {:else if view === 'calendar' || (view === 'gantt' && !session.has('planning'))}
     <TaskCalendar {tasks} {today} onopen={openTask} onundated={() => (view = 'list')} />
   {:else}
     {#if ganttTasks.length < tasks.length}<p class="faint small hint">Задачи без сроков на диаграмме не показаны: {tasks.length - ganttTasks.length}.</p>{/if}

@@ -4,12 +4,13 @@
 
   let { children } = $props();
 
-  const tabs = [
+  const tabs: { href: string; label: string; exact?: boolean; show?: () => boolean }[] = [
     { href: '/admin', label: 'Обзор', exact: true },
     { href: '/admin/users', label: 'Пользователи' },
     { href: '/admin/groups', label: 'Группы' },
-    { href: '/admin/organization', label: 'Организация' },
-    { href: '/admin/requisites', label: 'Реквизиты проектов' },
+    { href: '/admin/modules', label: 'Модули' },
+    { href: '/admin/organization', label: 'Организация', show: () => session.has('crm') },
+    { href: '/admin/requisites', label: 'Реквизиты проектов', show: () => session.has('projects') },
     { href: '/admin/templates', label: 'Шаблоны документов' },
     { href: '/admin/branding', label: 'Оформление' },
     { href: '/admin/mail', label: 'Почта' },
@@ -26,7 +27,7 @@
     <div class="card denied"><p class="muted">Раздел доступен только администраторам портала.</p></div>
   {:else}
     <nav class="tabs" aria-label="Разделы администрирования">
-      {#each tabs as t}
+      {#each tabs.filter((t) => !t.show || t.show()) as t}
         <a href={t.href} class:on={isActive(t)} aria-current={isActive(t) ? 'page' : undefined}>{t.label}</a>
       {/each}
     </nav>

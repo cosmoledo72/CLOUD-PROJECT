@@ -19,6 +19,7 @@
   import Settings from '@lucide/svelte/icons/settings';
   import UsersRound from '@lucide/svelte/icons/users-round';
   import Wallet from '@lucide/svelte/icons/wallet';
+  import type { ModuleKey } from '$lib/api';
   import type { Component } from 'svelte';
 
   let { children } = $props();
@@ -39,18 +40,33 @@
 
   type NavItem = { href: string; label: string; icon: Component; match: string[]; count?: () => number; hot?: () => boolean; show?: () => boolean };
   const nav: NavItem[] = [
-    { href: '/projects', label: 'Проекты', icon: FolderKanban, match: ['/projects'] },
-    { href: '/tasks', label: 'Задачи', icon: ListTodo, match: ['/tasks'] },
-    { href: '/kb', label: 'База знаний', icon: BookOpen, match: ['/kb'] },
+    { href: '/projects', label: 'Проекты', icon: FolderKanban, match: ['/projects'], show: () => session.has('projects') },
+    { href: '/tasks', label: 'Задачи', icon: ListTodo, match: ['/tasks'], show: () => session.has('projects') },
+    { href: '/kb', label: 'База знаний', icon: BookOpen, match: ['/kb'], show: () => session.has('kb') },
     { href: '/finance', label: 'Финансы', icon: Wallet, match: ['/finance'], show: () => session.crm },
     {
       href: '/crm', label: 'CRM', icon: BriefcaseBusiness, match: ['/crm'], show: () => session.crm,
       count: () => crmDue.count, hot: () => crmDue.overdue > 0
     },
-    { href: '/chats', label: 'Чаты', icon: MessagesSquare, match: ['/chats'], count: () => chats.unreadTotal, hot: () => true },
-    { href: '/files', label: 'Хранилище', icon: HardDrive, match: ['/files', '/shared', '/trash'] },
-    { href: '/team', label: 'Команда', icon: UsersRound, match: ['/team'], show: () => session.me?.role !== 'guest' }
+    { href: '/chats', label: 'Чаты', icon: MessagesSquare, match: ['/chats'], count: () => chats.unreadTotal, hot: () => true, show: () => session.has('chats') },
+    { href: '/files', label: 'Хранилище', icon: HardDrive, match: ['/files', '/shared', '/trash'], show: () => session.has('storage') },
+    { href: '/team', label: 'Команда', icon: UsersRound, match: ['/team'], show: () => session.me?.role !== 'guest' && session.has('team') }
   ];
+
+  // Sections of switched-off modules (Администрирование → Модули) show a notice instead.
+  const SECTION_MODULES: [string, ModuleKey, string][] = [
+    ['/projects', 'projects', 'Проекты'], ['/tasks', 'projects', 'Проекты'], ['/kb', 'kb', 'База знаний'],
+    ['/chats', 'chats', 'Чаты'], ['/crm', 'crm', 'CRM'], ['/finance', 'crm', 'CRM'],
+    ['/files', 'storage', 'Хранилище'], ['/shared', 'storage', 'Хранилище'], ['/trash', 'storage', 'Хранилище'],
+    ['/team', 'team', 'Команда']
+  ];
+  const blocked = $derived.by(() => {
+    if (!session.me) return null;
+    const p = page.url.pathname;
+    const hit = SECTION_MODULES.find(([prefix]) => p === prefix || p.startsWith(prefix + '/'));
+    return hit && !session.has(hit[1]) ? hit[2] : null;
+  });
+  const home = $derived(session.home);
   const isActive = (item: NavItem) => item.match.some((m) => page.url.pathname.startsWith(m));
 
   // Icons-only sidebar, remembered per browser.
@@ -107,7 +123,7 @@
   <div class="shell" class:collapsed>
     <aside class:open={menuOpen} data-sidebar={b?.sidebar_style ?? 'light'}>
       <div class="top">
-        <a class="brand" href="/projects" title={portalName}>
+        <a class="brand" href={home} title={portalName}>
           {#if b?.logo_url && !collapsed}
             <img class="logo" class:plate={b.logo_plate} src={b.logo_url} alt={portalName} />
           {:else}
@@ -159,7 +175,18 @@
         <div class="spacer"></div>
         <NotificationBell />
       </div>
-      {@render children()}
+      {#if blocked}
+        <div class="page"><div class="card off">
+          <h2>Модуль «{blocked}» отключён</h2>
+          <p class="muted">Администратор портала отключил этот раздел. Данные сохранены и вернутся, когда модуль включат снова.</p>
+          <div class="row">
+            <a class="btn" href={home}>На главную</a>
+            {#if session.isAdmin}<a class="btn ghost" href="/admin/modules">Модули портала</a>{/if}
+          </div>
+        </div></div>
+      {:else}
+        {@render children()}
+      {/if}
     </main>
   </div>
 {/if}
@@ -198,6 +225,8 @@
   .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bottom { margin-bottom: 8px; }
   .collapse { font-size: 13px; color: var(--text-3); }
+  .off { padding: 28px; max-width: 560px; display: grid; gap: 10px; justify-items: start; }
+  .off h2, .off p { margin: 0; }
   .bell-collapsed { display: grid; place-items: center; padding: 4px 0; color: var(--text-2); }
   .me { display: flex; align-items: center; gap: 8px; padding: 10px 4px 0; border-top: 1px solid var(--border); }
   .avatar {
