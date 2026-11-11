@@ -20,6 +20,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 from smoke_test import Client, step  # noqa: E402
 
 TZ = "Asia/Sakhalin"
+# Near local midnight a «23:59 today» task falls within the 15-minute reminder
+# window and «in 10 minutes» moves to tomorrow; then run the portal in a fixed
+# UTC offset where it is around noon so the scenario stays the same.
+if dt.datetime.now(ZoneInfo(TZ)).hour >= 22 or dt.datetime.now(ZoneInfo(TZ)).hour < 1:
+    _off = (12 - dt.datetime.now(dt.timezone.utc).hour) % 24
+    _off = _off - 24 if _off > 14 else _off
+    TZ = f"Etc/GMT{'-' if _off > 0 else '+'}{abs(_off)}" if _off else "Etc/UTC"
 
 
 def login(slug, email, password):

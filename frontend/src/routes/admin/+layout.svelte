@@ -5,6 +5,7 @@
   import Blocks from '@lucide/svelte/icons/blocks';
   import Building from '@lucide/svelte/icons/building';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
+  import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import ClipboardList from '@lucide/svelte/icons/clipboard-list';
   import FileStack from '@lucide/svelte/icons/file-stack';
   import Gauge from '@lucide/svelte/icons/gauge';
@@ -37,7 +38,10 @@
       { href: '/admin/templates', label: 'Шаблоны документов', icon: FileStack },
       { href: '/admin/organization', label: 'Организация', icon: Building, show: () => session.has('crm') }
     ] },
-    { title: 'Безопасность', items: [{ href: '/admin/audit', label: 'Журнал действий', icon: History }] }
+    { title: 'Безопасность', items: [
+      { href: '/admin/backups', label: 'Резервные копии', icon: DatabaseBackup, show: () => !!session.me?.backups },
+      { href: '/admin/audit', label: 'Журнал действий', icon: History }
+    ] }
   ];
   const isActive = (t: Item) => (t.exact ? page.url.pathname === t.href : page.url.pathname.startsWith(t.href));
   const current = $derived(groups.flatMap((g) => g.items).find(isActive));

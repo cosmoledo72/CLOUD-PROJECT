@@ -65,8 +65,16 @@ services:
       # Unread notifications are emailed after this delay (seconds).
       NOTIFY_EMAIL_DELAY_SECS: ${NOTIFY_EMAIL_DELAY_SECS:-180}
       RUST_LOG: workhub_server=info,tower_http=info
+      # «Администрирование → Резервные копии»: shown to administrators of this portal (slug).
+      # A backup holds every portal of the server; empty = the section is off.
+      BACKUP_PORTAL: ${BACKUP_PORTAL:-}
+      BACKUP_DIR: /backups
+      BACKUP_HOUR: ${BACKUP_HOUR:-03}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
     volumes:
       - blobs:/data/blobs
+      # Read the backups and leave a «make a backup now» request for the backup service.
+      - ${BACKUP_PATH:-./backups}:/backups
     healthcheck:
       test: ["CMD", "workhub-server", "healthcheck"]
       interval: 10s

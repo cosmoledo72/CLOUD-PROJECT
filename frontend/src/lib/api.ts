@@ -56,6 +56,33 @@ export interface Me {
   phone: string;
   /** Portal modules that are on: projects, planning, time, templates, storage, kb, chats, crm, team. */
   modules: ModuleKey[];
+  /** May open «Администрирование → Резервные копии» (administrators of the backup portal). */
+  backups: boolean;
+}
+
+/** A backup made by the backup service. */
+export interface BackupItem {
+  name: string;
+  state: 'ready' | 'running' | 'unfinished';
+  created: string | null;
+  /** Unix time (seconds). */
+  time: number;
+  db_bytes: number | null;
+  files_bytes: number | null;
+}
+
+export interface BackupStatus {
+  available: boolean;
+  alive: boolean;
+  heartbeat: number | null;
+  now: number;
+  hour: number;
+  keep_days: number;
+  requested_at: number | null;
+  running: boolean;
+  last_result: { result?: 'ok' | 'error'; time?: string; name?: string; error?: string };
+  warnings: string[];
+  backups: BackupItem[];
 }
 
 export type ModuleKey = 'projects' | 'planning' | 'time' | 'templates' | 'storage' | 'kb' | 'chats' | 'crm' | 'finance' | 'team';
@@ -451,6 +478,14 @@ export const actionLabel: Record<string, string> = {
   'project.deleted': 'Удалён проект',
   'project.requisites_updated': 'Изменены реквизиты проекта',
   'project.rescheduled': 'Сроки задач сдвинуты по связям',
+  'backup.requested': 'Запрошена резервная копия',
+  'backup.downloaded': 'Скачана резервная копия',
+  'calendar.day_set': 'Изменён день рабочего календаря',
+  'calendar.day_reset': 'День календаря возвращён к официальному',
+  'calendar.holidays_filled': 'Отмечены праздники ТК РФ',
+  'task.attachment_added': 'Прикреплён файл к задаче',
+  'task.attachment_removed': 'Откреплён файл от задачи',
+  'project_label.deleted': 'Удалена метка проектов',
   'project.baseline_saved': 'Сохранён базовый план',
   'project_fields.created': 'Добавлен реквизит',
   'project_fields.updated': 'Изменён реквизит',

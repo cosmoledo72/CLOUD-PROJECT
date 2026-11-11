@@ -5,6 +5,7 @@ mod acl;
 mod admin;
 mod attachments;
 mod auth;
+mod backups;
 mod branding;
 mod calendar;
 mod chat;
@@ -107,6 +108,9 @@ fn router(state: AppState) -> Router {
         .route("/calendar", get(calendar::get))
         .route("/admin/calendar/days/{date}", put(calendar::set_day).delete(calendar::reset_day))
         .route("/admin/calendar/{year}/holidays", post(calendar::fill_holidays))
+        .route("/admin/backups", get(backups::list))
+        .route("/admin/backups/now", post(backups::request_now))
+        .route("/admin/backups/{name}/{file}", get(backups::download))
         .route("/finance/settings", get(finance::get_settings).put(finance::save_settings))
         .route("/finance/categories", get(finance::list_categories).post(finance::create_category))
         .route("/finance/categories/{id}", patch(finance::update_category))

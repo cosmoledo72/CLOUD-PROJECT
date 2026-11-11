@@ -204,7 +204,7 @@ pub async fn create_file(state: &AppState, user: &CurrentUser, folder_id: Uuid, 
     Ok(file_id)
 }
 
-fn content_disposition(name: &str, inline: bool) -> HeaderValue {
+pub fn content_disposition(name: &str, inline: bool) -> HeaderValue {
     let encoded: String = name
         .bytes()
         .map(|b| match b {

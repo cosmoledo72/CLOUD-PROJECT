@@ -54,6 +54,14 @@ pub struct Config {
     pub due_scan_secs: u64,
     /// Local hour (portal time zone) from which due-date reminders are sent.
     pub due_reminder_hour: i32,
+    /// Folder of the backup service (`backup.sh`), mounted into the backend.
+    pub backup_dir: String,
+    /// Slug of the portal whose administrators see «Резервные копии»
+    /// (a backup holds every portal of the server). Empty = the section is off.
+    pub backup_portal: Option<String>,
+    /// Nightly backup hour and retention, as the backup service uses them (shown in the section).
+    pub backup_hour: u32,
+    pub backup_keep_days: u32,
 }
 
 /// SMTP server configured through the environment (`SMTP_*`).
@@ -105,6 +113,10 @@ impl Config {
             notify_email_delay_secs: var_or("NOTIFY_EMAIL_DELAY_SECS", "180").parse().context("NOTIFY_EMAIL_DELAY_SECS")?,
             due_scan_secs: var_or("DUE_SCAN_SECS", "60").parse::<u64>().context("DUE_SCAN_SECS")?.max(1),
             due_reminder_hour: var_or("DUE_REMINDER_HOUR", "8").parse().context("DUE_REMINDER_HOUR")?,
+            backup_dir: var_or("BACKUP_DIR", "/backups"),
+            backup_portal: std::env::var("BACKUP_PORTAL").ok().map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()),
+            backup_hour: var_or("BACKUP_HOUR", "3").trim_start_matches('0').parse().unwrap_or(0).min(23),
+            backup_keep_days: var_or("BACKUP_KEEP_DAYS", "14").parse().context("BACKUP_KEEP_DAYS")?,
         };
         if cfg.app_secret.len() < 32 || cfg.docs_jwt_secret.len() < 16 {
             anyhow::bail!("APP_SECRET must be >= 32 chars and DOCS_JWT_SECRET >= 16 chars");

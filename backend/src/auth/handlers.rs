@@ -41,6 +41,8 @@ pub struct MeResponse {
     pub phone: String,
     /// Portal modules that are on (see `modules::MODULES`).
     pub modules: Vec<&'static str>,
+    /// The user may open «Администрирование → Резервные копии».
+    pub backups: bool,
 }
 
 async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
@@ -56,6 +58,7 @@ async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
     .bind(user_id)
     .fetch_one(&state.db)
     .await?;
+    let backups = crate::backups::allowed(state, &row.2, &row.6);
     Ok(MeResponse {
         id: row.0,
         tenant_id: row.1,
@@ -70,6 +73,7 @@ async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
         position: row.9,
         phone: row.10,
         modules: crate::modules::enabled_keys(&row.11),
+        backups,
     })
 }
 

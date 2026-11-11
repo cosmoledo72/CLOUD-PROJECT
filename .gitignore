@@ -8,5 +8,5 @@ frontend/build/
 __pycache__/
 
 # Local backups and HTTPS proxy state
-backups/
+/backups/
 deploy/caddy-local-root.crt
