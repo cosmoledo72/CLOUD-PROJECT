@@ -13,7 +13,6 @@ use crate::{
     auth::CurrentUser,
     scheduling::{self, Dep, Node, Span},
     error::{bad_request, ApiError, ApiResult},
-    files::validate_name,
     state::AppState,
 };
 
@@ -145,14 +144,29 @@ pub async fn create_project_inner(
     if user.is_guest() {
         return Err(ApiError::Forbidden);
     }
-    let name = project_name_checked(name)?;
+    // With an «Наименование объекта» requisite the project name and the
+    // requisite are one value: a filled requisite wins, otherwise it is filled from the name.
+    let defs = crate::fields::load_defs(state, user.tenant_id, false).await?;
+    let mut fields = fields.clone();
+    let name = match crate::fields::name_def(&defs) {
+        Some(nd) => match fields.get(&nd.key).and_then(Value::as_str).filter(|s| !s.trim().is_empty()) {
+            Some(v) => project_name_checked(&v.chars().take(PROJECT_NAME_MAX).collect::<String>())?,
+            None => {
+                let n = project_name_checked(name)?;
+                fields.insert(nd.key.clone(), Value::String(n.clone()));
+                n
+            }
+        },
+        None => project_name_checked(name)?,
+    };
+    let fields = &fields;
     let mut tx = state.db.begin().await?;
     // Every project gets its own document root, governed by project roles.
     let folder_id: Uuid = sqlx::query_scalar(
         "INSERT INTO folders (tenant_id, kind, name, owner_id) VALUES ($1, 'project', $2, $3) RETURNING id",
     )
     .bind(user.tenant_id)
-    .bind(&name)
+    .bind(folder_name_for(&name))
     .bind(user.user_id)
     .fetch_one(&mut *tx)
     .await?;
@@ -231,44 +245,112 @@ pub async fn update_project(
         }
     }
     let mut tx = state.db.begin().await?;
-    let (old_name, folder_id): (String, Option<Uuid>) = sqlx::query_as("SELECT name, folder_id FROM projects WHERE id = $1 FOR UPDATE")
-        .bind(id)
-        .fetch_one(&mut *tx)
-        .await?;
     sqlx::query(
-        "UPDATE projects SET name = COALESCE($2, name), description = COALESCE($3, description), status = COALESCE($4, status),
-                auto_schedule = COALESCE($5, auto_schedule)
+        "UPDATE projects SET description = COALESCE($2, description), status = COALESCE($3, status),
+                auto_schedule = COALESCE($4, auto_schedule)
           WHERE id = $1",
     )
     .bind(id)
-    .bind(&name)
     .bind(req.description.as_deref().map(str::trim))
     .bind(&req.status)
     .bind(req.auto_schedule)
     .execute(&mut *tx)
     .await?;
-    // The project's document root carries the project name, so rename it too.
-    let renamed = name.filter(|n| *n != old_name);
-    if let (Some(n), Some(folder)) = (&renamed, folder_id) {
-        sqlx::query("UPDATE folders SET name = $2 WHERE id = $1 AND kind = 'project'")
-            .bind(folder)
+    let mut renamed = None;
+    if let Some(n) = &name {
+        renamed = rename_in_tx(&mut tx, id, n).await?;
+        // Keep the «Наименование объекта» requisite equal to the name.
+        let defs = crate::fields::load_defs(&state, user.tenant_id, false).await?;
+        if let Some(nd) = crate::fields::name_def(&defs) {
+            sqlx::query(
+                "INSERT INTO project_field_values (project_id, field_id, value, updated_by, updated_at)
+                 VALUES ($1, $2, to_jsonb($3::text), $4, now())
+                 ON CONFLICT (project_id, field_id) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()",
+            )
+            .bind(id)
+            .bind(nd.id)
             .bind(n)
+            .bind(user.user_id)
             .execute(&mut *tx)
             .await?;
+        }
     }
     tx.commit().await?;
-    if let Some(n) = renamed {
-        state
-            .audit(user.tenant_id, Some(user.user_id), "project.renamed", Some("project"), Some(id), json!({ "from": old_name, "to": n }))
-            .await;
+    if let Some((from, to)) = renamed {
+        state.audit(user.tenant_id, Some(user.user_id), "project.renamed", Some("project"), Some(id), json!({ "from": from, "to": to })).await;
     }
     Ok(Json(json!({ "ok": true })))
 }
 
-/// Project names follow folder-name rules (the project root folder bears the
-/// same name), with a message the user can act on.
+/// Longest project name; the «Наименование объекта» requisite can be long.
+const PROJECT_NAME_MAX: usize = 1000;
+
+/// Normalise a project name: whitespace and line breaks collapse to single spaces.
 fn project_name_checked(name: &str) -> ApiResult<String> {
-    validate_name(name).map_err(|_| ApiError::BadRequest("Название проекта: от 1 до 255 символов, без «/» и «\\»".into()))
+    let n = name.split_whitespace().collect::<Vec<_>>().join(" ");
+    if n.is_empty() || n.chars().count() > PROJECT_NAME_MAX {
+        return Err(ApiError::BadRequest(format!("Название проекта: от 1 до {PROJECT_NAME_MAX} символов")));
+    }
+    Ok(n)
+}
+
+/// Name of the project's document root: the project name made safe for a
+/// folder (no slashes, at most 255 bytes).
+fn folder_name_for(name: &str) -> String {
+    let mut out = String::new();
+    for ch in name.chars().map(|c| if matches!(c, '/' | '\\' | '\0') { '-' } else { c }) {
+        if out.len() + ch.len_utf8() > 255 {
+            break;
+        }
+        out.push(ch);
+    }
+    let out = out.trim().to_string();
+    if out.is_empty() || out == "." || out == ".." { "Проект".into() } else { out }
+}
+
+/// Rename a project and its document folder inside a transaction. Long
+/// requisite values are cut to the name limit. Returns `(old, new)` when the
+/// name actually changed.
+pub async fn rename_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    project_id: Uuid,
+    raw: &str,
+) -> ApiResult<Option<(String, String)>> {
+    let collapsed = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cut: String = collapsed.chars().take(PROJECT_NAME_MAX).collect();
+    let name = project_name_checked(&cut)?;
+    let (old, folder_id): (String, Option<Uuid>) = sqlx::query_as("SELECT name, folder_id FROM projects WHERE id = $1 FOR UPDATE")
+        .bind(project_id)
+        .fetch_one(&mut **tx)
+        .await?;
+    if old == name {
+        return Ok(None);
+    }
+    sqlx::query("UPDATE projects SET name = $2 WHERE id = $1").bind(project_id).bind(&name).execute(&mut **tx).await?;
+    if let Some(folder) = folder_id {
+        sqlx::query("UPDATE folders SET name = $2 WHERE id = $1 AND kind = 'project'")
+            .bind(folder)
+            .bind(folder_name_for(&name))
+            .execute(&mut **tx)
+            .await?;
+    }
+    Ok(Some((old, name)))
+}
+
+#[cfg(test)]
+mod name_tests {
+    use super::*;
+
+    #[test]
+    fn names_and_folder_names() {
+        assert_eq!(project_name_checked("  Порт\n Холмск ").unwrap(), "Порт Холмск");
+        assert!(project_name_checked(" \n ").is_err());
+        assert_eq!(project_name_checked("Корпус 1/2").unwrap(), "Корпус 1/2");
+        assert_eq!(folder_name_for("Корпус 1/2 \\ А"), "Корпус 1-2 - А");
+        assert_eq!(folder_name_for(".."), "Проект");
+        let long = "я".repeat(300);
+        assert!(folder_name_for(&long).len() <= 255);
+    }
 }
 
 pub async fn delete_project(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {

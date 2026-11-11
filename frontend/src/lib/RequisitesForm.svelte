@@ -10,17 +10,25 @@
     values = $bindable({}),
     users = [],
     readonly = false,
-    requiredOnly = false
+    requiredOnly = false,
+    exclude = []
   }: {
     defs: FieldDef[];
     values?: FieldValues;
     users?: { id: string; display_name: string }[];
     readonly?: boolean;
     requiredOnly?: boolean;
+    /** Keys shown elsewhere in the form (e.g. the project name requisite). */
+    exclude?: string[];
   } = $props();
 
   const visible = $derived(
-    defs.filter((d) => (readonly ? !d.is_archived || values[d.key] != null : !d.is_archived) && (!requiredOnly || d.is_required))
+    defs.filter(
+      (d) =>
+        (readonly ? !d.is_archived || values[d.key] != null : !d.is_archived) &&
+        (!requiredOnly || d.is_required) &&
+        !exclude.includes(d.key)
+    )
   );
   const sections = $derived.by(() => {
     const out: { name: string; fields: FieldDef[] }[] = [];

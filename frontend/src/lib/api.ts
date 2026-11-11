@@ -328,6 +328,16 @@ export interface FieldDef {
 
 export type FieldValues = Record<string, string | number | boolean | null | CompanyRef>;
 
+/** The requisite that is the project name («Наименование объекта»); mirrors `fields::name_def` on the server. */
+export function nameDef(defs: FieldDef[]): FieldDef | undefined {
+  return defs.find(
+    (d) =>
+      !d.is_archived &&
+      (d.field_type === 'text' || d.field_type === 'textarea') &&
+      (d.key === 'object_name' || d.label.trim().toLowerCase() === 'наименование объекта')
+  );
+}
+
 export const fieldTypeLabel: Record<FieldType, string> = {
   text: 'Строка',
   textarea: 'Многострочный текст',

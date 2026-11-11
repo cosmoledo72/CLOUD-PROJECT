@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import {
+  import { nameDef,
     api, formatDateTime, formatMoney,
     type Activity, type CompanyListItem, type Contact, type Deal, type FieldDef, type FieldValues, type Stage, type UserItem
   } from '$lib/api';
@@ -112,6 +112,8 @@
   let projName = $state('');
   let projValues = $state<FieldValues>({});
   let defs = $state<FieldDef[]>([]);
+  // «Наименование объекта» is the project name: one input instead of two.
+  const projNd = $derived(nameDef(defs));
   let projUsers = $state<UserItem[]>([]);
   async function openProject() {
     const [d, fd] = await Promise.all([
@@ -220,9 +222,15 @@
 {/if}
 
 <Modal bind:open={projOpen} title="Проект по сделке" width={640}>
-  <label class="field">Название проекта <input class="input" bind:value={projName} /></label>
+  {#if projNd}
+    <label class="field">{projNd.label}<span class="faint small">— это и название проекта</span>
+      <textarea class="input" rows="2" bind:value={projName}></textarea>
+    </label>
+  {:else}
+    <label class="field">Название проекта <input class="input" bind:value={projName} /></label>
+  {/if}
   <p class="faint small">Заказчик, ИНН и стоимость подставлены из сделки. Заполните обязательные реквизиты.</p>
-  <RequisitesForm {defs} bind:values={projValues} users={projUsers} />
+  <RequisitesForm {defs} bind:values={projValues} users={projUsers} exclude={projNd ? [projNd.key] : []} />
   {#if error}<div class="error-box">{error}</div>{/if}
   {#snippet footer()}
     <button class="btn" onclick={() => (projOpen = false)}>Отмена</button>

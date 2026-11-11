@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { api, formatDate, formatFieldValue, type FieldDef, type FieldValues, type Project, type UserItem } from '$lib/api';
+  import { api, formatDate, formatFieldValue, nameDef, type FieldDef, type FieldValues, type Project, type UserItem } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
   import RequisitesForm from '$lib/RequisitesForm.svelte';
   import { session } from '$lib/session.svelte';
@@ -36,6 +36,8 @@
 
   const listDefs = $derived(defs.filter((d) => d.show_in_list));
   const hasRequired = $derived(defs.some((d) => d.is_required));
+  // «Наименование объекта» is the project name: one input instead of two.
+  const nd = $derived(nameDef(defs));
 
   // Search by name and by any requisite value (project code, client, ...).
   const shown = $derived(
@@ -232,7 +234,13 @@
 </div>
 
 <Modal bind:open={createOpen} title="Новый проект" width={defs.length ? 640 : 480}>
-  <label class="field">Название <input class="input" bind:value={name} /></label>
+  {#if nd}
+    <label class="field">{nd.label}<span class="faint small">— это и название проекта</span>
+      <textarea class="input" rows="2" bind:value={name}></textarea>
+    </label>
+  {:else}
+    <label class="field">Название <input class="input" bind:value={name} /></label>
+  {/if}
   <label class="field">Описание <textarea class="input" rows="2" bind:value={description}></textarea></label>
   {#if defs.length}
     <div class="req-head row">
@@ -242,7 +250,7 @@
         <label class="check small"><input type="checkbox" bind:checked={allFields} />Заполнить все</label>
       {/if}
     </div>
-    <RequisitesForm {defs} bind:values {users} requiredOnly={hasRequired && !allFields} />
+    <RequisitesForm {defs} bind:values {users} requiredOnly={hasRequired && !allFields} exclude={nd ? [nd.key] : []} />
     {#if !allFields && hasRequired}<p class="faint small">Остальные реквизиты можно заполнить позже на вкладке «Реквизиты» проекта.</p>{/if}
   {/if}
   {#if error}<div class="error-box">{error}</div>{/if}

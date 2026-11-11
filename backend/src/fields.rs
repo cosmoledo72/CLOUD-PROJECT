@@ -50,6 +50,17 @@ pub async fn load_defs(state: &AppState, tenant_id: Uuid, include_archived: bool
     .await?)
 }
 
+/// The requisite that holds the project's name: the first active text field
+/// with key `object_name` or labelled «Наименование объекта». The project name
+/// and this requisite are kept equal in both directions.
+pub fn name_def(defs: &[FieldDef]) -> Option<&FieldDef> {
+    defs.iter().find(|d| {
+        !d.is_archived
+            && matches!(d.field_type.as_str(), "text" | "textarea")
+            && (d.key == "object_name" || d.label.trim().to_lowercase() == "наименование объекта")
+    })
+}
+
 /// The requisite that names the project's customer: the first active field
 /// of type "company".
 pub fn customer_def(defs: &[FieldDef]) -> Option<&FieldDef> {
@@ -474,6 +485,13 @@ pub async fn save_values(
             .bind(cust.id)
             .execute(&mut **tx)
             .await?;
+        }
+    }
+
+    // The object name requisite is the project name: rename the project with it.
+    if let Some(nd) = name_def(&defs) {
+        if let Some(v) = patch.get(&nd.key).and_then(Value::as_str).filter(|s| !s.trim().is_empty()) {
+            crate::projects::rename_in_tx(tx, project_id, v).await?;
         }
     }
 

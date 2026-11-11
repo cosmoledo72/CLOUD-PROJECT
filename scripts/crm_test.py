@@ -180,7 +180,7 @@ def main():
     proj = a.call("GET", f"/projects/{pr['project_id']}")["project"]
     assert proj["company_id"] == sber and proj["company_name"] == "ПАО Сбербанк" and proj["deal_id"] == deal["id"]
     assert proj["fields"]["client"]["name"] == "ПАО Сбербанк" and proj["fields"]["contract_amount"] == 1250000.5
-    assert a.call("GET", f"/crm/deals/{deal['id']}")["deal"]["project_name"] == "Обследование корпуса 12"
+    assert a.call("GET", f"/crm/deals/{deal['id']}")["deal"]["project_name"] == "Корпус 12"  # «Наименование объекта» is the name
     assert [p["id"] for p in a.call("GET", f"/crm/companies/{sber}")["projects"]] == [pr["project_id"]]
     lst = a.call("GET", "/crm/companies?q=" + quote("сбербанк"))["companies"]
     assert next(c for c in lst if c["id"] == sber)["projects"] == 1

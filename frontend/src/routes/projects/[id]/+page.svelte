@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
-    api, formatDate, roleLabel,
+    api, formatDate, nameDef, roleLabel,
     localToday, type CompanyListItem, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
   } from '$lib/api';
   import Gantt from '$lib/Gantt.svelte';
@@ -223,6 +223,8 @@
   let reqEditing = $state(false);
   let reqValues = $state<FieldValues>({});
   let reqName = $state('');
+  // «Наименование объекта» is the project name when the portal has that requisite.
+  const nd = $derived(nameDef(defs));
   let reqDescription = $state('');
   $effect(() => {
     if (tab === 'requisites' && defs.length === 0) api.get<{ fields: FieldDef[] }>('/project-fields').then((r) => (defs = r.fields));
@@ -235,12 +237,16 @@
   }
   async function saveRequisites() {
     await guarded(async () => {
-      // Name and description belong to the project itself, not to the requisites.
-      const name = reqName.trim();
-      if (!name) throw new Error('Укажите название проекта');
-      if (name !== project?.name || reqDescription.trim() !== (project?.description ?? '')) {
-        await api.patch(`/projects/${id}`, { name, description: reqDescription.trim() });
+      // Description belongs to the project itself. The name too — unless the
+      // «Наименование объекта» requisite is the name (the server keeps them equal).
+      const patch: Record<string, string> = {};
+      if (!nd) {
+        const name = reqName.trim();
+        if (!name) throw new Error('Укажите название проекта');
+        if (name !== project?.name) patch.name = name;
       }
+      if (reqDescription.trim() !== (project?.description ?? '')) patch.description = reqDescription.trim();
+      if (Object.keys(patch).length) await api.patch(`/projects/${id}`, patch);
       // Send every editable field so that cleared values are removed on the server.
       const values: FieldValues = {};
       for (const d of defs.filter((d) => !d.is_archived)) {
@@ -362,7 +368,7 @@
       <div class="card req-card">
         {#if reqEditing}
           <div class="proj-main">
-            <label class="field">Название проекта <input class="input" bind:value={reqName} maxlength="255" required /></label>
+            {#if !nd}<label class="field">Название проекта <input class="input" bind:value={reqName} maxlength="1000" required /></label>{/if}
             <label class="field">Описание <textarea class="input" rows="2" bind:value={reqDescription}></textarea></label>
           </div>
           <RequisitesForm {defs} bind:values={reqValues} {users} />
