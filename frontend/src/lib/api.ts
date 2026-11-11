@@ -93,7 +93,7 @@ export interface BackupStatus {
   backups: BackupItem[];
 }
 
-export type ModuleKey = 'projects' | 'planning' | 'time' | 'templates' | 'storage' | 'kb' | 'chats' | 'crm' | 'finance' | 'team';
+export type ModuleKey = 'projects' | 'planning' | 'time' | 'templates' | 'storage' | 'kb' | 'chats' | 'crm' | 'finance' | 'team' | 'tools';
 export type FinanceRole = 'none' | 'view' | 'edit';
 
 export type CrmRole = 'none' | 'user' | 'manager';

@@ -17,7 +17,7 @@ import uuid
 sys.path.insert(0, os.path.dirname(__file__))
 from smoke_test import Client, step  # noqa: E402
 
-ALL = ["projects", "planning", "time", "templates", "storage", "kb", "chats", "crm", "finance", "team"]
+ALL = ["projects", "planning", "time", "templates", "storage", "kb", "chats", "crm", "finance", "team", "tools"]
 
 
 def set_off(c, *keys):

@@ -38,6 +38,7 @@ pub const MODULES: &[Module] = &[
     Module { key: "crm", label: "CRM", description: "Контрагенты, сделки, дела, документы продаж", parent: None },
     Module { key: "finance", label: "Финансы", description: "Платежи, аналитика, дебиторская задолженность, деньги проектов", parent: None },
     Module { key: "team", label: "Команда", description: "Справочник сотрудников", parent: None },
+    Module { key: "tools", label: "Инструменты", description: "Раздел «Инструменты»: расчёт смет по СБЦ, сборка тома документации, калькуляторы", parent: None },
 ];
 
 pub fn is_known(key: &str) -> bool {
@@ -83,6 +84,7 @@ pub fn module_of(method: &axum::http::Method, path: &str) -> Option<&'static str
         "chats" | "chat-messages" => Some("chats"),
         "crm" => Some(if s(1) == "deals" && s(3) == "project" && method == axum::http::Method::POST { "projects" } else { "crm" }),
         "team" => Some("team"),
+        "tools" => Some("tools"),
         "finance" => Some("finance"),
         "shared" | "trash" => Some("storage"),
         "folders" if s(1) == "roots" => Some("storage"),
@@ -191,6 +193,7 @@ mod tests {
     fn paths_map_to_modules() {
         let g = Method::GET;
         assert_eq!(module_of(&g, "/projects"), Some("projects"));
+        assert_eq!(module_of(&g, "/tools/sbc"), Some("tools"));
         assert_eq!(module_of(&Method::POST, "/projects/x/baseline"), Some("planning"));
         assert_eq!(module_of(&Method::POST, "/projects/x/generate"), Some("templates"));
         assert_eq!(module_of(&g, "/tasks/x/time"), Some("time"));

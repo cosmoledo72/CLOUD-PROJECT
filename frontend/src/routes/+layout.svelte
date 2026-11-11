@@ -20,6 +20,7 @@
   import Settings from '@lucide/svelte/icons/settings';
   import UsersRound from '@lucide/svelte/icons/users-round';
   import Wallet from '@lucide/svelte/icons/wallet';
+  import Wrench from '@lucide/svelte/icons/wrench';
   import type { ModuleKey } from '$lib/api';
   import type { Component } from 'svelte';
 
@@ -45,6 +46,7 @@
     { href: '/tasks', label: 'Задачи', icon: ListTodo, match: ['/tasks'], show: () => session.has('projects') },
     { href: '/kb', label: 'База знаний', icon: BookOpen, match: ['/kb'], show: () => session.has('kb') },
     { href: '/finance', label: 'Финансы', icon: Wallet, match: ['/finance'], show: () => session.has('finance') && (session.finance || session.crm) },
+    { href: '/tools', label: 'Инструменты', icon: Wrench, match: ['/tools'], show: () => session.me?.role !== 'guest' && session.has('tools') },
     {
       href: '/crm', label: 'CRM', icon: BriefcaseBusiness, match: ['/crm'], show: () => session.crm,
       count: () => crmDue.count, hot: () => crmDue.overdue > 0
@@ -59,7 +61,7 @@
     ['/projects', 'projects', 'Проекты'], ['/tasks', 'projects', 'Проекты'], ['/kb', 'kb', 'База знаний'],
     ['/chats', 'chats', 'Чаты'], ['/crm', 'crm', 'CRM'], ['/finance', 'finance', 'Финансы'],
     ['/files', 'storage', 'Хранилище'], ['/shared', 'storage', 'Хранилище'], ['/trash', 'storage', 'Хранилище'],
-    ['/team', 'team', 'Команда']
+    ['/team', 'team', 'Команда'], ['/tools', 'tools', 'Инструменты']
   ];
   const blocked = $derived.by(() => {
     if (!session.me) return null;

@@ -65,7 +65,8 @@ def main():
     owner.call("POST", f"/projects/{pid}/members", {"user_id": ids["gip"], "role": "manager"})
     owner.call("POST", f"/projects/{pid}/members", {"user_id": ids["m"], "role": "member"})
     other = owner.call("POST", "/projects", {"name": "Чужой проект"})["id"]
-    today = dt.date.today()
+    # The portal's own date (its time zone), not this machine's: they differ around midnight.
+    today = dt.date.fromisoformat(owner.call("GET", "/crm/tasks")["today"])
     old = (today - dt.timedelta(days=30)).isoformat()
     inv = owner.call("POST", f"/crm/deals/{deal['id']}/documents", {"kind": "invoice", "template_id": tpls["invoice"]["id"],
                                                                    "date": old, "amount": 300000, "subject": "Аванс 30%"})["document"]
