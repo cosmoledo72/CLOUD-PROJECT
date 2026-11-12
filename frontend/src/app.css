@@ -33,6 +33,9 @@
   --ok-soft: #e4f4eb;
   --warn: #a8600a;
   --warn-soft: #fff3df;
+  /* Light amber of the brand: browser-autofilled fields. */
+  --fill-bg: #fff6e3;
+  --fill-border: #e9c47a;
   --word: #2b5797;
   --cell: #1e7145;
   --slide: #c2410c;
@@ -66,6 +69,8 @@
   --ok-soft: #173126;
   --warn: #e0a43b;
   --warn-soft: #3a2c12;
+  --fill-bg: #2c2414;
+  --fill-border: #6e5422;
   --shadow: 0 1px 2px rgb(0 0 0 / 30%);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 35%);
   --shadow-lg: 0 16px 40px rgb(0 0 0 / 55%);
@@ -94,6 +99,8 @@
     --ok-soft: #173126;
     --warn: #e0a43b;
     --warn-soft: #3a2c12;
+    --fill-bg: #2c2414;
+    --fill-border: #6e5422;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%);
     --shadow-md: 0 4px 12px rgb(0 0 0 / 35%);
     --shadow-lg: 0 16px 40px rgb(0 0 0 / 55%);
@@ -198,6 +205,22 @@ svg.lucide-icon { stroke-width: 1.6px; flex: none; }
 .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .input::placeholder { color: var(--text-3); }
 .input:disabled { background: var(--surface-2); color: var(--text-3); }
+/* Fields the browser filled in (saved logins): light amber instead of the browser's blue. */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus,
+textarea:-webkit-autofill, select:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--fill-bg) inset;
+  box-shadow: 0 0 0 1000px var(--fill-bg) inset;
+  border-color: var(--fill-border);
+  transition: background-color 9999s ease-out 0s;
+}
+input:-webkit-autofill:focus {
+  border-color: var(--accent);
+  -webkit-box-shadow: 0 0 0 1000px var(--fill-bg) inset, 0 0 0 3px var(--ring);
+  box-shadow: 0 0 0 1000px var(--fill-bg) inset, 0 0 0 3px var(--ring);
+}
+input:autofill { background-color: var(--fill-bg); border-color: var(--fill-border); }
 textarea.input { height: auto; padding: 8px 11px; resize: vertical; line-height: 1.45; }
 label.field { display: grid; gap: 6px; align-content: start; font-size: 13px; font-weight: 500; color: var(--text-2); }
 label.field .input, label.field select, label.field textarea { font-weight: 400; color: var(--text); }
