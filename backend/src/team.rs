@@ -19,7 +19,12 @@ struct Member {
     email: String,
     role: String,
     position: String,
+    department: String,
     phone: String,
+    phone_mobile: String,
+    telegram: String,
+    avatar_at: Option<chrono::DateTime<chrono::Utc>>,
+    last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
     is_active: bool,
     group_ids: Vec<Uuid>,
     open_tasks: i64,
@@ -39,7 +44,7 @@ pub async fn list(State(state): State<AppState>, user: CurrentUser) -> ApiResult
         return Err(ApiError::Forbidden);
     }
     let members = sqlx::query_as::<_, Member>(
-        "SELECT u.id, u.display_name, u.email::text AS email, u.role, u.position, u.phone, u.is_active,
+        "SELECT u.id, u.display_name, u.email::text AS email, u.role, u.position, u.department, u.phone, u.phone_mobile, u.telegram, u.avatar_at, u.last_seen_at, u.is_active,
                 COALESCE((SELECT array_agg(gm.group_id) FROM group_members gm WHERE gm.user_id = u.id), '{}') AS group_ids,
                 (SELECT count(*) FROM tasks t WHERE t.assignee_id = u.id AND t.status <> 'done') AS open_tasks,
                 (SELECT count(*) FROM tasks t WHERE t.assignee_id = u.id AND t.status <> 'done' AND t.due_date < current_date) AS overdue_tasks,
@@ -84,8 +89,8 @@ pub async fn update_profile(State(state): State<AppState>, user: CurrentUser, Js
         return bad_request("должность — не длиннее 100 символов");
     }
     let phone = req.phone.trim();
-    if phone.chars().count() > 40 || !phone.chars().all(|c| c.is_ascii_digit() || " +-()".contains(c)) {
-        return bad_request("телефон: цифры, пробелы, «+», «-» и скобки, не длиннее 40 символов");
+    if !crate::profiles::valid_phone(phone) {
+        return bad_request("Телефон: цифры, пробелы, «+», «-», скобки и «доб.», не длиннее 40 символов (не email)");
     }
     sqlx::query("UPDATE users SET display_name = $2, position = $3, phone = $4 WHERE id = $1")
         .bind(user.user_id)

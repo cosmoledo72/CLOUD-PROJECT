@@ -1,7 +1,9 @@
 <script lang="ts">
+  import Avatar from '$lib/Avatar.svelte';
+  import UserRound from '@lucide/svelte/icons/user-round';
   import { goto } from '$app/navigation';
   import QRCode from 'qrcode';
-  import { api, roleLabel } from '$lib/api';
+  import { api, plainMessage, roleLabel } from '$lib/api';
   import NotificationPrefs from '$lib/NotificationPrefs.svelte';
   import { session } from '$lib/session.svelte';
 
@@ -19,7 +21,7 @@
       const r = await api.post<{ secret: string; otpauth_url: string }>('/auth/totp/setup');
       setup = { ...r, qr: await QRCode.toDataURL(r.otpauth_url, { margin: 1, width: 200 }) };
     } catch (e) {
-      error = (e as Error).message;
+      error = plainMessage((e as Error).message);
     }
   }
   async function enable() {
@@ -31,7 +33,7 @@
       notice = 'Двухфакторная аутентификация включена.';
       await session.load();
     } catch (e) {
-      error = (e as Error).message;
+      error = plainMessage((e as Error).message);
     }
   }
   async function disable() {
@@ -47,31 +49,6 @@
   }
 
   // --- Profile card ----------------------------------------------------------
-  let pName = $state('');
-  let pPosition = $state('');
-  let pPhone = $state('');
-  let pInit = false;
-  $effect(() => {
-    if (session.me && !pInit) {
-      pInit = true;
-      pName = session.me.display_name;
-      pPosition = session.me.position ?? '';
-      pPhone = session.me.phone ?? '';
-    }
-  });
-  const pDirty = $derived(!!session.me && (pName !== session.me.display_name || pPosition !== (session.me.position ?? '') || pPhone !== (session.me.phone ?? '')));
-  async function saveProfile() {
-    error = '';
-    notice = '';
-    try {
-      await api.put('/auth/profile', { display_name: pName, position: pPosition, phone: pPhone });
-      await session.load();
-      notice = 'Карточка сохранена.';
-    } catch (e) {
-      error = (e as Error).message;
-    }
-  }
-
   // --- Password ---------------------------------------------------------------
   let current = $state('');
   let next = $state('');
@@ -82,7 +59,7 @@
       session.me = null;
       goto('/login');
     } catch (e) {
-      error = (e as Error).message;
+      error = plainMessage((e as Error).message);
     }
   }
 </script>
@@ -93,17 +70,15 @@
   {#if notice}<div class="badge note">{notice}</div>{/if}
 
   {#if session.me}
-    <section class="card">
-      <h2>{session.me.display_name}</h2>
-      <p class="muted">{session.me.email} · {roleLabel[session.me.role]} · портал «{session.me.tenant_name}»</p>
-      <div class="pgrid">
-        <label class="field">Имя <input class="input" bind:value={pName} maxlength="100" autocomplete="name" /></label>
-        <label class="field">Должность <input class="input" bind:value={pPosition} maxlength="100" placeholder="например, ведущий инженер" /></label>
-        <label class="field">Телефон <input class="input" type="tel" bind:value={pPhone} maxlength="40" placeholder="+7 900 000-00-00" autocomplete="tel" /></label>
+    <section class="card me-card">
+      <Avatar id={session.me.id} name={session.me.display_name} size={48} />
+      <div class="me-text">
+        <h2>{session.me.display_name}</h2>
+        <p class="muted">{session.me.email} · {roleLabel[session.me.role]} · портал «{session.me.tenant_name}»</p>
       </div>
-      <p class="faint small">Эти данные видят коллеги в разделе «Команда».</p>
-      <button class="btn primary" disabled={!pDirty || !pName.trim()} onclick={saveProfile}>Сохранить</button>
+      <a class="btn" href="/team/me"><UserRound size={16} />Моя карточка</a>
     </section>
+    <p class="faint small hint">Имя, должность, телефоны, фото и реквизиты для документов — в карточке сотрудника.</p>
 
     <NotificationPrefs />
 
@@ -112,7 +87,7 @@
       {#if session.me.totp_enabled}
         <p>Включена. При входе запрашивается код из приложения-аутентификатора.</p>
         <div class="row">
-          <input class="input" type="password" placeholder="Пароль для подтверждения" bind:value={disablePassword} />
+          <input class="input" type="password" placeholder="Пароль для подтверждения" bind:value={disablePassword} autocomplete="current-password" />
           <button class="btn danger" disabled={!disablePassword} onclick={disable}>Отключить</button>
         </div>
       {:else if setup}
@@ -134,6 +109,7 @@
 
     <section class="card">
       <h2>Смена пароля</h2>
+      <input class="pm-user" type="email" name="username" autocomplete="username" value={session.me.email} readonly tabindex="-1" aria-hidden="true" />
       <div class="grid">
         <label class="field">Текущий пароль <input class="input" type="password" bind:value={current} autocomplete="current-password" /></label>
         <label class="field">Новый пароль (не менее 10 символов) <input class="input" type="password" bind:value={next} minlength="10" autocomplete="new-password" /></label>
@@ -145,8 +121,14 @@
 </div>
 
 <style>
+  .me-card { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .me-card h2 { margin: 0; }
+  .me-card p { margin: 2px 0 0; }
+  .me-text { flex: 1; min-width: 200px; }
+  .hint { margin: -6px 0 14px; }
+  /* Login for password managers (kept out of sight). */
+  .pm-user { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .narrow { max-width: 760px; }
-  .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 8px; }
   section { padding: 18px; margin-bottom: 14px; }
   section p { margin: 0 0 12px; }
   .grid { display: grid; gap: 12px; margin-bottom: 8px; }

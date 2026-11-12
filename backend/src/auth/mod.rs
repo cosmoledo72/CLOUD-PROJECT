@@ -193,6 +193,7 @@ impl FromRequestParts<AppState> for CurrentUser {
         .fetch_optional(&state.db)
         .await?
         .ok_or(ApiError::Unauthorized)?;
+        crate::profiles::touch(state, user.user_id);
         parts.extensions.insert(user.clone());
         Ok(user)
     }

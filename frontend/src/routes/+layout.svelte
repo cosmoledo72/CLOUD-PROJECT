@@ -18,6 +18,7 @@
   import Menu from '@lucide/svelte/icons/menu';
   import MessagesSquare from '@lucide/svelte/icons/messages-square';
   import Settings from '@lucide/svelte/icons/settings';
+  import Avatar from '$lib/Avatar.svelte';
   import UsersRound from '@lucide/svelte/icons/users-round';
   import Wallet from '@lucide/svelte/icons/wallet';
   import Wrench from '@lucide/svelte/icons/wrench';
@@ -159,7 +160,6 @@
       openQuick(createBtn?.offsetParent ? createBtn : null);
     }
   }
-  const initials = (n: string) => n.split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const b = $derived(branding.current);
   const portalName = $derived(b?.display_name ?? session.me?.tenant_name ?? '');
 </script>
@@ -223,8 +223,8 @@
         </button>
       </nav>
       <div class="me">
-        <a href="/settings" class="avatar" title="Профиль: {session.me.display_name}">{initials(session.me.display_name)}</a>
-        {#if !collapsed}<a href="/settings" class="me-name">{session.me.display_name}</a>{/if}
+        <a href="/team/me" class="avatar-link" title="Моя карточка: {session.me.display_name}"><Avatar id={session.me.id} name={session.me.display_name} size={32} /></a>
+        {#if !collapsed}<a href="/team/me" class="me-name">{session.me.display_name}</a>{/if}
         <button class="btn ghost sm out" onclick={logout} title="Выйти" aria-label="Выйти"><LogOut size={16} strokeWidth={1.75} /></button>
       </div>
     </aside>
@@ -309,11 +309,8 @@
   .off h2, .off p { margin: 0; }
   .bell-collapsed { display: grid; place-items: center; padding: 4px 0; color: var(--text-2); }
   .me { display: flex; align-items: center; gap: 10px; padding: 10px 4px 0; border-top: 1px solid var(--border); }
-  .avatar {
-    width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 600;
-    background: var(--accent-soft); color: var(--accent);
-  }
-  .avatar:hover { text-decoration: none; }
+  .avatar-link { display: inline-flex; flex: none; border-radius: 50%; }
+  .avatar-link:hover { text-decoration: none; box-shadow: 0 0 0 2px var(--accent-soft); }
   .me-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 500; font-size: 13.5px; }
   .me :global(.btn) { color: var(--text-2); }
   .out { margin-left: auto; }

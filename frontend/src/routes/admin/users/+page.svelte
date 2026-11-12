@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { generatePassword } from '$lib/people/password';
   import UserPlus from '@lucide/svelte/icons/user-plus';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -43,13 +44,6 @@
       return !q || u.display_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
     })
   );
-
-  /** Random readable password (no ambiguous characters). */
-  function generatePassword(len = 14): string {
-    const alphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const bytes = crypto.getRandomValues(new Uint32Array(len));
-    return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
-  }
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     error = '';
@@ -142,7 +136,7 @@
     <tbody>
       {#each shown as u (u.id)}
         <tr class:inactive={!u.is_active}>
-          <td>{u.display_name}{#if u.invite_pending}{' '}<span class="badge warn" title="Пользователь ещё не принял приглашение">приглашён</span>{/if}{#if !u.is_active}{' '}<span class="badge grey">заблокирован</span>{/if}</td>
+          <td><a href="/team/{u.id}">{u.display_name}</a>{#if u.invite_pending}{' '}<span class="badge warn" title="Пользователь ещё не принял приглашение">приглашён</span>{/if}{#if !u.is_active}{' '}<span class="badge grey">заблокирован</span>{/if}</td>
           <td class="muted">{u.email}</td>
           <td>
             {#if manageable(u)}

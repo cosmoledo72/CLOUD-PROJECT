@@ -1098,7 +1098,12 @@ export interface TeamMember {
   email: string;
   role: Me['role'];
   position: string;
+  department: string;
   phone: string;
+  phone_mobile: string;
+  telegram: string;
+  avatar_at: string | null;
+  last_seen_at: string | null;
   is_active: boolean;
   group_ids: string[];
   open_tasks: number;

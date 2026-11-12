@@ -28,6 +28,7 @@ mod ooxml;
 mod onlyoffice;
 mod project_labels;
 mod projects;
+mod profiles;
 mod public_links;
 mod ratelimit;
 mod registration;
@@ -104,6 +105,13 @@ fn router(state: AppState) -> Router {
         // Directory
         .route("/users", get(users::list_users).post(users::create_user))
         .route("/users/{id}", patch(users::update_user))
+        .route("/users/avatars", get(profiles::avatars))
+        .route("/users/{id}/profile", get(profiles::get).put(profiles::update))
+        .route("/users/{id}/groups", put(profiles::set_groups))
+        .route("/users/{id}/avatar", get(profiles::avatar).post(profiles::upload_avatar).delete(profiles::delete_avatar))
+        .route("/users/{id}/signature", get(profiles::signature).post(profiles::upload_signature).delete(profiles::delete_signature))
+        .route("/user-fields", get(profiles::list_fields))
+        .route("/admin/user-fields", put(profiles::save_fields))
         .route("/groups", get(users::list_groups).post(users::create_group))
         .route("/groups/{id}", patch(admin::rename_group).delete(admin::delete_group))
         .route("/groups/{id}/members", put(users::set_group_members))

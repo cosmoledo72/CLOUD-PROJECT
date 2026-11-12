@@ -96,6 +96,15 @@ pub async fn catalogue(state: &AppState, tenant_id: Uuid, scope: &str) -> ApiRes
         p("year", "Текущий год", "Дата и автор"),
         p("user.name", "Кто сформировал документ", "Дата и автор"),
         p("user.email", "Email автора", "Дата и автор"),
+        p("user.full_name", "ФИО автора полностью", "Дата и автор"),
+        p("user.short_name", "Автор: фамилия и инициалы", "Дата и автор"),
+        p("user.position", "Должность автора (для документов)", "Дата и автор"),
+        p("user.name_genitive", "ФИО автора в родительном падеже", "Дата и автор"),
+        p("user.name_dative", "ФИО автора в дательном падеже", "Дата и автор"),
+        p("user.nrs", "Номер автора в НРС", "Дата и автор"),
+        p("user.qual_cert", "Квалификационный аттестат автора", "Дата и автор"),
+        p("user.power_of_attorney", "Доверенность автора", "Дата и автор"),
+        p("user.phone", "Рабочий телефон автора", "Дата и автор"),
     ]);
     for d in load_defs(state, tenant_id, false).await? {
         let group = if scope == "sales" { format!("Проект сделки: {}", d.section) } else { format!("Реквизиты: {}", d.section) };
@@ -189,6 +198,9 @@ pub async fn values_for(state: &AppState, user: &CurrentUser, project_id: Uuid, 
     map.insert("year".into(), today.year().to_string());
     map.insert("user.name".into(), user.display_name.clone());
     map.insert("user.email".into(), user.email.clone());
+    for (k, v) in crate::profiles::author_values(state, user).await? {
+        map.insert(k, v);
+    }
 
     let values = project_values(state, project_id).await?;
     for def in load_defs(state, user.tenant_id, true).await? {

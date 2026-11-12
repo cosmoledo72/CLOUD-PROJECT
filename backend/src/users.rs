@@ -115,6 +115,8 @@ pub async fn create_user(State(state): State<AppState>, user: CurrentUser, Json(
 #[derive(Deserialize)]
 pub struct UpdateUser {
     pub display_name: Option<String>,
+    /// Login email (administrators only; must be unique in the portal).
+    pub email: Option<String>,
     pub role: Option<String>,
     pub is_active: Option<bool>,
     pub crm_role: Option<String>,
@@ -159,8 +161,16 @@ pub async fn update_user(
             return bad_request("role must be admin, member or guest");
         }
     }
+    let email = match req.email.as_deref().map(str::trim) {
+        None => None,
+        Some(e) if e.parse::<lettre::Address>().is_ok() => Some(e.to_string()),
+        Some(_) => return bad_request("Email: неверный адрес"),
+    };
+    if target_role == "owner" && email.is_some() && user.role != "owner" {
+        return Err(ApiError::Forbidden);
+    }
     sqlx::query(
-        "UPDATE users SET display_name = COALESCE($3, display_name), role = COALESCE($4, role), is_active = COALESCE($5, is_active),
+        "UPDATE users SET display_name = COALESCE($3, display_name), role = COALESCE($4, role), is_active = COALESCE($5, is_active), email = COALESCE($8, email),
                 crm_role = COALESCE($6, crm_role), finance_role = COALESCE($7, finance_role)
           WHERE id = $1 AND tenant_id = $2",
     )
@@ -171,12 +181,17 @@ pub async fn update_user(
     .bind(req.is_active)
     .bind(&req.crm_role)
     .bind(&req.finance_role)
+    .bind(&email)
     .execute(&state.db)
-    .await?;
+    .await
+    .map_err(|e| match ApiError::from(e) {
+        ApiError::Conflict(_) => ApiError::Conflict("сотрудник с таким email уже есть".into()),
+        other => other,
+    })?;
     if req.is_active == Some(false) {
         sqlx::query("DELETE FROM sessions WHERE user_id = $1").bind(id).execute(&state.db).await?;
     }
-    state.audit(user.tenant_id, Some(user.user_id), "user.updated", Some("user"), Some(id), json!({ "role": req.role, "is_active": req.is_active, "crm_role": req.crm_role, "finance_role": req.finance_role })).await;
+    state.audit(user.tenant_id, Some(user.user_id), "user.updated", Some("user"), Some(id), json!({ "role": req.role, "is_active": req.is_active, "crm_role": req.crm_role, "finance_role": req.finance_role, "email": email })).await;
     Ok(Json(json!({ "ok": true })))
 }
 

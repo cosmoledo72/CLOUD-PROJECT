@@ -37,7 +37,8 @@
 
   let view = $state<View>(pick(page.url.searchParams.get('view') ?? saved.view, ['list', 'calendar', 'gantt'] as const, 'list'));
   let projects = $state<string[]>(arr(saved.projects));
-  let people = $state<string[]>(arr(saved.people));
+  // `?assignee=<id>` (from the employee card) opens one person's tasks.
+  let people = $state<string[]>(page.url.searchParams.get('assignee') ? [page.url.searchParams.get('assignee')!] : arr(saved.people));
   let labelIds = $state<string[]>(arr(saved.labelIds));
   let priorities = $state<string[]>(arr(saved.priorities));
   let scope = $state<StatusScope>(pick(saved.scope, ['open', 'all', 'done'] as const, 'open'));

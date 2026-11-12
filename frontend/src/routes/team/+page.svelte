@@ -41,7 +41,7 @@
     const s = q.trim().toLowerCase();
     return members.filter((m) =>
       (!group || (group === '-' ? !m.group_ids.length : m.group_ids.includes(group))) &&
-      (!s || [m.display_name, m.position, m.email, m.phone].some((x) => x.toLowerCase().includes(s))));
+      (!s || [m.display_name, m.position, m.department ?? '', m.email, m.phone].some((x) => x.toLowerCase().includes(s))));
   });
   const active = $derived(members.filter((m) => m.is_active).length);
 
@@ -64,7 +64,7 @@
   <h1>Команда</h1>
   <span class="faint">{active} {active % 10 === 1 && active % 100 !== 11 ? 'сотрудник' : active % 10 >= 2 && active % 10 <= 4 && (active % 100 < 10 || active % 100 >= 20) ? 'сотрудника' : 'сотрудников'}</span>
   <div class="spacer"></div>
-  <a class="btn" href="/settings"><Pencil size={15} /> Моя карточка</a>
+  <a class="btn" href="/team/me"><Pencil size={15} /> Моя карточка</a>
   {#if session.isAdmin}<a class="btn" href="/admin/users">Управление</a>{/if}
 </div>
 {#if error}<div class="error-box">{error}</div>{/if}
@@ -101,8 +101,8 @@
             <div class="top">
               <Avatar id={m.id} name={m.display_name} size={48} />
               <div class="who">
-                <div class="name">{m.display_name}{#if m.id === session.me?.id} <span class="faint small">(вы)</span>{/if}</div>
-                <div class="muted small">{m.position || roleLabel[m.role] || m.role}</div>
+                <a class="name" href="/team/{m.id}">{m.display_name}{#if m.id === session.me?.id} <span class="faint small">(вы)</span>{/if}</a>
+                <div class="muted small">{[m.position || roleLabel[m.role] || m.role, m.department].filter(Boolean).join(' · ')}</div>
                 {#if !m.is_active}<span class="badge grey">отключён</span>{/if}
               </div>
             </div>
@@ -132,8 +132,8 @@
           <div class="row" class:off={!m.is_active}>
             <Avatar id={m.id} name={m.display_name} size={32} />
             <div class="who">
-              <div class="name">{m.display_name}</div>
-              <div class="faint small">{m.position || roleLabel[m.role] || m.role}</div>
+              <a class="name" href="/team/{m.id}">{m.display_name}</a>
+              <div class="faint small">{[m.position || roleLabel[m.role] || m.role, m.department].filter(Boolean).join(' · ')}</div>
             </div>
             <div class="small muted grp">{m.group_ids.map((g) => groupName.get(g)).join(', ')}</div>
             <a class="small" href="mailto:{m.email}">{m.email}</a>
