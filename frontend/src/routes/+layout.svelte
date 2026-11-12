@@ -21,6 +21,9 @@
   import UsersRound from '@lucide/svelte/icons/users-round';
   import Wallet from '@lucide/svelte/icons/wallet';
   import Wrench from '@lucide/svelte/icons/wrench';
+  import ChartColumn from '@lucide/svelte/icons/chart-column';
+  import TimerChip from '$lib/time/TimerChip.svelte';
+  import { timer } from '$lib/time/timer.svelte';
   import type { ModuleKey } from '$lib/api';
   import type { Component } from 'svelte';
 
@@ -44,6 +47,7 @@
   const nav: NavItem[] = [
     { href: '/projects', label: 'Проекты', icon: FolderKanban, match: ['/projects'], show: () => session.has('projects') },
     { href: '/tasks', label: 'Задачи', icon: ListTodo, match: ['/tasks'], show: () => session.has('projects') },
+    { href: '/reports', label: 'Отчёты', icon: ChartColumn, match: ['/reports'], show: () => session.me?.role !== 'guest' && session.has('time') },
     { href: '/kb', label: 'База знаний', icon: BookOpen, match: ['/kb'], show: () => session.has('kb') },
     { href: '/finance', label: 'Финансы', icon: Wallet, match: ['/finance'], show: () => session.has('finance') && (session.finance || session.crm) },
     { href: '/tools', label: 'Инструменты', icon: Wrench, match: ['/tools'], show: () => session.me?.role !== 'guest' && session.has('tools') },
@@ -61,7 +65,8 @@
     ['/projects', 'projects', 'Проекты'], ['/tasks', 'projects', 'Проекты'], ['/kb', 'kb', 'База знаний'],
     ['/chats', 'chats', 'Чаты'], ['/crm', 'crm', 'CRM'], ['/finance', 'finance', 'Финансы'],
     ['/files', 'storage', 'Хранилище'], ['/shared', 'storage', 'Хранилище'], ['/trash', 'storage', 'Хранилище'],
-    ['/team', 'team', 'Команда'], ['/tools', 'tools', 'Инструменты']
+    ['/team', 'team', 'Команда'], ['/tools', 'tools', 'Инструменты'],
+    ['/reports', 'time', 'Учёт времени']
   ];
   const blocked = $derived.by(() => {
     if (!session.me) return null;
@@ -70,6 +75,9 @@
     return hit && !session.has(hit[1]) ? hit[2] : null;
   });
   const home = $derived(session.home);
+  // The running timer (time tracking module).
+  const timeOn = $derived(!!session.me && session.me.role !== 'guest' && session.has('time'));
+  $effect(() => { if (timeOn) timer.init(); });
   const isActive = (item: NavItem) => item.match.some((m) => page.url.pathname.startsWith(m));
 
   // Icons-only sidebar, remembered per browser.
@@ -191,6 +199,7 @@
       {:else}
         {@render children()}
       {/if}
+      {#if timeOn}<TimerChip />{/if}
     </main>
   </div>
 {/if}

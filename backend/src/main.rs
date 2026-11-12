@@ -33,6 +33,7 @@ mod storage;
 mod task_board;
 mod team;
 mod templates;
+mod time;
 mod trash;
 mod users;
 mod view_settings;
@@ -231,7 +232,16 @@ fn router(state: AppState) -> Router {
         .route("/task-labels/{id}", patch(task_board::update_label).delete(task_board::delete_label))
         .route("/tasks/{id}/dependencies", post(projects::add_dependency))
         .route("/tasks/{id}/dependencies/{dep_id}", delete(projects::remove_dependency))
-        .route("/tasks/{id}/time", get(projects::list_time).post(projects::add_time))
+        .route("/tasks/{id}/time", get(time::list_for_task).post(time::add))
+        .route("/tasks/{id}/timer", post(time::start_timer))
+        .route("/tasks/{id}/pay", get(time::get_pay).put(time::set_pay))
+        .route("/time/timer", get(time::get_timer).delete(time::discard_timer))
+        .route("/time/timer/stop", post(time::stop_timer))
+        .route("/time/rates", get(time::list_rates))
+        .route("/time/rates/{user_id}", put(time::set_rate))
+        .route("/time/report", get(time::report))
+        .route("/time/report.xlsx", get(time::report_xlsx))
+        .route("/time/{id}", patch(time::update).delete(time::delete))
         // Switched-off portal modules answer 403 module_disabled.
         .layer(axum::middleware::from_fn_with_state(state.clone(), modules::guard));
 

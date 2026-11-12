@@ -1184,6 +1184,9 @@ export interface ProjectFinance {
   expense_plan: number;
   profit: number | null;
   cash: number;
+  /** Labour (time tracking): accrued — hourly entries and fixed pay of done tasks; expected — fixed pay of open tasks. */
+  labor: number;
+  labor_expected: number;
   payments: Payment[];
   invoices: InvoiceDebt[];
   can_edit: boolean;

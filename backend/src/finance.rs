@@ -885,6 +885,12 @@ pub async fn project_finance(State(state): State<AppState>, user: CurrentUser, P
         Vec::new()
     };
     let plan_overdue: f64 = payments.iter().filter(|p| p.kind == "income" && p.status == "plan" && p.pay_date < today).map(|p| p.amount).sum();
+    // Labour (time tracking module): accrued — hourly entries and fixed pay of done tasks; expected — fixed pay of open tasks.
+    let (labor, labor_expected) = if user.module_on("time") {
+        crate::time::project_labor(&state, user.tenant_id, &[id]).await?.first().map(|x| (x.1, x.2)).unwrap_or((0.0, 0.0))
+    } else {
+        (0.0, 0.0)
+    };
     Ok(Json(json!({
         "budget": m.budget,
         "budget_source": m.budget_source,
@@ -895,8 +901,10 @@ pub async fn project_finance(State(state): State<AppState>, user: CurrentUser, P
         "plan_overdue": money::round2(plan_overdue),
         "spent": money::round2(m.spent),
         "expense_plan": money::round2(m.expense_plan),
-        "profit": m.budget.map(|b| money::round2(b - m.spent)),
-        "cash": money::round2(m.paid - m.spent),
+        "labor": money::round2(labor),
+        "labor_expected": money::round2(labor_expected),
+        "profit": m.budget.map(|b| money::round2(b - m.spent - labor - labor_expected)),
+        "cash": money::round2(m.paid - m.spent - labor),
         "payments": payments,
         "invoices": invoices,
         "can_edit": user.finance_edit(),

@@ -15,6 +15,7 @@
   import { LABEL_COLORS, labels } from './labels.svelte';
   import LabelChip from './LabelChip.svelte';
   import TaskFiles from './TaskFiles.svelte';
+  import TaskTime from '$lib/time/TaskTime.svelte';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import GripVertical from '@lucide/svelte/icons/grip-vertical';
   import ListChecks from '@lucide/svelte/icons/list-checks';
@@ -270,8 +271,6 @@
 
   // --- Dependencies and time ---------------------------------------------------------
   let newDep = $state('');
-  let timeMinutes = $state(60);
-  let timeDate = $state(localToday());
   const predecessors = $derived(taskId ? deps.filter((d) => d.task_id === taskId) : []);
   const titleOf = (tid: string) => {
     const t = projectTasks.find((x) => x.id === tid);
@@ -293,13 +292,7 @@
       onchanged?.();
     });
   }
-  async function logTime() {
-    await guarded(async () => {
-      await api.post(`/tasks/${taskId}/time`, { work_date: timeDate, minutes: timeMinutes });
-      await refreshTask();
-      onchanged?.();
-    });
-  }
+
 
   // --- Comments --------------------------------------------------------------------
   let comments = $state<TaskComment[]>([]);
@@ -505,16 +498,8 @@
         </section>
       {/if}
 
-      {#if session.has('time') && canManage}
-        <section class="sec">
-          <h3>Учёт времени <span class="faint">— всего {(task.spent_minutes / 60).toFixed(1)} ч</span></h3>
-          <div class="row">
-            <input class="input" type="date" bind:value={timeDate} aria-label="Дата" />
-            <input class="input mins" type="number" min="1" max="1440" step="15" bind:value={timeMinutes} aria-label="Минуты" />
-            <span class="faint">мин</span>
-            <button class="btn" onclick={logTime}>Записать</button>
-          </div>
-        </section>
+      {#if session.has('time') && task && session.me?.role !== 'guest'}
+        <TaskTime taskId={task.id} onchanged={async () => { await refreshTask(); onchanged?.(); }} />
       {/if}
 
       <section class="sec">

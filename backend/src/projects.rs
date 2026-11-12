@@ -24,7 +24,7 @@ pub enum ProjectRole {
 }
 
 impl ProjectRole {
-    fn require(self, needed: ProjectRole) -> ApiResult<()> {
+    pub fn require(self, needed: ProjectRole) -> ApiResult<()> {
         if self >= needed { Ok(()) } else { Err(ApiError::Forbidden) }
     }
 }
@@ -1026,61 +1026,9 @@ pub async fn remove_dependency(
 // Time tracking
 // ---------------------------------------------------------------------------
 
-#[derive(Serialize, sqlx::FromRow)]
-struct TimeRow {
-    id: Uuid,
-    user_id: Uuid,
-    user_name: String,
-    work_date: NaiveDate,
-    minutes: i32,
-    note: String,
-}
 
-pub async fn list_time(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {
-    let t = load_task(&state, &user, id).await?;
-    project_role(&state, &user, t.project_id).await?;
-    let rows = sqlx::query_as::<_, TimeRow>(
-        "SELECT te.id, te.user_id, u.display_name AS user_name, te.work_date, te.minutes, te.note
-           FROM time_entries te JOIN users u ON u.id = te.user_id WHERE te.task_id = $1 ORDER BY te.work_date DESC",
-    )
-    .bind(id)
-    .fetch_all(&state.db)
-    .await?;
-    Ok(Json(json!({ "entries": rows })))
-}
 
-#[derive(Deserialize)]
-pub struct CreateTime {
-    pub work_date: NaiveDate,
-    pub minutes: i32,
-    #[serde(default)]
-    pub note: String,
-}
 
-pub async fn add_time(
-    State(state): State<AppState>,
-    user: CurrentUser,
-    Path(id): Path<Uuid>,
-    Json(req): Json<CreateTime>,
-) -> ApiResult<Json<Value>> {
-    let t = load_task(&state, &user, id).await?;
-    project_role(&state, &user, t.project_id).await?.require(ProjectRole::Member)?;
-    if req.minutes <= 0 || req.minutes > 24 * 60 {
-        return bad_request("minutes must be within 1..1440");
-    }
-    let tid: Uuid = sqlx::query_scalar(
-        "INSERT INTO time_entries (tenant_id, task_id, user_id, work_date, minutes, note) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-    )
-    .bind(user.tenant_id)
-    .bind(id)
-    .bind(user.user_id)
-    .bind(req.work_date)
-    .bind(req.minutes)
-    .bind(req.note.trim())
-    .fetch_one(&state.db)
-    .await?;
-    Ok(Json(json!({ "id": tid })))
-}
 
 // ---------------------------------------------------------------------------
 // Scheduling: auto-shift, reschedule and baseline

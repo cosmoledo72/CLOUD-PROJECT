@@ -70,10 +70,17 @@
       <b class="out">{formatMoney(f.spent)}</b>
       {#if f.budget}<div class="bar"><i class="out" style="width:{spentPct}%"></i></div><small class="faint">{spentPct}% бюджета</small>{/if}
     </div>
+    {#if f.labor || f.labor_expected}
+      <div class="card t">
+        <span>Трудозатраты</span>
+        <b class="out">{formatMoney(f.labor)}</b>
+        <small class="faint">{#if f.labor_expected}ещё ожидается {formatMoney(f.labor_expected)} — фикс. оплата невыполненных задач{:else}часы × ставки и фикс. оплата выполненных задач{/if}</small>
+      </div>
+    {/if}
     <div class="card t">
       <span>Прибыль по договору</span>
       <b class:in={(f.profit ?? 0) > 0} class:out={(f.profit ?? 0) < 0}>{f.profit != null ? formatMoney(f.profit) : '—'}</b>
-      <small class="faint">бюджет − расходы; по деньгам сейчас {formatMoney(f.cash)}</small>
+      <small class="faint">бюджет − расходы{f.labor || f.labor_expected ? ' − трудозатраты' : ''}; по деньгам сейчас {formatMoney(f.cash)}</small>
     </div>
   </div>
 

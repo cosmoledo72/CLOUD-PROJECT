@@ -76,7 +76,7 @@ pub fn module_of(method: &axum::http::Method, path: &str) -> Option<&'static str
         }),
         "tasks" => Some(match s(2) {
             "dependencies" => "planning",
-            "time" => "time",
+            "time" | "timer" | "pay" => "time",
             _ => "projects",
         }),
         "task-labels" | "project-labels" | "checklist-items" | "task-comments" | "project-fields" => Some("projects"),
@@ -85,6 +85,7 @@ pub fn module_of(method: &axum::http::Method, path: &str) -> Option<&'static str
         "crm" => Some(if s(1) == "deals" && s(3) == "project" && method == axum::http::Method::POST { "projects" } else { "crm" }),
         "team" => Some("team"),
         "tools" => Some("tools"),
+        "time" => Some("time"),
         "finance" => Some("finance"),
         "shared" | "trash" => Some("storage"),
         "folders" if s(1) == "roots" => Some("storage"),
@@ -197,6 +198,9 @@ mod tests {
         assert_eq!(module_of(&Method::POST, "/projects/x/baseline"), Some("planning"));
         assert_eq!(module_of(&Method::POST, "/projects/x/generate"), Some("templates"));
         assert_eq!(module_of(&g, "/tasks/x/time"), Some("time"));
+        assert_eq!(module_of(&g, "/tasks/x/timer"), Some("time"));
+        assert_eq!(module_of(&g, "/tasks/x/pay"), Some("time"));
+        assert_eq!(module_of(&g, "/time/report"), Some("time"));
         assert_eq!(module_of(&Method::POST, "/tasks/x/dependencies/y"), Some("planning"));
         assert_eq!(module_of(&g, "/tasks"), Some("projects"));
         assert_eq!(module_of(&g, "/folders/roots"), Some("storage"));
