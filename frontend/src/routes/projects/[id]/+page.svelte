@@ -1,4 +1,6 @@
 <script lang="ts">
+  import GanttExportDialog from '$lib/projects/GanttExportDialog.svelte';
+  import Download from '@lucide/svelte/icons/download';
   import ProjectFinance from '$lib/finance/ProjectFinance.svelte';
   import Wallet from '@lucide/svelte/icons/wallet';
   import { goto } from '$app/navigation';
@@ -326,6 +328,8 @@
       error = (e as Error).message;
     }
   }
+  // Gantt export (PDF / Excel / MS Project).
+  let exportOpen = $state(false);
 </script>
 
 <div class="page">
@@ -398,6 +402,7 @@
           </label>
         {/if}
         {#if canEdit && deps.length}<button class="btn sm" onclick={alignAll}>Выровнять по связям</button>{/if}
+        {#if tasks.length}<button class="btn sm" onclick={() => (exportOpen = true)} title="PDF, Excel или MS Project"><Download size={14} />Экспорт</button>{/if}
         {#if isManager && tasks.length}
           <button class="btn sm" onclick={saveBaseline}>{project.baseline_saved_at ? 'Обновить базовый план' : 'Сохранить базовый план'}</button>
           {#if project.baseline_saved_at}
@@ -407,6 +412,7 @@
       </div>
       <Gantt {tasks} dependencies={deps} {canEdit} critical={schedule.critical} slack={schedule.slack} {baseline}
              onchange={reschedule} onselect={openTask} />
+      <GanttExportDialog bind:open={exportOpen} projectId={project.id} hasBaseline={!!project.baseline_saved_at} />
     {:else if tab === 'requisites'}
       {#if reqEditing}
         <div class="card req-card">

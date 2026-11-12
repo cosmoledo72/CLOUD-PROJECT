@@ -21,6 +21,7 @@ encoding_rs = "0.8"
 hex = "0.4"
 jsonwebtoken = "9"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls-tls", "hostname"] }
+printpdf = { version = "0.7", default-features = false, features = ["embedded_images", "font_subsetting", "svg"] }
 rand = "0.8"
 regex = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
@@ -36,6 +37,7 @@ totp-rs = { version = "5", features = ["otpauth", "gen_secret"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "limit"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ttf-parser = "0.19"
 uuid = { version = "1", features = ["v4", "serde"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 

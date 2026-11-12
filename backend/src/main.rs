@@ -17,6 +17,7 @@ mod fields;
 mod kb;
 mod files;
 mod finance;
+mod gantt_export;
 mod mail;
 mod modules;
 mod money;
@@ -215,6 +216,7 @@ fn router(state: AppState) -> Router {
         .route("/projects/{id}/members", post(projects::upsert_member))
         .route("/projects/{id}/members/{user_id}", delete(projects::remove_member))
         .route("/projects/{id}/tasks", get(projects::list_tasks).post(projects::create_task))
+        .route("/projects/{id}/gantt/export", get(gantt_export::settings).post(gantt_export::export))
         .route("/projects/{id}/reschedule", post(projects::reschedule))
         .route("/projects/{id}/baseline", post(projects::save_baseline).delete(projects::clear_baseline))
         .route("/tasks", get(task_board::board))

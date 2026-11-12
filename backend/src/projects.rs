@@ -1042,7 +1042,7 @@ struct BaselineRow {
 }
 
 /// Tasks and dependencies of a project as a scheduling graph.
-async fn load_graph(state: &AppState, project_id: Uuid) -> ApiResult<(std::collections::HashMap<Uuid, Node>, Vec<Dep>)> {
+pub async fn load_graph(state: &AppState, project_id: Uuid) -> ApiResult<(std::collections::HashMap<Uuid, Node>, Vec<Dep>)> {
     let rows: Vec<(Uuid, Option<NaiveDate>, Option<NaiveDate>, String, bool)> =
         sqlx::query_as("SELECT id, start_date, due_date, status, is_milestone FROM tasks WHERE project_id = $1")
             .bind(project_id)

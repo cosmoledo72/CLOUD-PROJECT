@@ -81,7 +81,6 @@ impl WorkCalendar {
         ((d - base).num_days()).clamp(0, prefix.len() as i64 - 2) as usize
     }
 
-    #[cfg(test)]
     pub fn is_work(&self, d: NaiveDate) -> bool {
         match self {
             WorkCalendar::Calendar => true,
