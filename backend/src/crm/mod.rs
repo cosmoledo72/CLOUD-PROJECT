@@ -16,6 +16,7 @@ pub mod companies;
 pub mod deals;
 pub mod documents;
 pub mod import;
+pub mod reports;
 pub mod tasks;
 pub mod validate;
 
@@ -91,5 +92,19 @@ pub async fn system_activity(state: &AppState, user: &CurrentUser, company_id: O
     .await;
     if let Err(e) = res {
         tracing::warn!(error = ?e, "failed to write CRM system activity");
+    }
+}
+
+/// Remember that a deal entered a stage (funnel and time on stage in reports).
+pub async fn log_stage(state: &AppState, user: &CurrentUser, deal_id: Uuid, stage_id: Uuid) {
+    let res = sqlx::query("INSERT INTO crm_deal_stage_log (tenant_id, deal_id, stage_id, changed_by) VALUES ($1, $2, $3, $4)")
+        .bind(user.tenant_id)
+        .bind(deal_id)
+        .bind(stage_id)
+        .bind(user.user_id)
+        .execute(&state.db)
+        .await;
+    if let Err(e) = res {
+        tracing::warn!(error = ?e, "failed to log CRM deal stage");
     }
 }

@@ -132,6 +132,11 @@
   let overStage = $state<string | null>(null);
   let lostOpen = $state(false);
   let lostReason = $state('');
+  // Reasons used before: one click fills the field, so the reports group them.
+  let reasonHints = $state<string[]>([]);
+  $effect(() => {
+    if (lostOpen) api.get<{ reasons: string[] }>('/crm/lost-reasons').then((r) => (reasonHints = r.reasons)).catch(() => {});
+  });
   let pendingMove = $state<{ deal: Deal; stage: Stage } | null>(null);
 
   function onDrop(stage: Stage | null) {
@@ -440,6 +445,13 @@
   <label class="field">Причина (необязательно)
     <textarea class="input" rows="3" bind:value={lostReason} placeholder="Например: выбрали подрядчика с меньшей ценой"></textarea>
   </label>
+  {#if reasonHints.length}
+    <div class="hints" aria-label="Частые причины">
+      {#each reasonHints as h (h)}
+        <button type="button" class="chip" class:on={lostReason.trim().toLowerCase() === h.toLowerCase()} onclick={() => (lostReason = h)}>{h}</button>
+      {/each}
+    </div>
+  {/if}
   {#snippet footer()}
     <button class="btn" onclick={() => (lostOpen = false)}>Отмена</button>
     <button class="btn primary" onclick={() => { if (pendingMove) move(pendingMove.deal, pendingMove.stage, lostReason.trim()); lostOpen = false; }}>Перенести</button>
@@ -447,6 +459,9 @@
 </Modal>
 
 <style>
+  .hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 14px; padding: 3px 10px; font: inherit; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
+  .chip:hover, .chip.on { border-color: var(--accent); color: var(--accent); }
   .summary { font-size: 13px; }
   .search { width: 240px; }
   .error-box { margin-bottom: 10px; }

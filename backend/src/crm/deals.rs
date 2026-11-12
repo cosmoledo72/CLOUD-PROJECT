@@ -395,6 +395,7 @@ pub async fn create_deal(State(state): State<AppState>, user: CurrentUser, Json(
     .bind(stage.kind != "open")
     .fetch_one(&state.db)
     .await?;
+    super::log_stage(&state, &user, id, stage.id).await;
     system_activity(&state, &user, req.company_id, Some(id), format!("Создана сделка «{title}» на этапе «{}»", stage.name)).await;
     state.audit(user.tenant_id, Some(user.user_id), "crm.deal_created", None, Some(id), json!({ "title": title })).await;
     notify_deal(
@@ -493,6 +494,7 @@ pub async fn update_deal(
     .await?;
 
     if stage_changed {
+        super::log_stage(&state, &user, id, stage_id).await;
         let (old_name, _) = check_stage(&state, user.tenant_id, d.stage_id).await?;
         let mut text = format!("Этап сделки «{title}»: {old_name} → {new_stage_name}");
         if new_kind == "lost" {

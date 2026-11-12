@@ -230,6 +230,8 @@ def main():
     owner.call("PATCH", "/admin/portal", {"name": "Бюро", "timezone": "Mars/Olympus"}, expect=400)
     owner.call("PATCH", "/admin/portal", {"name": "Бюро", "timezone": "Asia/Sakhalin"})
     assert owner.call("GET", "/admin/portal")["timezone"] == "Asia/Sakhalin"
+    # Calendar days: in a working-days project a due date on a day off moves to a working day.
+    owner.call("PATCH", f"/projects/{pid}", {"day_mode": "calendar"})
     today = dt.datetime.now(ZoneInfo("Asia/Sakhalin")).date()
     d = lambda n: (today + dt.timedelta(days=n)).isoformat()  # noqa: E731
     mk = lambda title, due, who="v": owner.call("POST", f"/projects/{pid}/tasks", {"title": title, "due_date": due, "assignee_id": ids[who]})["task"]  # noqa: E731

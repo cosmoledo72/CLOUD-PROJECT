@@ -21,6 +21,13 @@
   let companies = $state<CompanyListItem[]>([]);
   let contacts = $state<Contact[]>([]);
   let users = $state<UserItem[]>([]);
+  let reasonHints = $state<string[]>([]);
+  let hintsAsked = false; // not reactive: ask once per page
+  $effect(() => {
+    if (deal?.stage_kind !== 'lost' || hintsAsked) return;
+    hintsAsked = true;
+    api.get<{ reasons: string[] }>('/crm/lost-reasons').then((r) => (reasonHints = r.reasons)).catch(() => {});
+  });
   let error = $state('');
   let notice = $state('');
 
@@ -194,7 +201,8 @@
         </div>
         <label class="field wide">Описание <textarea class="input" rows="4" bind:value={f.description} disabled={!canEdit}></textarea></label>
         {#if deal.stage_kind === 'lost'}
-          <label class="field wide">Причина проигрыша <input class="input" bind:value={f.lost_reason} disabled={!canEdit} /></label>
+          <label class="field wide">Причина проигрыша <input class="input" bind:value={f.lost_reason} disabled={!canEdit} list="lost-reasons" /></label>
+          <datalist id="lost-reasons">{#each reasonHints as h (h)}<option value={h}></option>{/each}</datalist>
         {/if}
       </div>
       <div class="row meta faint small">

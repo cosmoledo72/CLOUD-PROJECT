@@ -11,6 +11,7 @@ Usage:
 """
 
 import datetime
+from zoneinfo import ZoneInfo
 import io
 import os
 import sys
@@ -58,7 +59,8 @@ def main():
     # --- Folder link ----------------------------------------------------------------------
     link = eng.call("PUT", "/links", {"resource_type": "folder", "resource_id": shared})["link"]
     token = link["token"]
-    today = datetime.date.fromisoformat(link["created_at"][:10])
+    # The portal's date (its time zone), not the UTC date of the timestamp: they differ around midnight.
+    today = datetime.datetime.now(ZoneInfo("Asia/Sakhalin")).date()
     exp = datetime.date.fromisoformat(link["expires_on"])
     assert 29 <= (exp - today).days <= 31 and not link["has_password"] and len(token) == 22, link
     assert out.call("GET", f"/links?resource_type=folder&resource_id={shared}")["exists"] is True

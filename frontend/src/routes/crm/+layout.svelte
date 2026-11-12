@@ -9,6 +9,7 @@
     { href: '/crm/tasks', label: 'Дела' },
     { href: '/crm/companies', label: 'Контрагенты' },
     { href: '/crm/contacts', label: 'Контакты' },
+    { href: '/crm/reports', label: 'Отчёты' },
     ...(session.crmManager ? [{ href: '/crm/settings', label: 'Этапы воронки' }] : [])
   ]);
 </script>
