@@ -38,6 +38,18 @@ pub struct FolderRow {
 }
 
 #[derive(Serialize, sqlx::FromRow)]
+pub struct FolderItem {
+    pub id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub kind: String,
+    pub name: String,
+    pub owner_id: Uuid,
+    pub owner_name: String,
+    pub created_at: DateTime<Utc>,
+    pub items: i64,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
 pub struct FileRow {
     pub id: Uuid,
     pub folder_id: Uuid,
@@ -285,9 +297,13 @@ pub async fn get_folder(State(state): State<AppState>, user: CurrentUser, Path(i
     .bind(id)
     .fetch_all(&state.db)
     .await?;
-    let folders = sqlx::query_as::<_, FolderRow>(
-        "SELECT id, parent_id, kind, name, owner_id, created_at FROM folders
-          WHERE tenant_id = $1 AND parent_id = $2 AND deleted_at IS NULL ORDER BY lower(name)",
+    // Subfolders with their owner and the number of items directly inside.
+    let folders = sqlx::query_as::<_, FolderItem>(
+        "SELECT d.id, d.parent_id, d.kind, d.name, d.owner_id, u.display_name AS owner_name, d.created_at,
+                (SELECT count(*) FROM folders c WHERE c.parent_id = d.id AND c.deleted_at IS NULL)
+                + (SELECT count(*) FROM files f WHERE f.folder_id = d.id AND f.deleted_at IS NULL) AS items
+           FROM folders d JOIN users u ON u.id = d.owner_id
+          WHERE d.tenant_id = $1 AND d.parent_id = $2 AND d.deleted_at IS NULL ORDER BY lower(d.name)",
     )
     .bind(user.tenant_id)
     .bind(id)

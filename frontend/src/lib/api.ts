@@ -120,11 +120,17 @@ export interface FileItem {
   updated_at: string;
 }
 
+/** Subfolder in a folder listing: owner and the number of items directly inside. */
+export interface FolderItem extends Folder {
+  owner_name: string;
+  items: number;
+}
+
 export interface FolderView {
   folder: Folder;
   access: Access;
   breadcrumbs: { id: string; name: string }[];
-  folders: Folder[];
+  folders: FolderItem[];
   files: FileItem[];
 }
 

@@ -15,6 +15,7 @@ mod crm;
 mod error;
 mod fields;
 mod kb;
+mod file_ops;
 mod files;
 mod finance;
 mod gantt_export;
@@ -196,6 +197,9 @@ fn router(state: AppState) -> Router {
         .route("/projects/{id}/generate", post(templates::generate))
         // Documents
         .route("/folders/roots", get(files::roots))
+        .route("/storage/usage", get(file_ops::usage))
+        .route("/files/copy", post(file_ops::copy))
+        .route("/files/zip", post(file_ops::zip))
         .route("/folders", post(files::create_folder))
         .route("/folders/{id}", get(files::get_folder).patch(files::rename_folder).delete(files::delete_folder))
         .route("/folders/{id}/upload", post(files::upload))

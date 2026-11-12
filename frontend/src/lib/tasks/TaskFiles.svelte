@@ -2,7 +2,7 @@
   // Files of a task: upload from the computer (button or drag and drop) into
   // the task's folder inside the project folder, attach files that already lie
   // in the project folder, open, download and detach.
-  import { api, docKind, formatSize, type FolderView, type TaskAttachment } from '$lib/api';
+  import { api, docKind, type FolderView, type TaskAttachment } from '$lib/api';
   import FileIcon from '$lib/FileIcon.svelte';
   import Modal from '$lib/Modal.svelte';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -11,6 +11,9 @@
   import Paperclip from '@lucide/svelte/icons/paperclip';
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
+  import Link2 from '@lucide/svelte/icons/link-2';
+  import Author from '$lib/files/Author.svelte';
+  import { portalUrl, relTime, sizeLabel } from '$lib/files/fmt';
 
   let { taskId, projectId, attachments = $bindable([]), canEdit = false, canDetachAny = false, meId, onchange }: {
     taskId: string;
@@ -67,6 +70,17 @@
       apply(r.attachments);
     } catch (e) {
       error = (e as Error).message;
+    }
+  }
+  let copied = $state('');
+  async function copyLink(a: TaskAttachment) {
+    const url = portalUrl(openable(a) ? `/editor/${a.file_id}` : `/api/files/${a.file_id}/download`);
+    try {
+      await navigator.clipboard.writeText(url);
+      copied = a.file_id;
+      setTimeout(() => (copied = ''), 2000);
+    } catch {
+      prompt('Ссылка для сотрудников портала:', url);
     }
   }
   const canDetach = (a: TaskAttachment) => canDetachAny || (!!meId && a.added_by === meId);
@@ -137,12 +151,17 @@
             {:else}
               <a class="name" href="/api/files/{a.file_id}/download" title="Скачать">{a.name}</a>
             {/if}
-            <span class="faint small">{formatSize(a.size_bytes)}{a.added_by_name ? ` · ${a.added_by_name}` : ''} · {new Date(a.added_at).toLocaleDateString('ru-RU')}</span>
+            <span class="meta">{sizeLabel(a.size_bytes)} · <span title={new Date(a.added_at).toLocaleString('ru-RU')}>{relTime(a.added_at)}</span>
+              {#if a.added_by && a.added_by_name}<Author id={a.added_by} name={a.added_by_name} />{/if}</span>
           </div>
-          <a class="btn ghost sm ic" href="/api/files/{a.file_id}/download" title="Скачать" aria-label="Скачать {a.name}"><Download size={15} /></a>
-          {#if canDetach(a)}
-            <button class="btn ghost sm ic" onclick={() => detach(a)} title="Открепить от задачи" aria-label="Открепить {a.name}"><X size={15} /></button>
-          {/if}
+          <div class="acts">
+            <a class="ibtn" href="/api/files/{a.file_id}/download" title="Скачать" aria-label="Скачать {a.name}"><Download size={16} /></a>
+            <button class="ibtn" onclick={() => copyLink(a)} title={copied === a.file_id ? 'Ссылка скопирована' : 'Скопировать ссылку'} aria-label="Ссылка на {a.name}"><Link2 size={16} /></button>
+            {#if canDetach(a)}
+              <button class="ibtn" onclick={() => detach(a)} title="Открепить от задачи" aria-label="Открепить {a.name}"><X size={16} /></button>
+            {/if}
+          </div>
+          {#if copied === a.file_id}<span class="copied">Ссылка скопирована</span>{/if}
         </li>
       {/each}
     </ul>
@@ -179,7 +198,7 @@
           <label class="row" class:dim={attached.has(f.id)}>
             <input type="checkbox" bind:checked={picked[f.id]} disabled={attached.has(f.id)} />
             <FileIcon ext={f.extension} /><span class="nm">{f.name}</span>
-            <span class="faint small">{attached.has(f.id) ? 'уже прикреплён' : formatSize(f.size_bytes)}</span>
+            <span class="faint small">{attached.has(f.id) ? 'уже прикреплён' : sizeLabel(f.size_bytes)}</span>
           </label>
         </li>
       {/each}
@@ -205,7 +224,15 @@
   .main { flex: 1; min-width: 0; display: grid; }
   .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text); }
   .name:hover { color: var(--accent); }
-  .ic { width: 30px; padding: 0; justify-content: center; flex: none; }
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12.5px; color: var(--text-3); margin-top: 2px; }
+  .meta :global(.who) { font-size: 12px; }
+  /* Row icons on hover or focus (always on touch screens). */
+  .acts { display: inline-flex; gap: 2px; flex: none; opacity: 0; transition: opacity .1s; }
+  .files li:hover .acts, .files li:focus-within .acts { opacity: 1; }
+  .ibtn { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer; }
+  .ibtn:hover { background: var(--surface-3); color: var(--text); }
+  .copied { font-size: 12px; color: var(--success, #2f9e5b); flex: none; }
+  @media (hover: none) { .acts { opacity: 1; } }
   .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .hint { flex: 1; min-width: 180px; }
   .none { margin: 0; }
