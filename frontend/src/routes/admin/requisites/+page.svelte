@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Plus from '@lucide/svelte/icons/plus';
   import { api, fieldTypeLabel, type FieldDef, type FieldType, type FieldValues, type UserItem } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
   import RequisitesForm from '$lib/RequisitesForm.svelte';
@@ -137,7 +138,7 @@
   </p>
   <div class="spacer"></div>
   <button class="btn" onclick={applyPreset}>Типовой набор: обследование и проектирование</button>
-  <button class="btn primary" onclick={openNew}>Добавить реквизит</button>
+  <button class="btn primary" onclick={openNew}><Plus size={16} />Добавить реквизит</button>
 </div>
 {#if error}<div class="error-box">{error}</div>{/if}
 {#if notice}<div class="ok-box">{notice}</div>{/if}

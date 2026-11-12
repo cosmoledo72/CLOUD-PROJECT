@@ -3,6 +3,11 @@
   // month or week; expenses and income by category (donuts); projects by profit.
   import { api, formatMoney, plainMessage } from '$lib/api';
   import { moneyShort } from '$lib/fieldLook';
+  import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
+  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
+  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import TrendingUp from '@lucide/svelte/icons/trending-up';
+  import StatTile from '$lib/ui/StatTile.svelte';
   import PeriodPicker from './PeriodPicker.svelte';
   import { MONTHS_SHORT, periodRange, type Period } from './period';
 
@@ -51,6 +56,8 @@
   const maxProject = $derived(Math.max(1, ...(data?.projects ?? []).map((p) => Math.max(p.income, p.expense))));
 </script>
 
+<div class="page-head"><h1>Аналитика</h1></div>
+
 {#if error}<div class="error-box">{error}</div>{/if}
 
 <div class="bar">
@@ -63,13 +70,14 @@
 </div>
 
 {#if data}
-  <div class="kpi">
-    <div class="card k"><span>Поступления</span><b class="in">{formatMoney(data.totals.income)}</b></div>
-    <div class="card k"><span>Расходы</span><b class="out">{formatMoney(data.totals.expense)}</b></div>
-    <div class="card k"><span>Прибыль</span><b class:out={data.totals.profit < 0} class:in={data.totals.profit > 0}>{formatMoney(data.totals.profit)}</b>
-      {#if data.totals.income > 0}<small class="faint">рентабельность {Math.round((data.totals.profit / data.totals.income) * 100)}%</small>{/if}</div>
-    <div class="card k"><span>Ожидается за 30 дней</span><b class="plan">{formatMoney(data.plan.next_30_days)}</b>
-      {#if data.plan.overdue}<small class="late">просрочено по плану {formatMoney(data.plan.overdue)}</small>{/if}</div>
+  <div class="stat-grid">
+    <StatTile label="Поступления" value={formatMoney(data.totals.income)} icon={ArrowDownLeft} tone="ok" valueTone="ok" hint="проведённые за период" />
+    <StatTile label="Расходы" value={formatMoney(data.totals.expense)} icon={ArrowUpRight} tone="danger" valueTone="danger" hint="проведённые за период" />
+    <StatTile label="Прибыль" value={formatMoney(data.totals.profit)} icon={TrendingUp} tone="accent"
+      valueTone={data.totals.profit < 0 ? 'danger' : data.totals.profit > 0 ? 'ok' : undefined}
+      hint={data.totals.income > 0 ? `рентабельность ${Math.round((data.totals.profit / data.totals.income) * 100)} %` : 'поступления минус расходы'} />
+    <StatTile label="Ожидается за 30 дней" value={formatMoney(data.plan.next_30_days)} icon={CalendarClock} tone="warn"
+      hint={data.plan.overdue ? `просрочено по плану ${formatMoney(data.plan.overdue)}` : 'по графику оплат'} hintTone={data.plan.overdue ? 'danger' : undefined} />
   </div>
 
   <section class="card chart">
@@ -150,15 +158,8 @@
 <style>
   .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   .spacer { flex: 1; }
-  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .k { padding: 12px 14px; display: grid; gap: 2px; }
-  .k span { font-size: 12.5px; color: var(--text-3); }
-  .k b { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
-  .k small { font-size: 12px; }
   .in { color: var(--ok); }
   .out { color: var(--danger); }
-  .plan { color: var(--accent); }
-  .late { color: var(--danger); }
   h2 { font-size: 14px; margin: 0; }
   .chart, .donut, .projects { padding: 14px 16px; margin-bottom: 14px; }
   .head { display: flex; gap: 16px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }

@@ -6,6 +6,11 @@
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
   import Clock from '@lucide/svelte/icons/clock';
+  import Banknote from '@lucide/svelte/icons/banknote';
+  import BadgePercent from '@lucide/svelte/icons/badge-russian-ruble';
+  import ListChecks from '@lucide/svelte/icons/list-checks';
+  import Timer from '@lucide/svelte/icons/timer';
+  import StatTile from '$lib/ui/StatTile.svelte';
   import { api, formatDate, localToday } from '$lib/api';
   import EmptyState from '$lib/EmptyState.svelte';
   import { money, moneyShort } from '$lib/fieldLook';
@@ -293,15 +298,15 @@
 </script>
 
 <div class="page">
+  {#if money_}
+    <div class="tabs-line" role="tablist" aria-label="Раздел отчётов">
+      <button role="tab" aria-selected={tab === 'hours'} class:on={tab === 'hours'} onclick={() => (tab = 'hours')}><Timer size={17} />Трудозатраты</button>
+      <button role="tab" aria-selected={tab === 'rates'} class:on={tab === 'rates'} onclick={() => (tab = 'rates')}><BadgePercent size={17} />Ставки</button>
+    </div>
+  {/if}
   <div class="page-head">
-    <h1>Отчёты</h1>
+    <h1>{tab === 'rates' ? 'Ставки' : money_ ? 'Трудозатраты' : 'Отчёты'}</h1>
     <div class="spacer"></div>
-    {#if money_}
-      <div class="seg" role="tablist" aria-label="Раздел">
-        <button role="tab" aria-selected={tab === 'hours'} class:on={tab === 'hours'} onclick={() => (tab = 'hours')}>Трудозатраты</button>
-        <button role="tab" aria-selected={tab === 'rates'} class:on={tab === 'rates'} onclick={() => (tab = 'rates')}>Ставки</button>
-      </div>
-    {/if}
     {#if tab === 'hours'}<a class="btn" href={exportHref} download><Download size={16} />XLSX</a>{/if}
   </div>
 
@@ -338,12 +343,15 @@
     {#if error}<div class="error-box">{error}</div>{/if}
 
     {#if data}
-      <div class="sum">
-        <div class="card tile"><b class="nums">{hours(data.totals.minutes)} ч</b><span>всего за период</span></div>
-        <div class="card tile"><b class="nums">{rows.length}</b><span>{rows.length === 1 ? 'запись' : 'записей'} · {peopleCount} {peopleCount === 1 ? 'сотрудник' : 'сотр.'}</span></div>
+      <div class="stat-grid">
+        <StatTile label="Всего за период" value="{hours(data.totals.minutes)} ч" icon={Clock} tone="accent" hint={period.label || 'выбранный период'} />
+        <StatTile label="Записей времени" value={rows.length} icon={ListChecks} tone="neutral"
+          hint="{peopleCount} {peopleCount === 1 ? 'сотрудник' : peopleCount >= 2 && peopleCount <= 4 ? 'сотрудника' : 'сотрудников'}" />
         {#if money_}
-          <div class="card tile" title="Часы × ставка сотрудника на момент записи; задачи с фиксированной оплатой не входят"><b class="nums">{moneyShort(data.totals.hourly_cost ?? 0)}</b><span>по часам</span></div>
-          <div class="card tile" title="Фиксированная оплата задач, выполненных за период"><b class="nums">{moneyShort(data.totals.fixed_cost ?? 0)}</b><span>фикс. за объём</span></div>
+          <StatTile label="Стоимость по часам" value={moneyShort(data.totals.hourly_cost ?? 0)} icon={Banknote} tone="ok" hint="часы × ставка сотрудника"
+            title="Часы × ставка сотрудника на момент записи; задачи с фиксированной оплатой не входят" />
+          <StatTile label="Фиксированная оплата" value={moneyShort(data.totals.fixed_cost ?? 0)} icon={BadgePercent} tone="warn" hint="задачи, выполненные за период"
+            title="Фиксированная оплата задач, выполненных за период" />
         {/if}
       </div>
 
@@ -476,10 +484,6 @@
   .dt { width: auto; }
   .lnk { border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit; font-size: 13px; padding: 0; }
   .page-head .btn { display: inline-flex; align-items: center; gap: 6px; }
-  .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 6px 0 12px; }
-  .tile { padding: 12px 14px; display: grid; gap: 2px; }
-  .tile b { font-size: 20px; font-weight: 600; }
-  .tile span { font-size: 12.5px; color: var(--text-3); }
   .nums { font-variant-numeric: tabular-nums; }
 
   .chart { padding: 12px 14px 8px; margin-bottom: 12px; }

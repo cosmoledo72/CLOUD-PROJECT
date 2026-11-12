@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Upload from '@lucide/svelte/icons/upload';
   import { api, docKindLabel, formatDateTime, formatSize, type DocKind, type DocTemplate, type PlaceholderInfo } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
 
@@ -128,7 +129,7 @@
   </p>
   <div class="spacer"></div>
   <button class="btn" onclick={installSample}>{scope === 'sales' ? 'Добавить образцы: КП, договор, счёт, акт' : 'Добавить пример: титульный лист'}</button>
-  <button class="btn primary" onclick={openUpload}>Загрузить шаблон</button>
+  <button class="btn primary" onclick={openUpload}><Upload size={16} />Загрузить шаблон</button>
 </div>
 {#if error}<div class="error-box">{error}</div>{/if}
 {#if notice}<div class="ok-box">{notice}</div>{/if}

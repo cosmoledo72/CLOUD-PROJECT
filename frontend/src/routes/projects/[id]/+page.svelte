@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Plus from '@lucide/svelte/icons/plus';
   import GanttExportDialog from '$lib/projects/GanttExportDialog.svelte';
   import Download from '@lucide/svelte/icons/download';
   import ProjectFinance from '$lib/finance/ProjectFinance.svelte';
@@ -356,7 +357,7 @@
       {#if canEdit && project.folder_id && session.has('templates')}<button class="btn" onclick={openGenerate}>Документ из шаблона</button>{/if}
       {#if canEdit}
         <button class="btn" onclick={() => openNew(true)}>Веха</button>
-        <button class="btn primary" onclick={() => openNew()}>Задача</button>
+        <button class="btn primary" onclick={() => openNew()}><Plus size={16} />Задача</button>
       {/if}
     </div>
     {#if project.description}<p class="muted desc">{project.description}</p>{/if}

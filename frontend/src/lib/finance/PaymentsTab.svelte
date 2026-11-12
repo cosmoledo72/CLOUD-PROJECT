@@ -5,12 +5,23 @@
   // CSV export; finance editors add and change payments.
   import { api, formatDate, formatMoney, plainMessage, type FinanceCategory, type Payment, type PaymentTotals } from '$lib/api';
   import { session } from '$lib/session.svelte';
+  import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
+  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
+  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
   import Download from '@lucide/svelte/icons/download';
   import Plus from '@lucide/svelte/icons/plus';
+  import Scale from '@lucide/svelte/icons/scale';
   import Search from '@lucide/svelte/icons/search';
+  import Settings from '@lucide/svelte/icons/settings';
+  import { plural } from '$lib/fieldLook';
+  import PickFilter from '$lib/ui/PickFilter.svelte';
+  import StatTile from '$lib/ui/StatTile.svelte';
   import PaymentDialog from './PaymentDialog.svelte';
   import PeriodPicker from './PeriodPicker.svelte';
   import { periodRange, signed, type Period } from './period';
+
+  let { onsettings }: { onsettings?: () => void } = $props();
 
   let period = $state<Period>('month');
   let from = $state(periodRange('month')[0]);
@@ -82,42 +93,56 @@
     URL.revokeObjectURL(a.href);
   }
   const today = new Date().toISOString().slice(0, 10);
+  const periodText = $derived(from && to ? `${formatDate(from)} — ${formatDate(to)}` : from ? `с ${formatDate(from)}` : 'всё время');
+  const facts = $derived(payments.filter((p) => p.status === 'fact'));
+  const countWord = (n: number) => plural(n, 'платёж', 'платежа', 'платежей');
+  const nIn = $derived(facts.filter((p) => p.kind === 'income').length);
+  const nOut = $derived(facts.filter((p) => p.kind === 'expense').length);
+  const planLate = $derived(payments.filter((p) => p.status === 'plan' && p.kind === 'income' && p.pay_date < today).reduce((a, p) => a + p.amount, 0));
+  const diff = $derived(totals.income - totals.expense);
 </script>
+
+<div class="page-head">
+  <h1>Платежи</h1>
+  <div class="spacer"></div>
+  {#if onsettings}<button class="btn" onclick={onsettings}><Settings size={16} />Статьи и сроки</button>{/if}
+  {#if session.financeEdit}
+    <button class="btn" onclick={() => add('income', 'plan')}><CalendarPlus size={16} />План оплаты</button>
+    <button class="btn" onclick={() => add('expense')}><ArrowUpRight size={16} />Расход</button>
+    <button class="btn primary" onclick={() => add('income')}><Plus size={16} />Поступление</button>
+  {/if}
+</div>
 
 {#if error}<div class="error-box">{error}</div>{/if}
 
 <div class="bar">
   <PeriodPicker bind:period bind:from bind:to />
+  <span class="faint small">{periodText}</span>
   <div class="spacer"></div>
-  {#if session.financeEdit}
-    <button class="btn" onclick={() => add('income', 'plan')}><Plus size={15} /> План оплаты</button>
-    <button class="btn add-in" onclick={() => add('income')}><Plus size={15} /> Поступление</button>
-    <button class="btn add-out" onclick={() => add('expense')}><Plus size={15} /> Расход</button>
-  {/if}
+  <button class="btn" onclick={exportCsv} disabled={!payments.length} title="Выгрузить платежи в CSV (Excel)"><Download size={16} />CSV</button>
 </div>
 
-<div class="sum">
-  <div class="card tile"><span>Поступило</span><b class="in">{formatMoney(totals.income)}</b></div>
-  <div class="card tile"><span>Израсходовано</span><b class="out">{formatMoney(totals.expense)}</b></div>
-  <div class="card tile"><span>Разница</span><b class:out={totals.income - totals.expense < 0}>{formatMoney(totals.income - totals.expense)}</b></div>
-  <div class="card tile"><span>Ожидается по плану</span><b class="plan">{formatMoney(totals.income_plan)}</b>
-    {#if totals.expense_plan}<small class="faint">расходы по плану {formatMoney(totals.expense_plan)}</small>{/if}</div>
+<div class="stat-grid">
+  <StatTile label="Поступило" value={formatMoney(totals.income)} icon={ArrowDownLeft} tone="ok" valueTone="ok"
+    hint={nIn ? `${nIn} ${countWord(nIn)}` : 'проведённые за период'} />
+  <StatTile label="Израсходовано" value={formatMoney(totals.expense)} icon={ArrowUpRight} tone="danger" valueTone="danger"
+    hint={nOut ? `${nOut} ${countWord(nOut)}` : 'проведённые за период'} />
+  <StatTile label="Разница" value={formatMoney(diff)} icon={Scale} tone="accent" valueTone={diff < 0 ? 'danger' : diff > 0 ? 'ok' : undefined}
+    hint="поступления минус расходы" />
+  <StatTile label="Ожидается по плану" value={formatMoney(totals.income_plan)} icon={CalendarClock} tone="warn"
+    hint={planLate ? `из них просрочено ${formatMoney(planLate)}` : totals.expense_plan ? `расходы по плану ${formatMoney(totals.expense_plan)}` : 'поступления по графику оплат'}
+    hintTone={planLate ? 'danger' : undefined} />
 </div>
 
 <section class="card table">
   <div class="tbar">
     <label class="search"><Search size={16} /><input class="input" placeholder="Комментарий, контрагент, проект, № счёта" bind:value={q} /></label>
-    <select class="input" bind:value={kind} aria-label="Тип"><option value="">Все платежи</option><option value="income">Поступления</option><option value="expense">Расходы</option></select>
-    <select class="input" bind:value={status} aria-label="Статус"><option value="">Факт и план</option><option value="fact">Проведённые</option><option value="plan">Плановые</option></select>
-    <select class="input" bind:value={categoryId} aria-label="Статья">
-      <option value="">Все статьи</option>
-      {#each categories.filter((c) => !kind || c.kind === kind) as c (c.id)}<option value={c.id}>{c.kind === 'income' ? '＋' : '－'} {c.name}</option>{/each}
-    </select>
-    <select class="input proj" bind:value={projectId} aria-label="Проект">
-      <option value="">Все проекты</option>
-      {#each projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-    </select>
-    <button class="btn" onclick={exportCsv} disabled={!payments.length} title="Выгрузить в CSV"><Download size={15} /></button>
+    <PickFilter label="Тип" bind:value={kind} options={[{ value: '', label: 'Все платежи' }, { value: 'income', label: 'Поступления' }, { value: 'expense', label: 'Расходы' }]} />
+    <PickFilter label="Статус" bind:value={status} options={[{ value: '', label: 'Факт и план' }, { value: 'fact', label: 'Проведённые' }, { value: 'plan', label: 'Плановые' }]} />
+    <PickFilter label="Статья" bind:value={categoryId} search={categories.length > 8}
+      options={[{ value: '', label: 'Все статьи' }, ...categories.filter((c) => !kind || c.kind === kind).map((c) => ({ value: c.id, label: c.name, hint: c.kind === 'income' ? 'поступление' : 'расход' }))]} />
+    <PickFilter label="Проект" bind:value={projectId} search
+      options={[{ value: '', label: 'Все проекты' }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} />
   </div>
   {#if loaded && !payments.length}
     <EmptyState icon={Banknote} title="Платежей за период нет" text={session.financeEdit ? 'Добавьте поступление или расход кнопками выше или выберите другой период.' : 'Выберите другой период.'} />
@@ -130,7 +155,7 @@
             <tr class:click={session.financeEdit} class:plan={p.status === 'plan'} onclick={() => edit(p)}>
               <td class="nowrap">{formatDate(p.pay_date)}
                 {#if p.status === 'plan'}<div><span class="tag" class:late={p.pay_date < today}>{p.pay_date < today ? 'план, просрочен' : 'план'}</span></div>{/if}</td>
-              <td class="num"><span class={p.kind === 'income' ? 'in' : 'out'}>{signed(p.amount, p.kind)}</span>
+              <td class="num"><span class="dir {p.kind === 'income' ? 'in' : 'out'}" title={p.kind === 'income' ? 'Поступление' : 'Расход'}>{#if p.kind === 'income'}<ArrowDownLeft size={13} />{:else}<ArrowUpRight size={13} />{/if}</span><span class={p.kind === 'income' ? 'in' : 'out'}>{signed(p.amount, p.kind)}</span>
                 {#if p.vat_amount}<div class="faint small">НДС {formatMoney(p.vat_amount)}</div>{/if}</td>
               <td>{p.category_name ?? '—'}</td>
               <td class="clip">{#if p.project_id}<a href="/projects/{p.project_id}?tab=finance" onclick={(e) => e.stopPropagation()}>{p.project_name}</a>{:else}<span class="faint">—</span>{/if}</td>
@@ -148,21 +173,15 @@
 
 <style>
   .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-  .bar .btn { display: inline-flex; gap: 6px; align-items: center; }
   .spacer { flex: 1; }
-  .add-in { color: var(--ok); }
-  .add-out { color: var(--danger); }
-  .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile { padding: 11px 14px; display: grid; gap: 2px; }
-  .tile span { font-size: 12.5px; color: var(--text-3); }
-  .tile b { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .in { color: var(--ok); }
   .out { color: var(--danger); }
-  .plan { color: var(--accent); }
+  .dir { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; margin-right: 6px; vertical-align: -4px; }
+  .dir.in { background: var(--ok-soft); }
+  .dir.out { background: var(--danger-soft); }
   .table { padding: 0; overflow: hidden; }
   .tbar { display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .tbar select { width: auto; max-width: 200px; }
-  .tbar .btn { display: inline-grid; place-items: center; }
+  .tbar :global(.btn.sm) { height: 36px; }
   .search { position: relative; flex: 1; min-width: 200px; }
   .search :global(svg) { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
   .search input { padding-left: 34px; width: 100%; }

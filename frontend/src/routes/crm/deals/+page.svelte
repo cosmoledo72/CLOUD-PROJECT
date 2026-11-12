@@ -11,6 +11,7 @@
   import { session } from '$lib/session.svelte';
   import Kanban from '@lucide/svelte/icons/square-kanban';
   import List from '@lucide/svelte/icons/list';
+  import Plus from '@lucide/svelte/icons/plus';
   import Trophy from '@lucide/svelte/icons/trophy';
   import CircleX from '@lucide/svelte/icons/circle-x';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
@@ -223,13 +224,16 @@
   <h1>Сделки</h1>
   <span class="muted summary">В работе: <b>{openDeals.length}</b> на <b>{formatMoney(sum(openDeals))}</b> · с учётом вероятности <b>{formatMoney(Math.round(weighted))}</b></span>
   <div class="spacer"></div>
+  <button class="btn primary" onclick={() => openCreate()}><Plus size={16} />Новая сделка</button>
+</div>
+<div class="toolbar">
   <input class="input search" placeholder="Поиск по сделке или контрагенту" bind:value={query} aria-label="Поиск" />
   <label class="check small"><input type="checkbox" bind:checked={mineOnly} />Только мои</label>
+  <div class="spacer"></div>
   <div class="seg" role="radiogroup" aria-label="Вид">
     <button role="radio" aria-checked={view === 'board'} class:on={view === 'board'} title="Доска" onclick={() => setView('board')}><Kanban size={16} /> Доска</button>
     <button role="radio" aria-checked={view === 'list'} class:on={view === 'list'} title="Список" onclick={() => setView('list')}><List size={16} /> Список</button>
   </div>
-  <button class="btn primary" onclick={() => openCreate()}>Новая сделка</button>
 </div>
 {#if error}<div class="error-box">{error}</div>{/if}
 
@@ -463,6 +467,7 @@
   .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 14px; padding: 3px 10px; font: inherit; font-size: 12.5px; color: var(--text-2); cursor: pointer; }
   .chip:hover, .chip.on { border-color: var(--accent); color: var(--accent); }
   .summary { font-size: 13px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: -8px 0 14px; }
   .search { width: 240px; }
   .error-box { margin-bottom: 10px; }
 

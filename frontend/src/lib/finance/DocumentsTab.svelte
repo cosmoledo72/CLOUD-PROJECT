@@ -2,7 +2,7 @@
   import EmptyState from '$lib/EmptyState.svelte';
   import FileText from '@lucide/svelte/icons/file-text';
   // «Финансы → Документы»: registry of sales documents (contracts, invoices, acts) for CRM users.
-  import { api, docKindLabel, docStatusLabel, formatDate, formatMoney, localToday, type DocKind, type DocStatus, type SalesDoc } from '$lib/api';
+  import { api, docKindLabel, docStatusLabel, formatDate, formatMoney, type DocKind, type DocStatus, type SalesDoc } from '$lib/api';
   import Search from '@lucide/svelte/icons/search';
   import Receipt from '@lucide/svelte/icons/receipt';
   import FileCheck2 from '@lucide/svelte/icons/file-check-2';
@@ -10,11 +10,14 @@
   import Scale from '@lucide/svelte/icons/scale';
   import Download from '@lucide/svelte/icons/download';
   import { session } from '$lib/session.svelte';
+  import PickFilter from '$lib/ui/PickFilter.svelte';
+  import StatTile from '$lib/ui/StatTile.svelte';
+  import PeriodPicker from './PeriodPicker.svelte';
+  import { periodRange, type Period } from './period';
 
-  type Period = 'month' | 'quarter' | 'year' | 'prev_year' | 'all' | 'custom';
   let period = $state<Period>('year');
-  let from = $state('');
-  let to = $state('');
+  let from = $state(periodRange('year')[0]);
+  let to = $state(periodRange('year')[1]);
   let kind = $state<'' | DocKind>('');
   let status = $state<'' | DocStatus>('');
   let q = $state('');
@@ -22,22 +25,6 @@
   let loaded = $state(false);
   let error = $state('');
 
-  const pad = (n: number) => String(n).padStart(2, '0');
-  function range(p: Period): [string, string] {
-    const t = localToday();
-    const y = +t.slice(0, 4);
-    const m = +t.slice(5, 7);
-    if (p === 'month') return [`${y}-${pad(m)}-01`, t];
-    if (p === 'quarter') return [`${y}-${pad(Math.floor((m - 1) / 3) * 3 + 1)}-01`, t];
-    if (p === 'year') return [`${y}-01-01`, t];
-    if (p === 'prev_year') return [`${y - 1}-01-01`, `${y - 1}-12-31`];
-    return ['', ''];
-  }
-  function setPeriod(p: Period) {
-    period = p;
-    if (p !== 'custom') [from, to] = range(p);
-  }
-  setPeriod('year');
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
@@ -63,10 +50,10 @@
     const invoiced = sum('invoice');
     const acts = sum('act');
     return [
-      { key: 'contract', icon: FileSignature, label: 'Договоры', value: sum('contract'), hint: `подписано на ${formatMoney(sum('contract', true))}` },
-      { key: 'invoice', icon: Receipt, label: 'Выставлено счетов', value: invoiced, hint: `${live.filter((d) => d.kind === 'invoice').length} шт.` },
-      { key: 'act', icon: FileCheck2, label: 'Закрыто актами', value: acts, hint: `подписано на ${formatMoney(sum('act', true))}` },
-      { key: 'gap', icon: Scale, label: 'Счета без актов', value: Math.max(invoiced - acts, 0), hint: 'выставлено, но ещё не закрыто' }
+      { key: 'contract', tone: 'violet' as const, icon: FileSignature, label: 'Договоры', value: sum('contract'), hint: `подписано на ${formatMoney(sum('contract', true))}` },
+      { key: 'invoice', tone: 'accent' as const, icon: Receipt, label: 'Выставлено счетов', value: invoiced, hint: `${live.filter((d) => d.kind === 'invoice').length} шт.` },
+      { key: 'act', tone: 'ok' as const, icon: FileCheck2, label: 'Закрыто актами', value: acts, hint: `подписано на ${formatMoney(sum('act', true))}` },
+      { key: 'gap', tone: 'warn' as const, icon: Scale, label: 'Счета без актов', value: Math.max(invoiced - acts, 0), hint: 'выставлено, но ещё не закрыто' }
     ];
   });
   const vatTotal = $derived(live.filter((d) => d.kind === 'invoice').reduce((a, d) => a + d.vat_amount, 0));
@@ -112,32 +99,19 @@
   const statusClass: Record<DocStatus, string> = { draft: 'grey', sent: 'warn', signed: 'ok', cancelled: 'danger' };
 </script>
 
+<div class="page-head"><h1>Документы</h1></div>
+
 {#if error}<div class="error-box">{error}</div>{/if}
 
 <div class="filters">
-  <div class="seg" role="radiogroup" aria-label="Период">
-    {#each [['month', 'Месяц'], ['quarter', 'Квартал'], ['year', 'Год'], ['prev_year', 'Прошлый год'], ['all', 'Всё время'], ['custom', 'Период…']] as [k, l]}
-      <button role="radio" aria-checked={period === k} class:on={period === k} onclick={() => setPeriod(k as Period)}>{l}</button>
-    {/each}
-  </div>
-  {#if period === 'custom'}
-    <input class="input date" type="date" bind:value={from} aria-label="С" />
-    <span class="faint">—</span>
-    <input class="input date" type="date" bind:value={to} aria-label="По" />
-  {/if}
+  <PeriodPicker bind:period bind:from bind:to />
   <div class="spacer"></div>
-  <button class="btn" onclick={exportCsv} disabled={!docs.length}><Download size={15} /> CSV</button>
+  <button class="btn" onclick={exportCsv} disabled={!docs.length} title="Выгрузить реестр в CSV (Excel)"><Download size={16} />CSV</button>
 </div>
 
-<div class="tiles">
+<div class="stat-grid">
   {#each tiles as t (t.key)}
-    {@const Icon = t.icon}
-    <div class="card tile t-{t.key}">
-      <div class="ic"><Icon size={18} /></div>
-      <div class="label">{t.label}</div>
-      <div class="value">{formatMoney(t.value)}</div>
-      <div class="faint small">{t.hint}</div>
-    </div>
+    <StatTile label={t.label} value={formatMoney(t.value)} icon={t.icon} tone={t.tone} hint={t.hint} />
   {/each}
 </div>
 
@@ -165,14 +139,8 @@
 <section class="card table">
   <div class="tbar">
     <label class="search"><Search size={16} /><input class="input" placeholder="Номер, контрагент, предмет" bind:value={q} /></label>
-    <select class="input" bind:value={kind} aria-label="Вид документа">
-      <option value="">Все виды</option>
-      {#each Object.entries(docKindLabel) as [k, l]}<option value={k}>{l}</option>{/each}
-    </select>
-    <select class="input" bind:value={status} aria-label="Статус">
-      <option value="">Все статусы</option>
-      {#each Object.entries(docStatusLabel) as [k, l]}<option value={k}>{l}</option>{/each}
-    </select>
+    <PickFilter label="Вид документа" bind:value={kind} options={[{ value: '', label: 'Все виды' }, ...Object.entries(docKindLabel).map(([k, l]) => ({ value: k, label: l }))]} />
+    <PickFilter label="Статус" bind:value={status} options={[{ value: '', label: 'Все статусы' }, ...Object.entries(docStatusLabel).map(([k, l]) => ({ value: k, label: l }))]} />
   </div>
   {#if loaded && !docs.length}
     <EmptyState icon={FileText} title="Документов за период нет" text="Счета, акты и договоры создаются в карточке сделки." />
@@ -224,20 +192,10 @@
 
 <style>
   .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-  .date { width: 150px; }
   .filters .btn { display: inline-flex; gap: 6px; align-items: center; }
   .filters .spacer { flex: 1; }
   .paid { color: var(--warn); }
   .paid.full { color: var(--ok); }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 14px; }
-  .tile { padding: 14px 16px; position: relative; }
-  .tile .ic { position: absolute; right: 14px; top: 14px; width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; }
-  .t-contract .ic { background: color-mix(in srgb, #7c3aed 14%, transparent); color: #7c3aed; }
-  .t-invoice .ic { background: var(--accent-soft); color: var(--accent); }
-  .t-act .ic { background: var(--ok-soft); color: var(--ok); }
-  .t-gap .ic { background: var(--warn-soft); color: var(--warn); }
-  .label { color: var(--text-2); font-size: 13px; }
-  .value { font-size: 22px; font-weight: 650; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
   .chart { padding: 14px 16px; margin-bottom: 14px; }
   .chart-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
   .chart-head h2 { font-size: 14px; margin: 0; }
@@ -252,7 +210,7 @@
   .m { font-size: 11px; text-align: center; margin-top: 4px; white-space: nowrap; }
   .table { padding: 0; overflow: hidden; }
   .tbar { display: flex; gap: 10px; padding: 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .tbar select { width: auto; }
+  .tbar :global(.btn.sm) { height: 36px; }
   .search { position: relative; flex: 1; min-width: 200px; }
   .search :global(svg) { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
   .search input { padding-left: 34px; width: 100%; }

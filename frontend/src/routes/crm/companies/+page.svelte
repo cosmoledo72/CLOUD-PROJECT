@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Plus from '@lucide/svelte/icons/plus';
   import EmptyState from '$lib/EmptyState.svelte';
   import Building2 from '@lucide/svelte/icons/building-2';
   import SearchX from '@lucide/svelte/icons/search-x';
@@ -100,7 +101,7 @@
   {/if}
   <label class="check small"><input type="checkbox" bind:checked={mineOnly} />Мои</label>
   <button class="btn" onclick={() => { importResult = null; importFile = null; importOpen = true; }}>Импорт</button>
-  <button class="btn primary" onclick={openCreate}>Новый контрагент</button>
+  <button class="btn primary" onclick={openCreate}><Plus size={16} />Новый контрагент</button>
 </div>
 {#if error && !createOpen && !importOpen}<div class="error-box">{error}</div>{/if}
 

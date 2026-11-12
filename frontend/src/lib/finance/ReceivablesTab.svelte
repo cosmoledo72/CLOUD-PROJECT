@@ -3,6 +3,14 @@
   // by counterparty, and planned income that is overdue or due in 30 days.
   import { api, formatDate, formatMoney, invoiceStateLabel, plainMessage, type InvoiceDebt, type Payment } from '$lib/api';
   import { session } from '$lib/session.svelte';
+  import EmptyState from '$lib/EmptyState.svelte';
+  import { plural } from '$lib/fieldLook';
+  import StatTile from '$lib/ui/StatTile.svelte';
+  import AlarmClock from '@lucide/svelte/icons/alarm-clock';
+  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import CircleCheck from '@lucide/svelte/icons/circle-check';
+  import Receipt from '@lucide/svelte/icons/receipt';
+  import Settings from '@lucide/svelte/icons/settings';
   import PaymentDialog from './PaymentDialog.svelte';
 
   type Data = {
@@ -13,6 +21,7 @@
     plan: Payment[];
     crm: boolean;
   };
+  let { onsettings }: { onsettings?: () => void } = $props();
   let data = $state<Data | null>(null);
   let error = $state('');
   let tick = $state(0);
@@ -48,14 +57,22 @@
   }
 </script>
 
+<div class="page-head">
+  <h1>Дебиторка</h1>
+  <div class="spacer"></div>
+  {#if onsettings}<button class="btn" onclick={onsettings}><Settings size={16} />Статьи и сроки</button>{/if}
+</div>
+
 {#if error}<div class="error-box">{error}</div>{/if}
 
 {#if data}
-  <div class="kpi">
-    <div class="card k"><span>Должны нам по счетам</span><b>{formatMoney(data.totals.debt)}</b></div>
-    <div class="card k"><span>Из них просрочено</span><b class:late={data.totals.overdue > 0}>{formatMoney(data.totals.overdue)}</b>
-      <small class="faint">срок оплаты счёта — {data.invoice_due_days} дн.</small></div>
-    <div class="card k"><span>Просрочено по графику оплат</span><b class:late={data.totals.plan_overdue > 0}>{formatMoney(data.totals.plan_overdue)}</b></div>
+  <div class="stat-grid">
+    <StatTile label="Должны нам по счетам" value={formatMoney(data.totals.debt)} icon={Receipt} tone="accent"
+      hint={data.invoices.length ? `${data.invoices.length} ${plural(data.invoices.length, 'счёт', 'счёта', 'счетов')} с долгом` : 'неоплаченных счетов нет'} />
+    <StatTile label="Из них просрочено" value={formatMoney(data.totals.overdue)} icon={AlarmClock} tone={data.totals.overdue > 0 ? 'danger' : 'neutral'}
+      valueTone={data.totals.overdue > 0 ? 'danger' : undefined} dim={!data.totals.overdue} hint="срок оплаты счёта — {data.invoice_due_days} дн." />
+    <StatTile label="Просрочено по графику оплат" value={formatMoney(data.totals.plan_overdue)} icon={CalendarClock} tone={data.totals.plan_overdue > 0 ? 'danger' : 'neutral'}
+      valueTone={data.totals.plan_overdue > 0 ? 'danger' : undefined} dim={!data.totals.plan_overdue} hint="плановые поступления, дата которых прошла" />
   </div>
 
   {#if data.crm}
@@ -63,7 +80,7 @@
       <section class="card">
         <h2>По контрагентам</h2>
         {#if !data.companies.length}
-          <p class="muted empty">Неоплаченных счетов нет.</p>
+          <EmptyState compact icon={CircleCheck} title="Долгов нет" text="Все выставленные счета оплачены." />
         {:else}
           <ul class="cos">
             <li><button class:on={!company} onclick={() => (company = '')}><span>Все</span><span class="v">{formatMoney(data.totals.debt)}</span></button></li>
@@ -82,7 +99,7 @@
       <section class="card tbl">
         <h2>Неоплаченные счета{company ? ` — ${company}` : ''}</h2>
         {#if !shown.length}
-          <p class="muted empty">Нет.</p>
+          <EmptyState compact icon={Receipt} title="Неоплаченных счетов нет" text={company ? 'У этого контрагента всё оплачено.' : 'Счета выставляются в карточке сделки.'} />
         {:else}
           <div class="scroll">
             <table>
@@ -110,7 +127,7 @@
   <section class="card tbl">
     <h2>График оплат: просроченные и ближайшие 30 дней</h2>
     {#if !data.plan.length}
-      <p class="muted empty">Плановых поступлений нет. Этапы оплаты добавляются кнопкой «План оплаты» на вкладке «Платежи» или в проекте.</p>
+      <EmptyState compact icon={CalendarClock} title="Плановых поступлений нет" text="Этапы оплаты добавляются кнопкой «План оплаты» на вкладке «Платежи» или в проекте." />
     {:else}
       <div class="scroll">
         <table>
@@ -136,10 +153,6 @@
 <PaymentDialog bind:open payment={editing} {preset} onsaved={() => tick++} />
 
 <style>
-  .kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .k { padding: 12px 14px; display: grid; gap: 2px; }
-  .k span { font-size: 12.5px; color: var(--text-3); }
-  .k b { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
   .late { color: var(--danger); }
   h2 { font-size: 14px; margin: 0 0 8px; }
   .grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2.2fr); gap: 14px; align-items: start; margin-bottom: 14px; }

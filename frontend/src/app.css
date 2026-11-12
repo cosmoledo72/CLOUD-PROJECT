@@ -295,6 +295,10 @@ table.list tbody tr:hover td { background: var(--surface-2); }
 .page-head { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; min-height: 36px; }
 .page-head .sub { color: var(--text-3); font-size: 14px; font-weight: 400; }
 
+/* Row of key figure tiles (lib/ui/StatTile.svelte). */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 640px) { .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } }
+
 /* KPI tile: label, value, hint; optional chip-icon. */
 .kpi-tile { padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; }
 .kpi-tile .k-label { font-size: 12.5px; color: var(--text-3); }

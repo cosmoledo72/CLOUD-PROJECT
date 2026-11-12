@@ -1,4 +1,5 @@
 <script lang="ts">
+  import StatTile from '$lib/ui/StatTile.svelte';
   import { onIntent } from '$lib/intent';
   import Banknote from '@lucide/svelte/icons/banknote';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -457,6 +458,10 @@
   <div class="page-head">
     <h1>Проекты</h1>
     <div class="spacer"></div>
+    {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}><Plus size={16} />Новый проект</button>{/if}
+  </div>
+  {#if projects.length}
+  <div class="toolbar">
     {#if projects.length > 3}<input class="input search" placeholder="Поиск: название, шифр, заказчик, ГИП" bind:value={query} aria-label="Поиск проектов" />{/if}
     {#if projects.length}
       {#if !isBoard}
@@ -476,8 +481,8 @@
         <FieldsMenu {defs} bind:config view={shownView} {own} isAdmin={session.isAdmin} money={hasMoney} onreset={resetConfig} onmakedefault={makeDefault} />
       {/if}
     {/if}
-    {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}><Plus size={16} />Новый проект</button>{/if}
   </div>
+  {/if}
   {#if notice}<div class="ok-box">{notice}</div>{/if}
 
   {#if projects.length === 0}
@@ -486,26 +491,21 @@
       {#if session.me?.role !== 'guest'}<button class="btn primary" onclick={openCreate}><Plus size={16} />Новый проект</button>{/if}
     </EmptyState></div>
   {:else}
-    <div class="sum">
-      <button class="card tile" class:on={status === 'active' && !urgency} onclick={() => { status = 'active'; urgency = null; }}>
-        <i class="chip-icon accent"><FolderKanban size={18} /></i><b>{counts.active}</b><span>{counts.active === 1 ? 'активный проект' : counts.active < 5 && counts.active > 1 ? 'активных проекта' : 'активных проектов'}</span>
-      </button>
-      <button class="card tile" class:on={urgency === 'late'} class:zero={!late.length} onclick={() => (urgency = urgency === 'late' ? null : 'late')}
-              title={dueDef ? `По реквизиту «${dueDef.label}», без него — по срокам задач` : 'По срокам задач'}>
-        <i class="chip-icon" class:danger={late.length > 0}><CircleAlert size={18} /></i><b class:late={late.length > 0}>{late.length}</b><span>{late.length === 1 ? 'просрочен' : 'просрочено'}</span>
-      </button>
-      <button class="card tile" class:on={urgency === 'soon'} class:zero={!soon.length} onclick={() => (urgency = urgency === 'soon' ? null : 'soon')}>
-        <i class="chip-icon" class:warn={soon.length > 0}><CalendarClock size={18} /></i><b class:soon={soon.length > 0}>{soon.length}</b><span>сдача в ближайшие 14 дней</span>
-      </button>
+    <div class="stat-grid">
+      <StatTile label="Активные проекты" value={counts.active} icon={FolderKanban} tone="accent" on={status === 'active' && !urgency}
+        onclick={() => { status = 'active'; urgency = null; }} hint="в работе сейчас" />
+      <StatTile label="Просрочено" value={late.length} icon={CircleAlert} tone={late.length ? 'danger' : 'neutral'} valueTone={late.length ? 'danger' : undefined}
+        dim={!late.length} on={urgency === 'late'} onclick={() => (urgency = urgency === 'late' ? null : 'late')}
+        title={dueDef ? `По реквизиту «${dueDef.label}», без него — по срокам задач` : 'По срокам задач'} hint="срок сдачи прошёл" />
+      <StatTile label="Сдача в ближайшие 14 дней" value={soon.length} icon={CalendarClock} tone={soon.length ? 'warn' : 'neutral'} valueTone={soon.length ? 'warn' : undefined}
+        dim={!soon.length} on={urgency === 'soon'} onclick={() => (urgency = urgency === 'soon' ? null : 'soon')} hint="по сроку сдачи" />
       {#if hasMoney && toCollect > 0}
-        <div class="card tile static" title="Остаток к оплате по активным проектам: бюджет − поступления">
-          <i class="chip-icon ok"><HandCoins size={18} /></i><b>{moneyShort(toCollect)}</b><span>к получению от заказчиков</span>
-        </div>
+        <StatTile label="К получению от заказчиков" value={moneyShort(toCollect)} icon={HandCoins} tone="ok" hint="бюджет минус поступления"
+          title="Остаток к оплате по активным проектам: бюджет − поступления" />
       {/if}
       {#if moneyDef}
-        <div class="card tile static" title="Сумма «{moneyDef.label}» по активным проектам">
-          <i class="chip-icon"><Banknote size={18} /></i><b>{moneyShort(inWork)}</b><span>в работе по договорам</span>
-        </div>
+        <StatTile label="В работе по договорам" value={moneyShort(inWork)} icon={Banknote} tone="neutral" hint="«{moneyDef.label}» активных проектов"
+          title="Сумма «{moneyDef.label}» по активным проектам" />
       {/if}
     </div>
 
@@ -766,20 +766,8 @@
   .empty { padding: 40px; text-align: center; }
   p { margin: 0; }
   .req-head h3 { margin: 0; }
-
-  /* Summary */
-  .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile { text-align: left; padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center;
-          font: inherit; color: var(--text); cursor: pointer; border: 1px solid var(--border); }
-  .tile .chip-icon { grid-row: span 2; font-style: normal; }
-  .tile.static { cursor: default; }
-  .tile:not(.static):hover { border-color: var(--accent); }
-  .tile.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-  .tile b { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.25; }
-  .tile b.late { color: var(--danger); }
-  .tile b.soon { color: var(--warn); }
-  .tile.zero b { color: var(--text-3); }
-  .tile span { font-size: 12.5px; color: var(--text-3); }
+  /* Search and view tools under the title (the main button stays on the title line). */
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: -8px 0 14px; }
 
   /* Status tabs */
   .tabs { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
@@ -898,8 +886,5 @@
     .search { width: 100%; order: 10; }
     .grp-sel span { display: none; }
     .grid { grid-template-columns: 1fr; }
-    .sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .tile { grid-template-columns: 1fr; }
-    .tile .chip-icon { display: none; }
   }
 </style>

@@ -120,7 +120,7 @@ def main():
     step("Warnings when the last ready backup is older than 26 h and when the last attempt failed")
 
     # --- Downloads --------------------------------------------------------------
-    audit = lambda action: len(admin.call("GET", f"/admin/audit?action={action}")["entries"])  # noqa: E731
+    audit = lambda action: len(admin.call("GET", f"/admin/audit?action={action}&limit=200")["entries"])  # noqa: E731
     downloads0, requests0 = audit("backup.downloaded"), audit("backup.requested")
     data = admin.call("GET", "/admin/reserve/cloud-project-2026-11-10_0300/db.dump", raw=True)
     assert data == b"PGDMP-dump"

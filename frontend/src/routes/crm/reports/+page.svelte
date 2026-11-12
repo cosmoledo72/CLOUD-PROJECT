@@ -4,6 +4,12 @@
   // it. Managers see every deal and may pick one person; others see their own.
   import { onMount } from 'svelte';
   import Download from '@lucide/svelte/icons/download';
+  import Hourglass from '@lucide/svelte/icons/hourglass';
+  import Percent from '@lucide/svelte/icons/percent';
+  import Scale from '@lucide/svelte/icons/scale';
+  import Sparkles from '@lucide/svelte/icons/sparkles';
+  import Trophy from '@lucide/svelte/icons/trophy';
+  import StatTile from '$lib/ui/StatTile.svelte';
   import { api, formatDate, formatMoney, plainMessage, type UserItem } from '$lib/api';
   import { moneyShort } from '$lib/fieldLook';
   import Avatar from '$lib/Avatar.svelte';
@@ -111,28 +117,18 @@
 {#if data && !data.can_filter}<p class="faint small note">Показаны сделки, где вы ответственный.</p>{/if}
 
 {#if data && k}
-  <div class="kpis" class:dim={loading}>
-    <button class="card k" onclick={() => open('Новые сделки', { set: 'new' })}>
-      <span>Новых сделок</span><b>{k.new}</b>
-      {#if delta(k.new, k.new_prev)}{@const d = delta(k.new, k.new_prev)}<small class={d?.cls}>{d?.text}</small>{/if}
-    </button>
-    <button class="card k" onclick={() => open('Выигранные сделки', { set: 'won' })}>
-      <span>Выиграно</span><b>{k.won} · {moneyShort(k.won_amount)}</b>
-      <small class="faint">{k.avg_check != null ? `средний чек ${moneyShort(k.avg_check)}` : 'за период не было'}</small>
-    </button>
-    <button class="card k" onclick={() => open('Проигранные сделки', { set: 'lost' })}>
-      <span>Конверсия в договор</span><b>{pct(k.win_rate)}</b>
-      {#if delta(k.win_rate, k.win_rate_prev)}{@const d = delta(k.win_rate, k.win_rate_prev, ' п. п.')}<small class={d?.cls}>{d?.text}</small>
-      {:else}<small class="faint">выиграно {k.won} из {k.won + k.lost} закрытых</small>{/if}
-    </button>
-    <div class="card k">
-      <span>Средний цикл сделки</span><b>{k.cycle_days != null ? days(k.cycle_days) : '—'}</b>
-      <small class="faint">от создания до выигрыша</small>
-    </div>
-    <button class="card k" onclick={() => open('Открытые сделки', { set: 'open' })}>
-      <span>В работе с учётом вероятности</span><b>{moneyShort(k.weighted)}</b>
-      <small class="faint">{k.open} открытых на {moneyShort(k.open_amount)}</small>
-    </button>
+  {@const dNew = delta(k.new, k.new_prev)}
+  {@const dRate = delta(k.win_rate, k.win_rate_prev, ' п. п.')}
+  <div class="stat-grid" class:dim={loading}>
+    <StatTile label="Новых сделок" value={k.new} icon={Sparkles} tone="accent" onclick={() => open('Новые сделки', { set: 'new' })}
+      hint={dNew?.text ?? 'созданы за период'} hintTone={dNew?.cls === 'up' ? 'ok' : dNew?.cls === 'dn' ? 'danger' : undefined} />
+    <StatTile label="Выиграно · {k.won} {dealsWord(k.won)}" value={moneyShort(k.won_amount)} icon={Trophy} tone="ok" onclick={() => open('Выигранные сделки', { set: 'won' })}
+      hint={k.avg_check != null ? `средний чек ${moneyShort(k.avg_check)}` : 'за период не было'} />
+    <StatTile label="Конверсия в договор" value={pct(k.win_rate)} icon={Percent} tone="violet" onclick={() => open('Проигранные сделки', { set: 'lost' })}
+      hint={dRate?.text ?? `выиграно ${k.won} из ${k.won + k.lost} закрытых`} hintTone={dRate?.cls === 'up' ? 'ok' : dRate?.cls === 'dn' ? 'danger' : undefined} />
+    <StatTile label="Средний цикл сделки" value={k.cycle_days != null ? days(k.cycle_days) : '—'} icon={Hourglass} tone="warn" hint="от создания до выигрыша" />
+    <StatTile label="В работе с учётом вероятности" value={moneyShort(k.weighted)} icon={Scale} tone="neutral" onclick={() => open('Открытые сделки', { set: 'open' })}
+      hint="{k.open} открытых на {moneyShort(k.open_amount)}" />
   </div>
 
   {#if empty}
@@ -259,15 +255,6 @@
   .note { margin: -6px 0 10px; }
   .small { font-size: 12.5px; }
   .dim { opacity: .6; transition: opacity .15s; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .k { padding: 12px 14px; display: grid; gap: 2px; text-align: left; font: inherit; color: inherit; align-content: start; }
-  button.k { cursor: pointer; }
-  button.k:hover { border-color: var(--accent); }
-  .k span { font-size: 12.5px; color: var(--text-3); }
-  .k b { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
-  .k small { font-size: 12px; }
-  .up { color: var(--ok); }
-  .dn { color: var(--danger); }
   .g2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px; margin-bottom: 14px; }
   .stack { display: grid; gap: 14px; margin-bottom: 14px; }
   .card { min-width: 0; }
@@ -327,9 +314,7 @@
   }
   @media (max-width: 640px) {
     .who { min-width: 0; flex: 1 1 100%; order: 3; }
-    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .k b { font-size: 18px; }
-    .fr { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
+        .fr { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
     .fn { white-space: normal; }
     .track { grid-column: 1 / -1; grid-row: 2; }
     .fm { min-width: 0; }

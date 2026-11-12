@@ -1,4 +1,5 @@
 <script lang="ts">
+  import UserPlus from '@lucide/svelte/icons/user-plus';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { api, crmRoleLabel, formatDate, plainMessage, roleLabel, type Invitation, type RegistrationSettings, type UserItem } from '$lib/api';
@@ -124,7 +125,7 @@
   </div>
   <div class="spacer"></div>
   <button class="btn" onclick={openCreate}>Создать с паролем</button>
-  <button class="btn primary" onclick={() => (inviteOpen = true)}>Пригласить</button>
+  <button class="btn primary" onclick={() => (inviteOpen = true)}><UserPlus size={16} />Пригласить</button>
 </div>
 {#if error && !createOpen}<div class="error-box">{error}</div>{/if}
 

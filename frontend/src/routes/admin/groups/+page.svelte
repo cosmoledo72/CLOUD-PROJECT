@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Plus from '@lucide/svelte/icons/plus';
   import { api, type UserItem } from '$lib/api';
   import Modal from '$lib/Modal.svelte';
 
@@ -56,7 +57,7 @@
 <div class="row toolbar">
   <p class="muted">Группы упрощают выдачу доступа к папкам: права, выданные группе, получают все её участники.</p>
   <div class="spacer"></div>
-  <button class="btn primary" onclick={() => openEdit()}>Новая группа</button>
+  <button class="btn primary" onclick={() => openEdit()}><Plus size={16} />Новая группа</button>
 </div>
 {#if error}<div class="error-box">{error}</div>{/if}
 

@@ -1,5 +1,7 @@
 <script lang="ts">
   import StorageTabs from '$lib/StorageTabs.svelte';
+  import EmptyState from '$lib/EmptyState.svelte';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import { api, formatDate, formatDateTime, formatSize, type TrashItem } from '$lib/api';
   import FileIcon from '$lib/FileIcon.svelte';
   import { session } from '$lib/session.svelte';
@@ -76,7 +78,7 @@
   {#if notice}<div class="ok-box">{notice}{#if restoredParent} <a href="/files/{restoredParent}">Открыть папку</a>{/if}</div>{/if}
 
   {#if loaded && items.length === 0}
-    <div class="card empty"><p class="muted">Корзина пуста.</p></div>
+    <div class="card"><EmptyState icon={Trash2} title="Корзина пуста" text="Удалённые файлы и папки появятся здесь и будут храниться {retention} дней." /></div>
   {:else if items.length}
     <div class="card scroll">
       <table class="list">
@@ -118,8 +120,6 @@
   .name { display: inline-flex; align-items: center; gap: 10px; }
   .nowrap { white-space: nowrap; }
   .actions { text-align: right; white-space: nowrap; }
-  .empty { padding: 40px; text-align: center; }
-  .empty p { margin: 0; }
   .total { margin: 10px 0 0; }
   @media (max-width: 760px) { .hide-sm { display: none; } }
 </style>
