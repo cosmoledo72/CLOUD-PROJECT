@@ -348,8 +348,8 @@
         {project.name}
       </h1>
       {#if project.company_id}
-        {#if session.crm}<a class="badge cust" href="/crm/companies/{project.company_id}" title="Заказчик">{project.company_name}</a>
-        {:else}<span class="badge cust" title="Заказчик">{project.company_name}</span>{/if}
+        {#if session.crm}<a class="badge cust" href="/crm/companies/{project.company_id}" title="Карточка заказчика в CRM"><span class="cust-l">Заказчик:</span> {project.company_name}</a>
+        {:else}<span class="badge cust"><span class="cust-l">Заказчик:</span> {project.company_name}</span>{/if}
       {/if}
       {#if project.deal_id && session.crm}<a class="small" href="/crm/deals/{project.deal_id}">сделка</a>{/if}
       <div class="spacer"></div>
@@ -608,4 +608,5 @@
   .proj-main { display: grid; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
   .req-bar { margin-bottom: 12px; min-height: 34px; }
   .none { margin: 0; }
+  .cust-l { opacity: .7; font-weight: 400; }
 </style>
