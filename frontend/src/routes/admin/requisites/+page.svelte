@@ -162,7 +162,7 @@
       <section class="card sec">
         <h3 class="sec-title">{s.name}</h3>
         <table class="list fields">
-          <colgroup><col style="width:76px" /><col style="width:30%" /><col style="width:24%" /><col style="width:18%" /><col /></colgroup>
+          <colgroup><col style="width:76px" /><col /><col style="width:28%" /><col style="width:150px" /><col class="c-act" /></colgroup>
           <tbody>
             {#each s.fields as d, i (d.id)}
               <tr class:archived={d.is_archived}>
@@ -242,16 +242,25 @@
   .toolbar { margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .intro { margin: 0; max-width: 620px; }
   .ok-box, .error-box { margin-bottom: 12px; }
-  .sec { margin-bottom: 12px; overflow-x: auto; }
+  .sec { margin-bottom: 12px; overflow-x: auto; container-type: inline-size; }
   .sec-title { padding: 12px 14px 4px; margin: 0; }
   .order { width: 72px; white-space: nowrap; padding-right: 0; }
   .lbl { font-weight: 500; }
-  .fields { table-layout: fixed; min-width: 760px; }
+  .fields { table-layout: fixed; min-width: 560px; }
   .fields td { overflow: hidden; }
   .opts { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .flags { white-space: normal; line-height: 1.9; }
   .flags .badge { margin-right: 4px; }
   .actions { text-align: right; white-space: nowrap; }
+  .fields td.actions { overflow: visible; }
+  /* The action buttons keep their full width; the label and type columns shrink. */
+  .c-act { width: 300px; }
+  /* Narrow cards: buttons stack in a column so nothing is cut off. */
+  @container (max-width: 900px) {
+    .c-act { width: 120px; }
+    .fields col:nth-child(4) { width: 120px; }
+    .fields td.actions { display: grid; justify-items: end; gap: 2px; }
+  }
   tr.archived td:not(.actions) { opacity: .55; }
   .empty { padding: 32px; text-align: center; display: grid; gap: 8px; justify-items: center; }
   .empty h3, .empty p { margin: 0; }
