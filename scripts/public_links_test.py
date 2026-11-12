@@ -131,7 +131,7 @@ def main():
     page = owner.call("POST", "/kb/pages", {"title": "Порядок приёмки", "icon": "📋", "body": "# Приёмка\n\nПередаём **отчёт** и акт."})["id"]
     kl = eng.call("PUT", "/links", {"resource_type": "kb_page", "resource_id": page})["link"]
     p = anon.call("GET", f"/public/s/{kl['token']}")
-    assert p["type"] == "kb_page" and p["page"]["title"] == "Порядок приёмки" and "**отчёт**" in p["page"]["body"], p
+    assert p["type"] == "kb_page" and p["page"]["title"] == "Порядок приёмки" and "<strong>отчёт</strong>" in p["page"]["content"], p
     # A deleted file takes its link with it.
     eng.call("DELETE", f"/files/{rep}")
     anon.call("GET", f"/public/s/{fl['token']}", expect=404)

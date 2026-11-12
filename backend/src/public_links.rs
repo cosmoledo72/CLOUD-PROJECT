@@ -32,6 +32,7 @@ use crate::{
     files::{file_response, read_version},
     ratelimit::{client_ip, WINDOW_15_MIN},
     state::AppState,
+    storage::BlobStore,
 };
 
 /// Default validity of a new link.
@@ -359,7 +360,7 @@ async fn live_link(state: &AppState, token: &str) -> ApiResult<Link> {
     let alive: bool = sqlx::query_scalar(match link.resource_type.as_str() {
         "file" => "SELECT EXISTS (SELECT 1 FROM files WHERE id = $1 AND deleted_at IS NULL)",
         "folder" => "SELECT EXISTS (SELECT 1 FROM folders WHERE id = $1 AND deleted_at IS NULL)",
-        _ => "SELECT EXISTS (SELECT 1 FROM kb_pages WHERE id = $1)",
+        _ => "SELECT EXISTS (SELECT 1 FROM kb_pages WHERE id = $1 AND archived_at IS NULL)",
     })
     .bind(link.resource_id)
     .fetch_one(&state.db)
@@ -509,12 +510,12 @@ pub async fn open(State(state): State<AppState>, Path(token): Path<String>, Quer
         }
         _ => {
             let (title, icon, body, updated_at): (String, String, String, DateTime<Utc>) =
-                sqlx::query_as("SELECT title, icon, body, updated_at FROM kb_pages WHERE id = $1")
+                sqlx::query_as("SELECT title, icon, COALESCE(content, ''), updated_at FROM kb_pages WHERE id = $1")
                     .bind(link.resource_id)
                     .fetch_one(&state.db)
                     .await?;
             out["name"] = json!(title);
-            out["page"] = json!({ "title": title, "icon": icon, "body": body, "updated_at": updated_at });
+            out["page"] = json!({ "title": title, "icon": icon, "content": body, "updated_at": updated_at });
         }
     }
     // Count opens of the link itself (not of subfolders); the first one
@@ -610,6 +611,28 @@ pub async fn zip(State(state): State<AppState>, Path(token): Path<String>, Query
     count_download(&state, &link).await?;
     let name = format!("{}.zip", crate::files::display_folder_name(&dirs[0]));
     Ok(file_response(&name, data.into(), false))
+}
+
+/// `GET /public/s/{token}/kbfile/{id}?k`: an image or file inside the shared
+/// knowledge base page.
+pub async fn kb_file(
+    State(state): State<AppState>,
+    Path((token, id)): Path<(String, Uuid)>,
+    Query(q): Query<KeyQuery>,
+) -> ApiResult<Response> {
+    let link = require_unlocked(&state, &token, q.k.as_deref()).await?;
+    if link.resource_type != "kb_page" {
+        return Err(ApiError::NotFound);
+    }
+    let (name, ext, key): (String, String, String) =
+        sqlx::query_as("SELECT name, extension, storage_key FROM kb_files WHERE id = $1 AND page_id = $2")
+            .bind(id)
+            .bind(link.resource_id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or(ApiError::NotFound)?;
+    let data = state.store.get(&key).await?;
+    Ok(crate::kb::kb_file_response(&name, &ext, data, false))
 }
 
 /// `GET /public/s/{token}/view/{file}?k`: read-only ONLYOFFICE viewer config.

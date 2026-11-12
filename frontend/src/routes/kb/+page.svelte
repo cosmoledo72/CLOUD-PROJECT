@@ -1,21 +1,28 @@
 <script lang="ts">
   import { onIntent } from '$lib/intent';
-  import { goto } from '$app/navigation';
+  import { goto, beforeNavigate } from '$app/navigation';
   import { page } from '$app/state';
-  import { api, formatDateTime, type KbHit, type KbNode, type KbPage } from '$lib/api';
+  import { api, formatDateTime, type KbHit, type KbNode, type KbPage, type KbViewer } from '$lib/api';
+  import { session } from '$lib/session.svelte';
   import KbTree from '$lib/kb/KbTree.svelte';
-  import { marked } from 'marked';
-  import DOMPurify from 'dompurify';
+  import KbEditor from '$lib/kb/KbEditor.svelte';
+  import KbView from '$lib/kb/KbView.svelte';
+  import KbHistory from '$lib/kb/KbHistory.svelte';
+  import Avatar from '$lib/Avatar.svelte';
   import BookOpen from '@lucide/svelte/icons/book-open';
   import Search from '@lucide/svelte/icons/search';
   import Plus from '@lucide/svelte/icons/plus';
   import Pencil from '@lucide/svelte/icons/pencil';
+  import Archive from '@lucide/svelte/icons/archive';
+  import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import FolderInput from '@lucide/svelte/icons/folder-input';
   import X from '@lucide/svelte/icons/x';
-  import Eye from '@lucide/svelte/icons/eye';
   import FilePlus2 from '@lucide/svelte/icons/file-plus-2';
   import Share2 from '@lucide/svelte/icons/share-2';
+  import History from '@lucide/svelte/icons/history';
+  import Pin from '@lucide/svelte/icons/pin';
+  import PinOff from '@lucide/svelte/icons/pin-off';
   import Modal from '$lib/Modal.svelte';
   import PublicLink from '$lib/files/PublicLink.svelte';
 
@@ -24,10 +31,12 @@
   let current = $state<KbPage | null>(null);
   let crumbs = $state<{ id: string; title: string }[]>([]);
   let canDelete = $state(false);
+  let viewers = $state<KbViewer[]>([]);
   let error = $state('');
   let loaded = $state(false);
 
   const pid = $derived(page.url.searchParams.get('p'));
+  const showArchive = $derived(page.url.searchParams.has('archive'));
 
   async function loadTree() {
     nodes = (await api.get<{ pages: KbNode[] }>('/kb/pages')).pages;
@@ -35,25 +44,50 @@
   }
   $effect(() => { loadTree().catch((e) => (error = e.message)); });
 
+  async function loadPage(id: string) {
+    const r = await api.get<{ page: KbPage; breadcrumbs: { id: string; title: string }[]; can_delete: boolean; viewers: KbViewer[] }>(`/kb/pages/${id}`);
+    current = r.page;
+    crumbs = r.breadcrumbs;
+    canDelete = r.can_delete;
+    viewers = r.viewers;
+    for (const c of r.breadcrumbs) expanded[c.id] = true;
+  }
+  // Leaving for another page closes the editor (not the first run: «?new=1»
+  // may have opened it already).
+  let lastPid: string | null | undefined = undefined;
   $effect(() => {
     const id = pid;
-    editing = false;
+    if (lastPid !== undefined && lastPid !== id) editing = false;
+    lastPid = id;
+    moving = false;
+    error = '';
     if (!id) { current = null; return; }
-    api.get<{ page: KbPage; breadcrumbs: { id: string; title: string }[]; can_delete: boolean }>(`/kb/pages/${id}`)
-      .then((r) => {
-        current = r.page;
-        crumbs = r.breadcrumbs;
-        canDelete = r.can_delete;
-        for (const c of r.breadcrumbs) expanded[c.id] = true;
-      })
-      .catch((e) => { current = null; error = e.status === 404 ? 'Страница не найдена или удалена.' : e.message; });
+    loadPage(id).catch((e) => { current = null; error = e.status === 404 ? 'Страница не найдена или удалена.' : e.message; });
   });
 
-  // ------------------------------------------------------------------ rendering
-  marked.setOptions({ gfm: true, breaks: true });
-  const html = (md: string) => DOMPurify.sanitize(marked.parse(md, { async: false }) as string);
   const children = $derived(current ? nodes.filter((n) => n.parent_id === current!.id) : []);
   const roots = $derived(nodes.filter((n) => !n.parent_id));
+  const pinned = $derived(nodes.filter((n) => n.pinned));
+
+  // ------------------------------------------------------------------ who is here
+  // Heartbeat every 20 s while a page is open; shows who else looks at it and
+  // who is editing it right now.
+  $effect(() => {
+    const id = current?.id;
+    const ed = editing;
+    if (!id) return;
+    let stop = false;
+    const beat = () => api.post<{ viewers: KbViewer[] }>(`/kb/pages/${id}/presence`, { editing: ed })
+      .then((r) => { if (!stop) viewers = r.viewers; }).catch(() => {});
+    beat();
+    const t = setInterval(beat, 20_000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+      api.post(`/kb/pages/${id}/presence`, { leave: true }).catch(() => {});
+    };
+  });
+  const editors = $derived(viewers.filter((v) => v.editing));
 
   // ------------------------------------------------------------------ search
   let q = $state('');
@@ -73,85 +107,115 @@
 
   // ------------------------------------------------------------------ editing
   let editing = $state(false);
-  let isNew = $state(false);
+  /** Page being edited (null: a new page not saved yet). */
+  let editId = $state<string | null>(null);
+  let baseVersion = $state(0);
   let newParent = $state<string | null>(null);
   let eTitle = $state('');
   let eIcon = $state('');
-  let eBody = $state('');
-  let preview = $state(false);
+  let startHtml = $state('');
+  let eHtml = $state('');
+  let startTitle = '';
   let busy = $state(false);
+  let saved = $state('');
+  let editorKey = $state(0);
   const ICONS = ['', '📘', '📄', '📌', '🛠️', '🧭', '📐', '🏗️', '⚙️', '🧾', '💡', '✅', '⚠️', '👥', '📞', '🎓'];
+  const dirty = $derived(editing && (eHtml !== startHtml || eTitle !== startTitle));
 
   onIntent('new', () => startNew(null));
   function startNew(parent: string | null) {
-    isNew = true;
+    if (dirty && !confirm('Есть несохранённые изменения. Закрыть без сохранения?')) return;
+    editId = null;
+    baseVersion = 0;
     newParent = parent;
     eTitle = '';
+    startTitle = '';
     eIcon = '';
-    eBody = '';
-    preview = false;
+    startHtml = '';
+    eHtml = '';
     editing = true;
+    editorKey++;
     error = '';
+    saved = '';
     if (parent) expanded[parent] = true;
   }
   function startEdit() {
     if (!current) return;
-    isNew = false;
+    editId = current.id;
+    baseVersion = current.version;
     eTitle = current.title;
+    startTitle = current.title;
     eIcon = current.icon;
-    eBody = current.body;
-    preview = false;
+    startHtml = current.content ?? '';
+    eHtml = startHtml;
     editing = true;
+    editorKey++;
     error = '';
+    saved = '';
   }
-  async function save() {
+  /** Files need a page: a new page is created (and kept in edit mode) first. */
+  async function ensurePage(): Promise<string> {
+    if (editId) return editId;
+    const r = await api.post<{ id: string }>('/kb/pages', { parent_id: newParent, title: eTitle.trim() || 'Новая страница', icon: eIcon, content: eHtml });
+    if (!eTitle.trim()) eTitle = 'Новая страница';
+    editId = r.id;
+    baseVersion = 1;
+    startHtml = eHtml;
+    startTitle = eTitle;
+    await loadTree();
+    return r.id;
+  }
+  async function save(force = false) {
+    if (!eTitle.trim()) { error = 'Введите название страницы'; return; }
     busy = true;
     error = '';
     try {
-      if (isNew) {
-        const r = await api.post<{ id: string }>('/kb/pages', { parent_id: newParent, title: eTitle, icon: eIcon, body: eBody });
-        await loadTree();
+      if (!editId) {
+        const r = await api.post<{ id: string }>('/kb/pages', { parent_id: newParent, title: eTitle, icon: eIcon, content: eHtml });
         editing = false;
+        await loadTree();
         goto(`/kb?p=${r.id}`);
-      } else if (current) {
-        const r = await api.put<{ page: KbPage }>(`/kb/pages/${current.id}`, {
-          title: eTitle, icon: eIcon, body: eBody, base_updated_at: current.updated_at
-        });
-        current = r.page;
-        editing = false;
-        await loadTree();
+        return;
       }
+      const r = await api.put<{ page: KbPage }>(`/kb/pages/${editId}`, { title: eTitle, icon: eIcon, content: eHtml, base_version: baseVersion, force });
+      const id = editId;
+      editing = false;
+      await loadTree();
+      if (pid !== id) goto(`/kb?p=${id}`);
+      else { current = r.page; await loadPage(id); }
     } catch (e) {
-      error = (e as Error).message;
+      if ((e as { status?: number }).status === 409) {
+        if (confirm(`${(e as Error).message}.\n\nСохранить вашу версию поверх? Чужие изменения останутся в истории страницы.`)) {
+          busy = false;
+          return save(true);
+        }
+        error = 'Ваши правки не сохранены. Скопируйте нужный текст, отмените редактирование и откройте страницу заново.';
+      } else error = (e as Error).message;
     } finally {
       busy = false;
     }
   }
-  function onKey(e: KeyboardEvent) {
-    if (editing && (e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault();
-      if (eTitle.trim()) save();
-    }
+  function cancel() {
+    if (dirty && !confirm('Есть несохранённые изменения. Закрыть без сохранения?')) return;
+    const created = editId && !current;
+    editing = false;
+    error = '';
+    if (created) goto(`/kb?p=${editId}`);
+  }
+  beforeNavigate((nav) => {
+    if (dirty && nav.type !== 'leave' && !confirm('Есть несохранённые изменения. Уйти со страницы без сохранения?')) nav.cancel();
+  });
+  function onUnload(e: BeforeUnloadEvent) {
+    if (dirty) e.preventDefault();
   }
 
-  // Small formatting helpers for the textarea.
-  let ta = $state<HTMLTextAreaElement | null>(null);
-  function wrap(before: string, after = before, placeholder = 'текст') {
-    if (!ta) return;
-    const { selectionStart: s, selectionEnd: en } = ta;
-    const sel = eBody.slice(s, en) || placeholder;
-    eBody = eBody.slice(0, s) + before + sel + after + eBody.slice(en);
-    requestAnimationFrame(() => { ta!.focus(); ta!.setSelectionRange(s + before.length, s + before.length + sel.length); });
+  // ------------------------------------------------------------------ pin, move, archive
+  async function togglePin() {
+    if (!current) return;
+    const r = await api.patch<{ pinned: boolean }>(`/kb/pages/${current.id}/pin`, { pinned: !current.pinned });
+    current.pinned = r.pinned;
+    await loadTree();
   }
-  function linePrefix(prefix: string) {
-    if (!ta) return;
-    const s = ta.selectionStart;
-    const ls = eBody.lastIndexOf('\n', s - 1) + 1;
-    eBody = eBody.slice(0, ls) + prefix + eBody.slice(ls);
-    requestAnimationFrame(() => { ta!.focus(); ta!.setSelectionRange(s + prefix.length, s + prefix.length); });
-  }
-
-  // ------------------------------------------------------------------ move / delete
   let moving = $state(false);
   let moveTo = $state('');
   // Pages that cannot be a new parent: the page itself and its descendants.
@@ -183,17 +247,15 @@
       await api.patch(`/kb/pages/${current.id}/move`, { parent_id: moveTo || null });
       moving = false;
       await loadTree();
-      const r = await api.get<{ breadcrumbs: { id: string; title: string }[] }>(`/kb/pages/${current.id}`);
-      crumbs = r.breadcrumbs;
-      current.parent_id = moveTo || null;
+      await loadPage(current.id);
     } catch (e) {
       error = (e as Error).message;
     }
   }
-  async function remove() {
+  async function toArchive() {
     if (!current) return;
     const n = blocked.size;
-    if (!confirm(n > 1 ? `Удалить «${current.title}» и вложенные страницы (${n - 1})?` : `Удалить страницу «${current.title}»?`)) return;
+    if (!confirm(n > 1 ? `Убрать «${current.title}» и вложенные страницы (${n - 1}) в архив? Их можно будет вернуть.` : `Убрать страницу «${current.title}» в архив? Её можно будет вернуть.`)) return;
     try {
       await api.del(`/kb/pages/${current.id}`);
       const parent = current.parent_id;
@@ -203,11 +265,29 @@
       error = (e as Error).message;
     }
   }
+  interface Archived { id: string; title: string; icon: string; archived_at: string; archived_by_name: string | null; subpages: number; can_delete: boolean }
+  let archived = $state<Archived[]>([]);
+  $effect(() => {
+    if (showArchive) api.get<{ pages: Archived[] }>('/kb/archive').then((r) => (archived = r.pages)).catch((e) => (error = e.message));
+  });
+  async function restorePage(a: Archived) {
+    await api.post(`/kb/pages/${a.id}/restore`);
+    await loadTree();
+    goto(`/kb?p=${a.id}`);
+  }
+  async function deleteForever(a: Archived) {
+    if (!confirm(`Удалить «${a.title}»${a.subpages ? ' и вложенные страницы' : ''} навсегда? Восстановить будет нельзя.`)) return;
+    await api.del(`/kb/pages/${a.id}?permanent=true`);
+    archived = archived.filter((x) => x.id !== a.id);
+  }
+
   let shareOpen = $state(false);
+  let historyOpen = $state(false);
+  const editorName = (v: KbViewer) => v.name.split(' ')[0];
 </script>
 
 <svelte:head><title>{current ? `${current.title} — ` : ''}База знаний</title></svelte:head>
-<svelte:window onkeydown={onKey} />
+<svelte:window onbeforeunload={onUnload} />
 
 <div class="page">
 
@@ -219,10 +299,19 @@
       {#if q}<button class="clear" aria-label="Очистить" onclick={() => (q = '')}><X size={14} /></button>{/if}
     </label>
     <div class="tree">
-      <a class="home" class:on={!pid && !editing} href="/kb"><BookOpen size={15} /> Все страницы</a>
+      <a class="home" class:on={!pid && !editing && !showArchive} href="/kb"><BookOpen size={15} /> Все страницы</a>
+      {#if pinned.length}
+        <div class="pinned">
+          <div class="ph">Закреплённые</div>
+          {#each pinned as n (n.id)}
+            <a class="pn" class:on={n.id === pid} href="/kb?p={n.id}"><span>{n.icon || '📌'}</span><span class="t">{n.title}</span></a>
+          {/each}
+        </div>
+      {/if}
       <KbTree {nodes} current={pid} bind:expanded onadd={startNew} />
     </div>
     <button class="btn new" onclick={() => startNew(null)}><Plus size={15} /> Новая страница</button>
+    <a class="arch" class:on={showArchive} href="/kb?archive"><Archive size={14} /> Архив</a>
   </aside>
 
   <main class="content">
@@ -246,33 +335,36 @@
           <select class="input icon" bind:value={eIcon} aria-label="Значок">
             {#each ICONS as i}<option value={i}>{i || '—'}</option>{/each}
           </select>
-          <input class="input title" placeholder="Название страницы" bind:value={eTitle} maxlength="200" />
+          <!-- svelte-ignore a11y_autofocus -->
+          <input class="input title" placeholder="Название страницы" bind:value={eTitle} maxlength="200" autofocus={!editId} />
+          <button class="btn" onclick={cancel}>Отмена</button>
+          <button class="btn primary" disabled={busy || !eTitle.trim()} onclick={() => save()}>{busy ? 'Сохраняю…' : editId ? 'Сохранить' : 'Создать'}</button>
         </div>
-        {#if isNew && newParent}
+        {#if !editId && newParent}
           <p class="faint small">Вложенная страница в «{nodes.find((n) => n.id === newParent)?.title}»</p>
         {/if}
-        <div class="tools">
-          <button class="btn ghost sm" title="Заголовок" onclick={() => linePrefix('## ')}>H2</button>
-          <button class="btn ghost sm" title="Подзаголовок" onclick={() => linePrefix('### ')}>H3</button>
-          <button class="btn ghost sm b" title="Жирный" onclick={() => wrap('**')}>B</button>
-          <button class="btn ghost sm i" title="Курсив" onclick={() => wrap('_')}>I</button>
-          <button class="btn ghost sm" title="Список" onclick={() => linePrefix('- ')}>• Список</button>
-          <button class="btn ghost sm" title="Нумерованный список" onclick={() => linePrefix('1. ')}>1. Список</button>
-          <button class="btn ghost sm" title="Чек-лист" onclick={() => linePrefix('- [ ] ')}>☐ Чек-лист</button>
-          <button class="btn ghost sm" title="Ссылка" onclick={() => wrap('[', '](https://)', 'ссылка')}>Ссылка</button>
-          <button class="btn ghost sm" title="Код" onclick={() => wrap('`')}>{'</>'}</button>
-          <div class="spacer"></div>
-          <button class="btn ghost sm" class:on={preview} onclick={() => (preview = !preview)}><Eye size={14} /> Просмотр</button>
-        </div>
-        <div class="split" class:both={preview}>
-          <textarea class="input body" bind:this={ta} bind:value={eBody} placeholder="Текст в формате Markdown: ## заголовок, **жирный**, - список, | таблица |"></textarea>
-          {#if preview}<div class="md preview">{@html html(eBody || '*Пусто*')}</div>{/if}
-        </div>
-        <div class="actions">
-          <button class="btn primary" disabled={busy || !eTitle.trim()} onclick={save}>{isNew ? 'Создать' : 'Сохранить'}</button>
-          <button class="btn" onclick={() => { editing = false; error = ''; }}>Отмена</button>
-          <span class="faint small">Ctrl+S — сохранить</span>
-        </div>
+        {#if editors.length}
+          <div class="warn-box">Эту страницу сейчас тоже правит {editors.map(editorName).join(', ')}. Если сохраните после него, портал спросит, чью версию оставить; обе останутся в истории.</div>
+        {/if}
+        {#key editorKey}
+          <KbEditor content={startHtml} bind:html={eHtml} pages={nodes.filter((n) => n.id !== editId)} {ensurePage} onsave={() => save()} />
+        {/key}
+        <p class="faint small foot">Ctrl+S — сохранить. Вставка из Word и из буфера сохраняет заголовки, списки и таблицы; картинки можно вставить или перетащить. «/» в начале строки — меню вставки.</p>
+      </section>
+    {:else if showArchive}
+      <section class="card pane">
+        <h1 class="h"><Archive size={22} /> Архив</h1>
+        <p class="muted">Страницы, убранные из базы знаний. Их можно вернуть вместе с вложенными страницами или удалить навсегда (автор страницы или администратор).</p>
+        {#each archived as a (a.id)}
+          <div class="arow">
+            <span class="ai">{a.icon || '📄'}</span>
+            <div class="at"><b>{a.title}</b><span class="faint small">{formatDateTime(a.archived_at)}{a.archived_by_name ? ` · ${a.archived_by_name}` : ''}{a.subpages ? ` · вложенных: ${a.subpages}` : ''}</span></div>
+            <button class="btn sm" onclick={() => restorePage(a)}><ArchiveRestore size={14} /> Вернуть</button>
+            {#if a.can_delete}<button class="btn ghost sm danger" onclick={() => deleteForever(a)}><Trash2 size={14} /> Удалить навсегда</button>{/if}
+          </div>
+        {:else}
+          <p class="faint">Архив пуст.</p>
+        {/each}
       </section>
     {:else if current}
       <article class="card pane">
@@ -280,19 +372,30 @@
           <a href="/kb">База знаний</a>
           {#each crumbs as c (c.id)}<span>/</span><a href="/kb?p={c.id}">{c.title}</a>{/each}
         </nav>
+        {#if current.archived_at}<div class="warn-box">Страница в архиве. <a href="/kb?archive">Открыть архив</a></div>{/if}
         <div class="phead">
-          <h1 class="h">{#if current.icon}<span class="pi">{current.icon}</span>{/if}{current.title}</h1>
+          <h1 class="h">{#if current.pinned}<span class="pinmark" title="Закреплена"><Pin size={18} /></span>{/if}{#if current.icon}<span class="pi">{current.icon}</span>{/if}{current.title}</h1>
           <div class="pact">
-            <button class="btn sm" onclick={startEdit}><Pencil size={14} /> Редактировать</button>
-            <button class="btn sm" onclick={() => (shareOpen = true)}><Share2 size={14} /> Поделиться</button>
-            <button class="btn ghost sm" title="Вложенная страница" onclick={() => startNew(current!.id)}><FilePlus2 size={15} /></button>
-            <button class="btn ghost sm" title="Переместить" onclick={() => { moving = !moving; moveTo = current?.parent_id ?? ''; }}><FolderInput size={15} /></button>
-            {#if canDelete}<button class="btn ghost sm danger" title="Удалить" onclick={remove}><Trash2 size={15} /></button>{/if}
+            {#if viewers.length}
+              <span class="who" title="Сейчас на странице: {viewers.map((v) => v.name + (v.editing ? ' (правит)' : '')).join(', ')}">
+                {#each viewers.slice(0, 4) as v (v.id)}<span class="wa" class:ed={v.editing}><Avatar id={v.id} name={v.name} size={26} /></span>{/each}
+              </span>
+            {/if}
+            {#if !current.archived_at}
+              <button class="btn sm" onclick={startEdit}><Pencil size={14} /> Редактировать</button>
+              <button class="btn sm" onclick={() => (shareOpen = true)}><Share2 size={14} /> Поделиться</button>
+              <button class="btn ghost sm" title={current.pinned ? 'Открепить' : 'Закрепить вверху списка для всех'} aria-label={current.pinned ? 'Открепить' : 'Закрепить'} onclick={togglePin}>{#if current.pinned}<PinOff size={15} />{:else}<Pin size={15} />{/if}</button>
+              <button class="btn ghost sm" title="История изменений" aria-label="История изменений" onclick={() => (historyOpen = true)}><History size={15} /></button>
+              <button class="btn ghost sm" title="Вложенная страница" aria-label="Вложенная страница" onclick={() => startNew(current!.id)}><FilePlus2 size={15} /></button>
+              <button class="btn ghost sm" title="Переместить" aria-label="Переместить" onclick={() => { moving = !moving; moveTo = current?.parent_id ?? ''; }}><FolderInput size={15} /></button>
+              {#if canDelete}<button class="btn ghost sm" title="В архив" aria-label="В архив" onclick={toArchive}><Archive size={15} /></button>{/if}
+            {/if}
           </div>
         </div>
         <div class="meta faint small">
-          Изменено {formatDateTime(current.updated_at)}{#if current.updated_by_name} · {current.updated_by_name}{/if}
-          {#if current.created_by_name && current.created_by_name !== current.updated_by_name} · автор {current.created_by_name}{/if}
+          Создана {formatDateTime(current.created_at)}{#if current.created_by_name} · {current.created_by_name}{/if}
+          {#if current.version > 1 || current.updated_at !== current.created_at} · Обновлена {formatDateTime(current.updated_at)}{#if current.updated_by_name} · {current.updated_by_name}{/if}{/if}
+          {#if editors.length}<span class="editing-now"> · сейчас правит {editors.map(editorName).join(', ')}</span>{/if}
         </div>
         {#if moving}
           <div class="move">
@@ -304,12 +407,8 @@
             <button class="btn sm" onclick={() => (moving = false)}>Отмена</button>
           </div>
         {/if}
-        {#if current.body.trim()}
-          <div class="md">{@html html(current.body)}</div>
-          <Modal bind:open={shareOpen} title={`Поделиться: ${current.title}`} width={560}>
-            <p class="faint small share-note">Все сотрудники портала уже видят базу знаний. Чтобы показать страницу заказчику или подрядчику, создайте ссылку для внешних — они увидят только эту страницу.</p>
-            <PublicLink resourceType="kb_page" resourceId={current.id} active={shareOpen} />
-          </Modal>
+        {#if (current.content ?? '').replace(/<[^>]*>/g, '').trim() || (current.content ?? '').includes('<img') || (current.content ?? '').includes('file-card')}
+          <KbView html={current.content ?? ''} />
         {:else}
           <p class="muted empty-body">Страница пока пустая. <button class="linkish" onclick={startEdit}>Добавить текст</button></p>
         {/if}
@@ -323,6 +422,11 @@
             </div>
           </div>
         {/if}
+        <Modal bind:open={shareOpen} title={`Поделиться: ${current.title}`} width={560}>
+          <p class="faint small share-note">Все сотрудники портала уже видят базу знаний. Чтобы показать страницу заказчику или подрядчику, создайте ссылку для внешних — они увидят только эту страницу (с картинками и файлами).</p>
+          <PublicLink resourceType="kb_page" resourceId={current.id} active={shareOpen} />
+        </Modal>
+        <KbHistory bind:open={historyOpen} pageId={current.id} current={current.version} onrestored={() => loadPage(current!.id)} />
       </article>
     {:else if loaded && !pid}
       <section class="card pane">
@@ -359,7 +463,7 @@
   .search > :global(svg) { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-3); }
   .search input { padding-left: 32px; width: 100%; }
   .clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: var(--text-3); cursor: pointer; display: grid; }
-  .new, .pact .btn, .actions .btn, .h, .tools .btn { display: inline-flex; gap: 6px; align-items: center; }
+  .new, .pact .btn, .h, .arow .btn { display: inline-flex; gap: 6px; align-items: center; }
   .pane { padding: 22px 28px; }
   .h { font-size: 24px; margin: 0 0 6px; }
   .pi { margin-right: 8px; }
@@ -384,41 +488,31 @@
   .ht { font-weight: 600; }
   .hs { font-size: 13px; margin-top: 3px; }
   .hs :global(mark) { background: var(--warn-soft); color: inherit; padding: 0 2px; border-radius: 3px; }
-  .ehead { display: flex; gap: 8px; margin-bottom: 6px; }
+  .ehead { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
   .icon { width: 70px; font-size: 16px; }
-  .title { flex: 1; font-size: 18px; font-weight: 600; height: 40px; }
-  .tools { display: flex; gap: 2px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
-  .tools .b { font-weight: 700; }
-  .tools .i { font-style: italic; }
-  .tools .on { background: var(--accent-soft); color: var(--accent); }
-  .split { display: grid; gap: 12px; }
-  .split.both { grid-template-columns: 1fr 1fr; }
-  .body { min-height: 420px; font-family: var(--mono); font-size: 13px; line-height: 1.55; resize: vertical; height: auto; padding: 10px; }
-  .preview { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 10px 16px; overflow: auto; max-height: 640px; }
-  .actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-  /* Rendered Markdown */
-  .md { line-height: 1.65; font-size: 15px; overflow-wrap: anywhere; }
-  .md :global(h1) { font-size: 22px; margin: 22px 0 8px; }
-  .md :global(h2) { font-size: 19px; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
-  .md :global(h3) { font-size: 16px; margin: 18px 0 6px; }
-  .md :global(p) { margin: 0 0 12px; }
-  .md :global(ul), .md :global(ol) { padding-left: 22px; margin: 0 0 12px; }
-  .md :global(li) { margin: 3px 0; }
-  .md :global(code) { font-family: var(--mono); font-size: .9em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
-  .md :global(pre) { background: var(--surface-2); padding: 12px; border-radius: var(--radius); overflow-x: auto; }
-  .md :global(pre code) { background: none; padding: 0; }
-  .md :global(blockquote) { margin: 0 0 12px; padding: 4px 14px; border-left: 3px solid var(--accent); color: var(--text-2); background: var(--surface-2); }
-  .md :global(table) { border-collapse: collapse; margin: 0 0 12px; font-size: 14px; display: block; overflow-x: auto; }
-  .md :global(th), .md :global(td) { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
-  .md :global(th) { background: var(--surface-2); }
-  .md :global(img) { max-width: 100%; }
-  .md :global(hr) { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
-  .md :global(input[type='checkbox']) { margin-right: 8px; accent-color: var(--accent); }
-  .md :global(li:has(> input[type='checkbox'])) { list-style: none; margin-left: -20px; }
+  .title { flex: 1; min-width: 220px; font-size: 18px; font-weight: 600; height: 40px; }
+  .foot { margin: 10px 2px 0; }
+  .warn-box { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); font-size: 13px; }
+  .pinned { margin: 6px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .ph { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); padding: 4px 8px; }
+  .pn { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border-radius: var(--radius); color: var(--text); font-size: 13.5px; text-decoration: none; }
+  .pn:hover { background: var(--surface-2); }
+  .pn.on { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .pn .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .arch { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 13px; color: var(--text-3); padding: 4px; border-radius: var(--radius); text-decoration: none; }
+  .arch:hover, .arch.on { color: var(--accent); background: var(--surface-2); }
+  .pinmark { color: var(--warn, #b54708); margin-right: 6px; display: inline-flex; vertical-align: middle; }
+  .who { display: inline-flex; align-items: center; margin-right: 8px; padding-left: 6px; }
+  .wa { margin-left: -6px; border: 2px solid var(--surface); border-radius: 50%; display: inline-flex; }
+  .wa.ed { border-color: var(--success, #2f9e5b); }
+  .editing-now { color: var(--success, #2f9e5b); font-weight: 500; }
+  .arow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .ai { font-size: 20px; }
+  .at { flex: 1; min-width: 200px; display: grid; }
+  .pact { align-items: center; flex-wrap: wrap; }
   @media (max-width: 860px) {
-    .kb { grid-template-columns: 1fr; }
+    .kb { grid-template-columns: minmax(0, 1fr); }
     .side { position: static; max-height: 320px; }
     .pane { padding: 16px; }
-    .split.both { grid-template-columns: 1fr; }
   }
 </style>

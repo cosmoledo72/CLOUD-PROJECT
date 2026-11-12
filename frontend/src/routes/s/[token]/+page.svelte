@@ -10,8 +10,7 @@
   import LinkOff from '@lucide/svelte/icons/unlink';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Archive from '@lucide/svelte/icons/archive';
-  import { marked } from 'marked';
-  import DOMPurify from 'dompurify';
+  import KbView from '$lib/kb/KbView.svelte';
   import { api, docKind } from '$lib/api';
   import FileIcon from '$lib/FileIcon.svelte';
   import { itemsLabel, plural, relTime, sizeLabel } from '$lib/files/fmt';
@@ -33,7 +32,7 @@
       total_files: number;
       total_size: number;
     };
-    page?: { title: string; icon: string; body: string; updated_at: string };
+    page?: { title: string; icon: string; content: string; updated_at: string };
   }
 
   const token = $derived(page.params.token ?? '');
@@ -97,7 +96,6 @@
   const viewable = (f: PubFile) => docKind(f.extension) !== 'other';
   const go = (id: string | null) => goto(id && id !== info?.folder?.crumbs[0]?.id ? `?folder=${id}` : '?', { keepFocus: true });
   const fmtDate = (d: string) => new Date(d + 'T00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const md = (s: string) => DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
 </script>
 
 <svelte:head><meta name="robots" content="noindex, nofollow" /></svelte:head>
@@ -134,7 +132,7 @@
         <article class="card kb">
           <h1>{#if info.page.icon}<span class="pi">{info.page.icon}</span>{/if}{info.page.title}</h1>
           <p class="meta">Обновлено {relTime(info.page.updated_at)}{info.shared_by ? ` · поделился(ась) ${info.shared_by}` : ''}</p>
-          <div class="md">{@html md(info.page.body)}</div>
+          <KbView html={info.page.content} fileBase={`/api/public/s/${encodeURIComponent(token)}/kbfile/`} fileQuery={k ? `k=${encodeURIComponent(k)}` : ''} />
         </article>
       {:else}
         <div class="title">
@@ -233,9 +231,6 @@
   .empty { text-align: center; padding: 20px; }
   .kb { padding: 24px 28px; }
   .pi { margin-right: 8px; }
-  .md :global(img) { max-width: 100%; }
-  .md :global(table) { border-collapse: collapse; }
-  .md :global(td), .md :global(th) { border: 1px solid var(--border); padding: 6px 10px; }
   .foot { text-align: center; font-size: 12px; color: var(--text-3); padding: 16px; }
   @media (max-width: 640px) {
     .c-size, .c-date { display: none; }

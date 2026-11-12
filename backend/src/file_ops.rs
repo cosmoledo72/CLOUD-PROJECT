@@ -25,8 +25,9 @@ const MAX_ITEMS: usize = 5000;
 /// `GET /storage/usage`: portal storage used (all versions) and the quota.
 pub async fn usage(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     let (used, quota): (i64, i64) = sqlx::query_as(
-        "SELECT COALESCE((SELECT sum(fv.size_bytes) FROM file_versions fv JOIN files f ON f.id = fv.file_id
-                           WHERE f.tenant_id = $1), 0)::bigint, quota_bytes
+        "SELECT (COALESCE((SELECT sum(fv.size_bytes) FROM file_versions fv JOIN files f ON f.id = fv.file_id
+                           WHERE f.tenant_id = $1), 0)
+                + COALESCE((SELECT sum(size_bytes) FROM kb_files WHERE tenant_id = $1), 0))::bigint, quota_bytes
            FROM tenants WHERE id = $1",
     )
     .bind(user.tenant_id)

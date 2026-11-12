@@ -132,10 +132,11 @@ async fn ensure_my_root(state: &AppState, user: &CurrentUser) -> ApiResult<Uuid>
     .await?)
 }
 
-async fn check_quota(state: &AppState, tenant_id: Uuid, extra: i64) -> ApiResult<()> {
+pub async fn check_quota(state: &AppState, tenant_id: Uuid, extra: i64) -> ApiResult<()> {
     let (used, quota): (i64, i64) = sqlx::query_as(
-        "SELECT COALESCE((SELECT sum(fv.size_bytes) FROM file_versions fv JOIN files f ON f.id = fv.file_id
-                           WHERE f.tenant_id = $1), 0)::bigint, quota_bytes
+        "SELECT (COALESCE((SELECT sum(fv.size_bytes) FROM file_versions fv JOIN files f ON f.id = fv.file_id
+                           WHERE f.tenant_id = $1), 0)
+                + COALESCE((SELECT sum(size_bytes) FROM kb_files WHERE tenant_id = $1), 0))::bigint, quota_bytes
            FROM tenants WHERE id = $1",
     )
     .bind(tenant_id)

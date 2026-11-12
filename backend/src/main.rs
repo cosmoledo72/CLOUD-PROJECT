@@ -15,6 +15,7 @@ mod crm;
 mod error;
 mod fields;
 mod kb;
+mod kb_html;
 mod file_ops;
 mod files;
 mod finance;
@@ -78,6 +79,16 @@ fn router(state: AppState) -> Router {
         // Knowledge base
         .route("/kb/pages", get(kb::tree).post(kb::create))
         .route("/kb/pages/{id}", get(kb::get).put(kb::update).delete(kb::delete))
+        .route("/kb/pages/{id}/pin", patch(kb::pin))
+        .route("/kb/pages/{id}/restore", post(kb::restore))
+        .route("/kb/pages/{id}/versions", get(kb::versions))
+        .route("/kb/pages/{id}/versions/{v}", get(kb::version))
+        .route("/kb/pages/{id}/versions/{v}/restore", post(kb::restore_version))
+        .route("/kb/pages/{id}/files", post(kb::upload))
+        .route("/kb/pages/{id}/presence", post(kb::heartbeat))
+        .route("/kb/files/{id}", get(kb::file))
+        .route("/kb/archive", get(kb::archive))
+        .route("/public/s/{token}/kbfile/{id}", get(public_links::kb_file))
         .route("/kb/pages/{id}/move", patch(kb::move_page))
         .route("/kb/search", get(kb::search))
         .route("/search", get(search::search))
@@ -307,6 +318,9 @@ async fn main() -> anyhow::Result<()> {
     mail::spawn_worker(state.clone());
     notify::spawn_worker(state.clone());
     textract::spawn_worker(state.clone());
+    if let Err(e) = kb::convert_markdown(&state).await {
+        tracing::warn!(error = ?e, "knowledge base conversion failed");
+    }
 
     let listener = tokio::net::TcpListener::bind(&cfg.bind_addr).await?;
     tracing::info!(addr = %cfg.bind_addr, "WorkHub server listening");

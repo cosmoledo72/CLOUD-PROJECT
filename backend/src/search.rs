@@ -319,7 +319,7 @@ async fn run(state: &AppState, user: &CurrentUser, key: &str, q: &Q, limit: i64,
                         CASE WHEN $2 AND to_tsvector('russian', k.body) @@ to_tsquery('russian', $3)
                              THEN ts_headline('russian', k.body, to_tsquery('russian', $3), '{HL}') END
                    FROM kb_pages k
-                  WHERE k.tenant_id = $1 AND (($2 AND k.search @@ to_tsquery('russian', $3)) OR lower(k.title) LIKE $4 OR ($5 AND $6 <% lower(k.title)))
+                  WHERE k.tenant_id = $1 AND k.archived_at IS NULL AND (($2 AND k.search @@ to_tsquery('russian', $3)) OR lower(k.title) LIKE $4 OR ($5 AND $6 <% lower(k.title)))
                   ORDER BY (lower(k.title) LIKE $4) DESC, ts_rank(k.search, to_tsquery('russian', $3)) DESC, k.updated_at DESC
                   LIMIT $7 OFFSET $8"
             ))

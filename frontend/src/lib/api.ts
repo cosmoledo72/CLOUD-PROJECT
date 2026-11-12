@@ -1040,6 +1040,7 @@ export interface KbNode {
   title: string;
   icon: string;
   sort_order: number;
+  pinned: boolean;
   updated_at: string;
 }
 
@@ -1048,12 +1049,23 @@ export interface KbPage {
   parent_id: string | null;
   title: string;
   icon: string;
-  body: string;
+  /** Sanitized HTML of the visual editor. */
+  content: string | null;
+  version: number;
+  pinned: boolean;
+  archived_at: string | null;
   created_by: string | null;
   created_by_name: string | null;
+  updated_by: string | null;
   updated_by_name: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface KbViewer {
+  id: string;
+  name: string;
+  editing: boolean;
 }
 
 export interface KbHit {

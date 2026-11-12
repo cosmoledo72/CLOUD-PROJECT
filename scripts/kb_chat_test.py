@@ -78,9 +78,9 @@ def main():
     a.call("PATCH", f"/kb/pages/{grand}/move", {"parent_id": None, "sort_order": 5})
     assert b.call("GET", f"/kb/pages/{grand}")["breadcrumbs"] == []
     b.call("DELETE", f"/kb/pages/{root}", expect=403)
-    assert a.call("DELETE", f"/kb/pages/{root}")["deleted"] == 2
+    assert a.call("DELETE", f"/kb/pages/{root}")["archived"] == 2
     assert [p["id"] for p in owner.call("GET", "/kb/pages")["pages"]] == [grand]
-    step("KB: edit conflicts, move with cycle check, delete subtree (author or admin)")
+    step("KB: edit conflicts, move with cycle check, archive a subtree (author or admin)")
 
     # ------------------------------------------------------------ team
     gid = owner.call("POST", "/groups", {"name": "Отдел обследований"})["id"]
