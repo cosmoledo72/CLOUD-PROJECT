@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onIntent } from '$lib/intent';
   import Banknote from '@lucide/svelte/icons/banknote';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
   import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -90,6 +91,7 @@
     error = '';
     createOpen = true;
   }
+  onIntent('new', () => { if (session.me?.role !== 'guest') openCreate(); });
 
   async function create() {
     error = '';

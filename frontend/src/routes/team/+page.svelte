@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onIntent } from '$lib/intent';
   import { goto } from '$app/navigation';
   import { api, roleLabel, type TeamGroup, type TeamMember } from '$lib/api';
   import Avatar from '$lib/Avatar.svelte';
@@ -18,6 +19,7 @@
   let error = $state('');
   let q = $state('');
   let group = $state('');
+  onIntent('q', (v) => (q = v));
   let view = $state<'cards' | 'list'>(load('wh_team_view', 'cards') as 'cards' | 'list');
 
   function load(key: string, dflt: string) {

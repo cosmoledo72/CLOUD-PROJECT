@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onIntent } from '$lib/intent';
   import EmptyState from '$lib/EmptyState.svelte';
   import Handshake from '@lucide/svelte/icons/handshake';
   // Sales pipeline. Board: open stages fit the screen width; won/lost are drop
@@ -183,6 +184,7 @@
     contacts = [];
     createOpen = true;
   }
+  onIntent('new', () => openCreate());
   $effect(() => {
     const cid = form.company_id;
     if (!createOpen) return;

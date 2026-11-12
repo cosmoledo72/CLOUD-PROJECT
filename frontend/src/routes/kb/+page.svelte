@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onIntent } from '$lib/intent';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { api, formatDateTime, type KbHit, type KbNode, type KbPage } from '$lib/api';
@@ -78,6 +79,7 @@
   let busy = $state(false);
   const ICONS = ['', '📘', '📄', '📌', '🛠️', '🧭', '📐', '🏗️', '⚙️', '🧾', '💡', '✅', '⚠️', '👥', '📞', '🎓'];
 
+  onIntent('new', () => startNew(null));
   function startNew(parent: string | null) {
     isNew = true;
     newParent = parent;

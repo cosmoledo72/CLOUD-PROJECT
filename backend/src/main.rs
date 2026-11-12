@@ -29,11 +29,13 @@ mod projects;
 mod ratelimit;
 mod registration;
 mod scheduling;
+mod search;
 mod state;
 mod storage;
 mod task_board;
 mod team;
 mod templates;
+mod textract;
 mod time;
 mod trash;
 mod users;
@@ -76,6 +78,7 @@ fn router(state: AppState) -> Router {
         .route("/kb/pages/{id}", get(kb::get).put(kb::update).delete(kb::delete))
         .route("/kb/pages/{id}/move", patch(kb::move_page))
         .route("/kb/search", get(kb::search))
+        .route("/search", get(search::search))
         // Chats
         .route("/chats", get(chat::list).post(chat::create_group))
         .route("/chats/unread", get(chat::unread))
@@ -289,6 +292,7 @@ async fn main() -> anyhow::Result<()> {
     trash::spawn_auto_purge(state.clone());
     mail::spawn_worker(state.clone());
     notify::spawn_worker(state.clone());
+    textract::spawn_worker(state.clone());
 
     let listener = tokio::net::TcpListener::bind(&cfg.bind_addr).await?;
     tracing::info!(addr = %cfg.bind_addr, "WorkHub server listening");

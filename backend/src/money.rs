@@ -17,6 +17,24 @@ pub fn vat_included(amount: f64, rate: &str) -> f64 {
     round2(amount * r / (100.0 + r))
 }
 
+/// «1 234 567» or «1 234,50» (narrow no-break spaces between thousands).
+pub fn format_rub(v: f64) -> String {
+    let cents = (v.abs() * 100.0).round() as u64;
+    let (int, frac) = (cents / 100, cents % 100);
+    let digits = int.to_string();
+    let mut out = String::new();
+    for (i, ch) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push('\u{202F}');
+        }
+        out.push(ch);
+    }
+    if frac > 0 {
+        out.push_str(&format!(",{frac:02}"));
+    }
+    if v < 0.0 { format!("−{out}") } else { out }
+}
+
 pub fn round2(v: f64) -> f64 {
     // `+ 0.0` turns a negative zero into zero (shown as "-0" otherwise).
     (v * 100.0).round() / 100.0 + 0.0

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onIntent } from '$lib/intent';
   import EmptyState from '$lib/EmptyState.svelte';
   import ContactIcon from '@lucide/svelte/icons/contact';
   import SearchX from '@lucide/svelte/icons/search-x';
@@ -8,6 +9,7 @@
   let contacts = $state<Contact[]>([]);
   let companies = $state<CompanyListItem[]>([]);
   let query = $state('');
+  onIntent('q', (v) => (query = v));
   let error = $state('');
   let loaded = $state(false);
 

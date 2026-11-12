@@ -24,6 +24,12 @@
   import ChartColumn from '@lucide/svelte/icons/chart-column';
   import TimerChip from '$lib/time/TimerChip.svelte';
   import { timer } from '$lib/time/timer.svelte';
+  import Search from '@lucide/svelte/icons/search';
+  import Plus from '@lucide/svelte/icons/plus';
+  import SearchPalette from '$lib/search/SearchPalette.svelte';
+  import QuickCreate from '$lib/search/QuickCreate.svelte';
+  import { palette } from '$lib/search/search.svelte';
+  import { openQuick } from '$lib/search/quick.svelte';
   import type { ModuleKey } from '$lib/api';
   import type { Component } from 'svelte';
 
@@ -123,10 +129,42 @@
   }
 
   let menuOpen = $state(false);
+
+  // Search (Ctrl+K, «/») and quick create (C) from anywhere but text fields.
+  const staff = $derived(!!session.me && session.me.role !== 'guest');
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+  let createBtn = $state<HTMLButtonElement>();
+  function openSearch() {
+    menuOpen = false;
+    palette.q = '';
+    palette.open = true;
+  }
+  function hotkeys(e: KeyboardEvent) {
+    if (!session.me || bare) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K' || e.key === 'л' || e.key === 'Л' || e.code === 'KeyK')) {
+      e.preventDefault();
+      if (palette.open) palette.open = false;
+      else openSearch();
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || palette.open) return;
+    const el = e.target as HTMLElement | null;
+    if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+    if (document.querySelector('dialog[open]')) return;
+    if (e.key === '/' || e.code === 'Slash' && !e.shiftKey) {
+      e.preventDefault();
+      openSearch();
+    } else if (staff && e.code === 'KeyC' && !e.shiftKey) {
+      e.preventDefault();
+      openQuick(createBtn?.offsetParent ? createBtn : null);
+    }
+  }
   const initials = (n: string) => n.split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
   const b = $derived(branding.current);
   const portalName = $derived(b?.display_name ?? session.me?.tenant_name ?? '');
 </script>
+
+<svelte:window onkeydown={hotkeys} />
 
 {#if bare}
   {@render children()}
@@ -147,6 +185,16 @@
           {/if}
         </a>
         {#if !collapsed}<div class="bell-desktop"><NotificationBell /></div>{/if}
+      </div>
+      <div class="find">
+        <button class="sbox" onclick={openSearch} title="Поиск по порталу ({isMac ? '⌘' : 'Ctrl'}+K)" aria-label="Поиск по порталу">
+          <Search size={16} strokeWidth={1.9} /><span class="label">Поиск</span><kbd class="label">{isMac ? '⌘' : 'Ctrl'} K</kbd>
+        </button>
+        {#if staff}
+          <button class="plus" bind:this={createBtn} onclick={(e) => openQuick(e.currentTarget)} title="Создать (C)" aria-label="Создать" aria-haspopup="menu">
+            <Plus size={18} strokeWidth={2} />
+          </button>
+        {/if}
       </div>
       <nav aria-label="Разделы">
         {#each nav.filter((i) => !i.show || i.show()) as item (item.href)}
@@ -185,6 +233,8 @@
         <button class="icon-btn burger" aria-label="Меню" onclick={() => (menuOpen = !menuOpen)}><Menu size={20} /></button>
         <span class="mb-name">{portalName}</span>
         <div class="spacer"></div>
+        <button class="icon-btn" aria-label="Поиск" onclick={openSearch}><Search size={19} /></button>
+        {#if staff}<button class="icon-btn" aria-label="Создать" aria-haspopup="menu" onclick={(e) => openQuick(e.currentTarget)}><Plus size={20} /></button>{/if}
         <NotificationBell />
       </div>
       {#if blocked}
@@ -202,6 +252,8 @@
       {#if timeOn}<TimerChip />{/if}
     </main>
   </div>
+  <SearchPalette />
+  {#if staff}<QuickCreate />{/if}
 {/if}
 
 <style>
@@ -225,6 +277,17 @@
   .icon { border-radius: 7px; object-fit: contain; flex: none; }
   .brand-name { font-weight: 650; font-size: 14px; letter-spacing: .01em; line-height: 1.25; overflow-wrap: anywhere; }
   nav { display: grid; gap: 1px; }
+  .find { display: flex; gap: 6px; margin-bottom: 10px; }
+  .sbox { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius);
+          background: var(--surface-2, var(--bg)); color: var(--text-3); font: inherit; font-size: 13.5px; cursor: text; text-align: left; transition: border-color .12s, color .12s; }
+  .sbox:hover { border-color: var(--border-strong, var(--text-3)); color: var(--text-2); }
+  .sbox kbd { flex: none; margin-left: auto; font: 11px/1 ui-monospace, monospace; padding: 3px 5px; border: 1px solid var(--border); border-radius: 5px; color: var(--text-3); background: var(--surface); }
+  .sbox .label:not(kbd) { flex: 1; }
+  .plus { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent, #fff);
+          cursor: pointer; transition: filter .12s; }
+  .plus:hover { filter: brightness(1.08); }
+  .collapsed .find { flex-direction: column; align-items: center; }
+  .collapsed .sbox { flex: none; width: 36px; padding: 0; justify-content: center; }
   nav a, .collapse {
     position: relative; display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: var(--radius);
     color: var(--text-2); font: inherit; font-size: 14px; font-weight: 500; border: 0; background: none; cursor: pointer; text-align: left; width: 100%;

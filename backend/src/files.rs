@@ -159,6 +159,7 @@ pub async fn add_version(state: &AppState, tenant_id: Uuid, file_id: Uuid, autho
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
+    crate::textract::queue(state, file_id);
     Ok(version)
 }
 
@@ -201,6 +202,7 @@ pub async fn create_file(state: &AppState, user: &CurrentUser, folder_id: Uuid, 
         return Err(e.into());
     }
     state.audit(user.tenant_id, Some(user.user_id), "file.created", Some("file"), Some(file_id), json!({ "name": name })).await;
+    crate::textract::queue(state, file_id);
     Ok(file_id)
 }
 
