@@ -194,34 +194,55 @@ pub async fn zip(State(state): State<AppState>, user: CurrentUser, Json(req): Js
     let mut archive_name = "Файлы.zip".to_string();
     for f in &req.folders {
         acl::folder_access(&state.db, &user, *f).await?.require(Access::Read)?;
-        // Every file below the folder with its path relative to the folder's parent.
-        let rows: Vec<(Option<Uuid>, String)> = sqlx::query_as(
-            "WITH RECURSIVE tree AS (
-                SELECT id, name::text AS path FROM folders WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
-                UNION ALL
-                SELECT c.id, t.path || '/' || c.name FROM folders c JOIN tree t ON c.parent_id = t.id WHERE c.deleted_at IS NULL
-             )
-             SELECT NULL::uuid, path FROM tree
-             UNION ALL
-             SELECT f.id, t.path || '/' || f.name FROM files f JOIN tree t ON f.folder_id = t.id WHERE f.deleted_at IS NULL",
-        )
-        .bind(f)
-        .bind(user.tenant_id)
-        .fetch_all(&state.db)
-        .await?;
-        if rows.is_empty() {
-            return Err(ApiError::NotFound);
-        }
+        let (d, f) = folder_entries(&state, user.tenant_id, *f).await?;
         if req.folders.len() == 1 && req.files.is_empty() {
-            archive_name = format!("{}.zip", rows[0].1);
+            archive_name = format!("{}.zip", d[0]);
         }
-        for (id, path) in rows {
-            match id {
-                Some(id) => entries.push((path, id)),
-                None => dirs.push(path),
-            }
+        dirs.extend(d);
+        entries.extend(f);
+    }
+    let data = build_zip(&state, user.tenant_id, &dirs, &entries).await?;
+    state
+        .audit(user.tenant_id, Some(user.user_id), "file.zip_downloaded", None, None,
+               json!({ "files": req.files.len(), "folders": req.folders.len(), "entries": entries.len() }))
+        .await;
+    Ok(file_response(&archive_name, data.into(), false))
+}
+
+/// Paths of a folder's subfolders (`dirs`) and files (`entries`) relative to
+/// the folder's parent, e.g. «Обследование/Фото/IMG_01.jpg».
+pub async fn folder_entries(state: &AppState, tenant: Uuid, folder: Uuid) -> ApiResult<(Vec<String>, Vec<(String, Uuid)>)> {
+    let rows: Vec<(Option<Uuid>, String)> = sqlx::query_as(
+        "WITH RECURSIVE tree AS (
+            SELECT id, name::text AS path FROM folders WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
+            UNION ALL
+            SELECT c.id, t.path || '/' || c.name FROM folders c JOIN tree t ON c.parent_id = t.id WHERE c.deleted_at IS NULL
+         )
+         SELECT NULL::uuid, path FROM tree
+         UNION ALL
+         SELECT f.id, t.path || '/' || f.name FROM files f JOIN tree t ON f.folder_id = t.id WHERE f.deleted_at IS NULL",
+    )
+    .bind(folder)
+    .bind(tenant)
+    .fetch_all(&state.db)
+    .await?;
+    if rows.is_empty() {
+        return Err(ApiError::NotFound);
+    }
+    let (mut dirs, mut files) = (Vec::new(), Vec::new());
+    for (id, path) in rows {
+        match id {
+            Some(id) => files.push((path, id)),
+            None => dirs.push(path),
         }
     }
+    // The folder itself comes first (it is a prefix of every other path).
+    dirs.sort();
+    Ok((dirs, files))
+}
+
+/// Build an archive (size and count limits checked first).
+pub async fn build_zip(state: &AppState, tenant: Uuid, dirs: &[String], entries: &[(String, Uuid)]) -> ApiResult<Vec<u8>> {
     if entries.len() > MAX_ITEMS {
         return bad_request("too many files");
     }
@@ -233,17 +254,18 @@ pub async fn zip(State(state): State<AppState>, user: CurrentUser, Json(req): Js
     if total > ZIP_LIMIT {
         return Err(ApiError::TooLarge("selection is larger than 1 GB".into()));
     }
+    let err = |e: zip::result::ZipError| ApiError::Internal(anyhow::anyhow!(e));
     let mut buf = std::io::Cursor::new(Vec::new());
     {
         let mut z = zip::ZipWriter::new(&mut buf);
         let opts = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         let stored = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
         let mut seen = std::collections::HashSet::new();
-        for d in &dirs {
-            z.add_directory(format!("{d}/"), opts).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        for d in dirs {
+            z.add_directory(format!("{d}/"), opts).map_err(err)?;
         }
-        for (path, id) in &entries {
-            let (_, data) = read_version(&state, user.tenant_id, *id, None).await?;
+        for (path, id) in entries {
+            let (_, data) = read_version(state, tenant, *id, None).await?;
             // Same names in the selection (from different folders) get a suffix.
             let mut p = path.clone();
             let mut n = 1;
@@ -254,16 +276,12 @@ pub async fn zip(State(state): State<AppState>, user: CurrentUser, Json(req): Js
             // Already compressed formats are stored as is.
             let ext = crate::files::extension_of(path);
             let o = if matches!(ext.as_str(), "zip" | "docx" | "xlsx" | "pptx" | "jpg" | "jpeg" | "png" | "pdf" | "7z" | "rar" | "mp4") { stored } else { opts };
-            z.start_file(p, o).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+            z.start_file(p, o).map_err(err)?;
             z.write_all(&data).map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
         }
-        z.finish().map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+        z.finish().map_err(err)?;
     }
-    state
-        .audit(user.tenant_id, Some(user.user_id), "file.zip_downloaded", None, None,
-               json!({ "files": req.files.len(), "folders": req.folders.len(), "entries": entries.len() }))
-        .await;
-    Ok(file_response(&archive_name, buf.into_inner().into(), false))
+    Ok(buf.into_inner())
 }
 
 #[cfg(test)]

@@ -79,6 +79,15 @@ pub fn validate_name(name: &str) -> ApiResult<String> {
     Ok(n.to_string())
 }
 
+/// Russian names of the built-in root folders (as the interface shows them).
+pub fn display_folder_name(name: &str) -> String {
+    match name {
+        "My documents" => "Мои документы".into(),
+        "Common documents" => "Общие документы".into(),
+        _ => name.to_string(),
+    }
+}
+
 pub fn extension_of(name: &str) -> String {
     name.rsplit_once('.').map(|(_, e)| e.to_lowercase()).unwrap_or_default()
 }

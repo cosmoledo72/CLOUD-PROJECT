@@ -1,13 +1,17 @@
 <script lang="ts">
-  // Manage explicit shares of a folder or file.
+  // Manage explicit shares of a folder or file, and its link for people
+  // without an account.
   import Modal from './Modal.svelte';
+  import PublicLink from './files/PublicLink.svelte';
   import { api, type Share, type UserItem } from './api';
 
-  let { open = $bindable(false), resourceType, resourceId, title }: {
+  let { open = $bindable(false), resourceType, resourceId, title, focus = null }: {
     open?: boolean;
     resourceType: 'folder' | 'file';
     resourceId: string;
     title: string;
+    /** «link»: scroll to and highlight the public link block. */
+    focus?: 'link' | null;
   } = $props();
 
   const levels = [
@@ -54,7 +58,8 @@
   }
 </script>
 
-<Modal bind:open title={`Доступ: ${title}`} width={560}>
+<Modal bind:open title={`Доступ: ${title}`} width={600}>
+  <h4 class="sec">Сотрудники портала</h4>
   <div class="row add">
     <select class="input" bind:value={principal}>
       <option value="everyone">Все сотрудники портала</option>
@@ -81,6 +86,7 @@
       </tbody>
     </table>
   {/if}
+  <div class="pub"><PublicLink {resourceType} {resourceId} active={open} highlight={focus === 'link'} /></div>
 </Modal>
 
 <style>
@@ -88,4 +94,6 @@
   .add select:first-child { flex: 2; min-width: 200px; }
   .lvl { flex: 1; min-width: 150px; }
   p { margin: 0; }
+  .sec { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
+  .pub { margin-top: 16px; }
 </style>

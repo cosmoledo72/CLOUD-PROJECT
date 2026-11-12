@@ -11,6 +11,7 @@
   import Gauge from '@lucide/svelte/icons/gauge';
   import Globe from '@lucide/svelte/icons/globe';
   import History from '@lucide/svelte/icons/history';
+  import Link2 from '@lucide/svelte/icons/link-2';
   import Mail from '@lucide/svelte/icons/mail';
   import Palette from '@lucide/svelte/icons/palette';
   import UserRound from '@lucide/svelte/icons/user-round';
@@ -40,6 +41,7 @@
     ] },
     { title: 'Безопасность', items: [
       { href: '/admin/backups', label: 'Резервные копии', icon: DatabaseBackup, show: () => !!session.me?.backups },
+      { href: '/admin/links', label: 'Ссылки для внешних', icon: Link2 },
       { href: '/admin/audit', label: 'Журнал действий', icon: History }
     ] }
   ];

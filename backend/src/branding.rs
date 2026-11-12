@@ -93,6 +93,11 @@ async fn load_by_tenant(state: &AppState, tenant_id: Uuid) -> ApiResult<Branding
         .await?)
 }
 
+/// Branding of a portal by id, with asset URLs (for pages opened without an account).
+pub async fn public_by_tenant(state: &AppState, tenant_id: Uuid) -> ApiResult<Value> {
+    Ok(with_urls(load_by_tenant(state, tenant_id).await?))
+}
+
 /// Branding of the current user's portal.
 pub async fn get_own(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     Ok(Json(with_urls(load_by_tenant(&state, user.tenant_id).await?)))

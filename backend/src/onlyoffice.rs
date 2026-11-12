@@ -188,6 +188,40 @@ pub async fn editor_config(
     })))
 }
 
+/// Read-only viewer config for someone without an account (public links).
+pub async fn public_viewer_config(state: &AppState, tenant_id: Uuid, file_id: Uuid) -> ApiResult<Value> {
+    let (name, ext, version): (String, String, i32) =
+        sqlx::query_as("SELECT name, extension, current_version FROM files WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL")
+            .bind(file_id)
+            .bind(tenant_id)
+            .fetch_optional(&state.db)
+            .await?
+            .ok_or(ApiError::NotFound)?;
+    let doc_type = document_type(&ext).ok_or_else(|| ApiError::BadRequest(format!("format .{ext} cannot be viewed")))?;
+    let base = &state.cfg.internal_url;
+    let dl = sign_app(state, "dl", file_id, tenant_id, None)?;
+    let mut config = json!({
+        "documentType": doc_type,
+        "document": {
+            "fileType": ext,
+            "key": format!("{}-v{version}", file_id.simple()),
+            "title": name,
+            "url": format!("{base}/api/oo/download/{file_id}?t={dl}"),
+            "permissions": { "edit": false, "comment": false, "review": false, "download": true, "print": true, "chat": false },
+        },
+        "editorConfig": {
+            "mode": "view",
+            "lang": "ru",
+            "region": "ru-RU",
+            "user": { "id": format!("guest-{}", random_key()), "name": "Гость" },
+            "customization": { "anonymous": { "request": false }, "chat": false, "comments": false },
+        },
+    });
+    let token = sign_docs(state, &config)?;
+    config["token"] = json!(token);
+    Ok(json!({ "docs_url": state.cfg.docs_public_url, "can_edit": false, "config": config }))
+}
+
 // ---------------------------------------------------------------------------
 // Endpoints called by the Document Server
 // ---------------------------------------------------------------------------

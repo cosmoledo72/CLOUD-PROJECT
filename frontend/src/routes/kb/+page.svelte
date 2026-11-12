@@ -15,6 +15,9 @@
   import X from '@lucide/svelte/icons/x';
   import Eye from '@lucide/svelte/icons/eye';
   import FilePlus2 from '@lucide/svelte/icons/file-plus-2';
+  import Share2 from '@lucide/svelte/icons/share-2';
+  import Modal from '$lib/Modal.svelte';
+  import PublicLink from '$lib/files/PublicLink.svelte';
 
   let nodes = $state<KbNode[]>([]);
   let expanded = $state<Record<string, boolean>>({});
@@ -200,6 +203,7 @@
       error = (e as Error).message;
     }
   }
+  let shareOpen = $state(false);
 </script>
 
 <svelte:head><title>{current ? `${current.title} — ` : ''}База знаний</title></svelte:head>
@@ -280,6 +284,7 @@
           <h1 class="h">{#if current.icon}<span class="pi">{current.icon}</span>{/if}{current.title}</h1>
           <div class="pact">
             <button class="btn sm" onclick={startEdit}><Pencil size={14} /> Редактировать</button>
+            <button class="btn sm" onclick={() => (shareOpen = true)}><Share2 size={14} /> Поделиться</button>
             <button class="btn ghost sm" title="Вложенная страница" onclick={() => startNew(current!.id)}><FilePlus2 size={15} /></button>
             <button class="btn ghost sm" title="Переместить" onclick={() => { moving = !moving; moveTo = current?.parent_id ?? ''; }}><FolderInput size={15} /></button>
             {#if canDelete}<button class="btn ghost sm danger" title="Удалить" onclick={remove}><Trash2 size={15} /></button>{/if}
@@ -301,6 +306,10 @@
         {/if}
         {#if current.body.trim()}
           <div class="md">{@html html(current.body)}</div>
+          <Modal bind:open={shareOpen} title={`Поделиться: ${current.title}`} width={560}>
+            <p class="faint small share-note">Все сотрудники портала уже видят базу знаний. Чтобы показать страницу заказчику или подрядчику, создайте ссылку для внешних — они увидят только эту страницу.</p>
+            <PublicLink resourceType="kb_page" resourceId={current.id} active={shareOpen} />
+          </Modal>
         {:else}
           <p class="muted empty-body">Страница пока пустая. <button class="linkish" onclick={startEdit}>Добавить текст</button></p>
         {/if}
@@ -339,6 +348,7 @@
 </div>
 
 <style>
+  .share-note { margin: 0 0 12px; }
   .kb { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 16px; align-items: start; }
   .side { padding: 10px; position: sticky; top: 12px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; gap: 8px; }
   .tree { overflow-y: auto; flex: 1; min-height: 60px; }

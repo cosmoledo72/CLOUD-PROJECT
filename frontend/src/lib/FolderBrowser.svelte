@@ -413,10 +413,18 @@
 
   let shareOpen = $state(false);
   let shareTarget = $state<{ type: 'folder' | 'file'; id: string; name: string }>({ type: 'folder', id: '', name: '' });
-  function share(type: 'folder' | 'file', itemId: string, name: string) {
+  let shareFocus = $state<'link' | null>(null);
+  function share(type: 'folder' | 'file', itemId: string, name: string, focus: 'link' | null = null) {
     menu = null;
     shareTarget = { type, id: itemId, name };
+    shareFocus = focus;
     shareOpen = true;
+  }
+  // The row «link» icon: people with full access manage the link for
+  // outsiders; others copy the internal link.
+  function linkAction(item: DragItem, file?: FileItem) {
+    if (canFull) share(item.type, item.id, item.name, 'link');
+    else copyLink(item, file);
   }
 
   let versionsOpen = $state(false);
@@ -636,7 +644,7 @@
                     <button class="ibtn wide" onclick={() => startRename(it)} title="Переименовать" aria-label="Переименовать {f.name}"><Pencil size={17} /></button>
                     <button class="ibtn wide" onclick={() => removeItems([it])} title="Удалить" aria-label="Удалить {f.name}"><Trash2 size={17} /></button>
                   {/if}
-                  <button class="ibtn wide" onclick={() => copyLink(it)} title="Скопировать ссылку" aria-label="Ссылка на {f.name}"><Link2 size={17} /></button>
+                  <button class="ibtn wide" onclick={() => linkAction(it)} title={canFull ? 'Ссылка для внешних' : 'Скопировать ссылку'} aria-label="Ссылка на {f.name}"><Link2 size={17} /></button>
                   <button class="ibtn more" onclick={(e) => openMenu(e, { key: `d:${f.id}`, folder: f })} title="Ещё" aria-label="Ещё: {f.name}" aria-haspopup="menu"><Ellipsis size={17} /></button>
                 </div>
               </td>
@@ -665,7 +673,7 @@
                     <button class="ibtn wide" onclick={() => startRename(it)} title="Переименовать" aria-label="Переименовать {f.name}"><Pencil size={17} /></button>
                     <button class="ibtn wide" onclick={() => removeItems([it])} title="Удалить" aria-label="Удалить {f.name}"><Trash2 size={17} /></button>
                   {/if}
-                  <button class="ibtn wide" onclick={() => copyLink(it, f)} title="Скопировать ссылку" aria-label="Ссылка на {f.name}"><Link2 size={17} /></button>
+                  <button class="ibtn wide" onclick={() => linkAction(it, f)} title={canFull ? 'Ссылка для внешних' : 'Скопировать ссылку'} aria-label="Ссылка на {f.name}"><Link2 size={17} /></button>
                   <button class="ibtn more" onclick={(e) => openMenu(e, { key: `f:${f.id}`, file: f })} title="Ещё" aria-label="Ещё: {f.name}" aria-haspopup="menu"><Ellipsis size={17} /></button>
                 </div>
               </td>
@@ -702,7 +710,8 @@
     {/if}
     {#if canFull}<button class="mi" role="menuitem" onclick={() => openPicker('move', [it])}><FolderInput size={16} />Переместить…</button>{/if}
     <button class="mi" role="menuitem" onclick={() => openPicker('copy', [it])}><Copy size={16} />Копировать…</button>
-    <button class="mi touch" role="menuitem" onclick={() => copyLink(it, m.file)}><Link2 size={16} />Скопировать ссылку</button>
+    <button class="mi" role="menuitem" onclick={() => copyLink(it, m.file)}><Link2 size={16} />Ссылка для сотрудников</button>
+    {#if canFull}<button class="mi" role="menuitem" onclick={() => share(it.type, it.id, it.name, 'link')}><Link2 size={16} />Ссылка для внешних…</button>{/if}
     {#if canFull}
       <button class="mi" role="menuitem" onclick={() => share(it.type, it.id, it.name)}><Users size={16} />Доступ…</button>
       <button class="mi touch" role="menuitem" onclick={() => startRename(it)}><Pencil size={16} />Переименовать</button>
@@ -764,7 +773,7 @@
               exclude={pickerMode === 'move' ? pickerItems.filter((i) => i.type === 'folder').map((i) => i.id) : []} onpick={picked} />
 
 {#if shareTarget.id}
-  <ShareDialog bind:open={shareOpen} resourceType={shareTarget.type} resourceId={shareTarget.id} title={shareTarget.name} />
+  <ShareDialog bind:open={shareOpen} resourceType={shareTarget.type} resourceId={shareTarget.id} title={shareTarget.name} focus={shareFocus} />
 {/if}
 
 <style>

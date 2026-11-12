@@ -36,7 +36,7 @@
   let { children } = $props();
 
   // Pages reachable without a session: sign-in and the one-time links from emails.
-  const isPublic = (p: string) => p === '/login' || p.startsWith('/invite/') || p.startsWith('/reset/') || p === '/register' || p.startsWith('/register/');
+  const isPublic = (p: string) => p === '/login' || p.startsWith('/invite/') || p.startsWith('/reset/') || p.startsWith('/s/') || p === '/register' || p.startsWith('/register/');
   // Full-screen routes render without the application shell.
   const bare = $derived(page.url.pathname.startsWith('/editor/') || isPublic(page.url.pathname));
 

@@ -27,6 +27,7 @@ mod ooxml;
 mod onlyoffice;
 mod project_labels;
 mod projects;
+mod public_links;
 mod ratelimit;
 mod registration;
 mod scheduling;
@@ -198,6 +199,15 @@ fn router(state: AppState) -> Router {
         // Documents
         .route("/folders/roots", get(files::roots))
         .route("/storage/usage", get(file_ops::usage))
+        .route("/links", get(public_links::get).put(public_links::save))
+        .route("/links/{id}", delete(public_links::revoke))
+        .route("/admin/links", get(public_links::admin_list))
+        .route("/admin/links/settings", put(public_links::admin_toggle))
+        .route("/public/s/{token}", get(public_links::open))
+        .route("/public/s/{token}/unlock", post(public_links::unlock))
+        .route("/public/s/{token}/download/{file}", get(public_links::download))
+        .route("/public/s/{token}/zip", get(public_links::zip))
+        .route("/public/s/{token}/view/{file}", get(public_links::view))
         .route("/files/copy", post(file_ops::copy))
         .route("/files/zip", post(file_ops::zip))
         .route("/folders", post(files::create_folder))
