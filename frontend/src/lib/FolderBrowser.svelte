@@ -19,6 +19,7 @@
   import Copy from '@lucide/svelte/icons/copy';
   import Users from '@lucide/svelte/icons/users';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import Search from '@lucide/svelte/icons/search';
   import { api, can, docKind, folderName, formatDateTime, type FileItem, type FolderItem, type FolderView, type Version } from '$lib/api';
   import FileIcon from '$lib/FileIcon.svelte';
   import Modal from '$lib/Modal.svelte';
@@ -68,6 +69,7 @@
   $effect(() => {
     id;
     selected = new Set();
+    filter = '';
     load();
   });
 
@@ -100,6 +102,18 @@
   }
   let cols = $state(stored<Record<Col, boolean>>('wh_file_cols', { size: true, date: true, author: true }));
   let colsOpen = $state(false);
+  let colsPos = $state({ x: 0, y: 0 });
+  function openCols(e: MouseEvent) {
+    e.stopPropagation();
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    colsPos = { x: Math.max(8, r.right - 200), y: r.bottom + 6 };
+    colsOpen = !colsOpen;
+  }
+
+  // Quick filter by name inside the open folder.
+  let filter = $state('');
+  const needle = $derived(filter.trim().toLowerCase());
+  const match = (name: string) => !needle || name.toLowerCase().includes(needle);
   function toggleCol(k: Col) {
     cols[k] = !cols[k];
     try { localStorage.setItem('wh_file_cols', JSON.stringify(cols)); } catch { /* storage unavailable */ }
@@ -112,13 +126,13 @@
   }
   const cmpName = (a: string, b: string) => a.localeCompare(b, 'ru', { numeric: true, sensitivity: 'base' });
   const folders = $derived.by(() => {
-    const list = [...(view?.folders ?? [])];
+    const list = (view?.folders ?? []).filter((f) => match(f.name));
     const k = sort.key;
     list.sort((a, b) => (k === 'size' ? a.items - b.items : k === 'date' ? a.created_at.localeCompare(b.created_at) : cmpName(a.name, b.name)) * (sort.desc ? -1 : 1));
     return list;
   });
   const files = $derived.by(() => {
-    const list = [...(view?.files ?? [])];
+    const list = (view?.files ?? []).filter((f) => match(f.name));
     const k = sort.key;
     list.sort((a, b) => (k === 'size' ? a.size_bytes - b.size_bytes : k === 'date' ? a.updated_at.localeCompare(b.updated_at) : cmpName(a.name, b.name)) * (sort.desc ? -1 : 1));
     return list;
@@ -530,6 +544,11 @@
         </div>
       {/if}
       <div class="row tools">
+        <label class="fsearch" title="Найти в этой папке по названию">
+          <Search size={16} />
+          <input type="search" bind:value={filter} placeholder="Поиск в папке" aria-label="Поиск в папке"
+                 onkeydown={(e) => { if (e.key === 'Escape') filter = ''; }} />
+        </label>
         {#if canFull && view.folder.parent_id}
           <button class="btn" onclick={() => share('folder', view!.folder.id, view!.folder.name)}><Users size={16} />Доступ</button>
         {/if}
@@ -577,17 +596,7 @@
             {#if cols.date}<th class="c-date hide-sm">{@render sortHead('date', 'Изменён')}</th>{/if}
             {#if cols.author}<th class="c-author hide-sm">Автор</th>{/if}
             <th class="c-act">
-              <span class="cols-wrap">
-                <button class="ibtn" onclick={() => (colsOpen = !colsOpen)} aria-label="Столбцы" title="Какие столбцы показывать" aria-expanded={colsOpen}><Settings size={16} /></button>
-                {#if colsOpen}
-                  <div class="pop cols" role="menu">
-                    <div class="ph">Столбцы</div>
-                    {#each COLS as c (c.k)}
-                      <label class="check"><input type="checkbox" checked={cols[c.k]} onchange={() => toggleCol(c.k)} />{c.label}</label>
-                    {/each}
-                  </div>
-                {/if}
-              </span>
+              <button class="ibtn" onclick={openCols} aria-label="Столбцы" title="Какие столбцы показывать" aria-expanded={colsOpen}><Settings size={16} /></button>
             </th>
           </tr>
         </thead>
@@ -664,6 +673,9 @@
           {/each}
         </tbody>
       </table>
+      {#if total > 0 && needle && !folders.length && !files.length}
+        <p class="nofind">В этой папке нет «{filter.trim()}». <a href="/search?q={encodeURIComponent(filter.trim())}&type=files">Искать во всех файлах портала</a> — и по тексту внутри документов.</p>
+      {/if}
       {#if total === 0}
         <EmptyState icon={FolderOpen} title="Папка пуста" text={canEdit ? 'Перетащите файлы сюда или нажмите «Загрузить».' : ''} />
       {/if}
@@ -696,6 +708,15 @@
       <button class="mi touch" role="menuitem" onclick={() => startRename(it)}><Pencil size={16} />Переименовать</button>
       <button class="mi danger touch" role="menuitem" onclick={() => { menu = null; removeItems([it]); }}><Trash2 size={16} />Удалить</button>
     {/if}
+  </div>
+{/if}
+
+{#if colsOpen}
+  <div class="pop cols" role="menu" style="left: {colsPos.x}px; top: {colsPos.y}px">
+    <div class="ph">Столбцы</div>
+    {#each COLS as c (c.k)}
+      <label class="check"><input type="checkbox" checked={cols[c.k]} onchange={() => toggleCol(c.k)} />{c.label}</label>
+    {/each}
   </div>
 {/if}
 
@@ -755,7 +776,11 @@
   .bar { width: 120px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
   .bar.warn i { background: var(--warn, #b54708); }
-  .create-wrap, .cols-wrap { position: relative; display: inline-flex; }
+  .create-wrap { position: relative; display: inline-flex; }
+  .fsearch { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius);
+             background: var(--surface); color: var(--text-3); width: 220px; }
+  .fsearch:focus-within { border-color: var(--accent); }
+  .fsearch input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; color: var(--text); }
 
   .list-card { overflow-x: auto; transition: outline-color .1s; outline: 2px dashed transparent; outline-offset: -6px; padding: 0; }
   .list-card.drag { outline-color: var(--accent); background: var(--accent-soft); }
@@ -785,10 +810,11 @@
   .editing { margin-left: 8px; background: var(--warn-soft); color: var(--warn); }
   .sub { display: none; font-size: 12px; color: var(--text-3); margin: 2px 0 0 36px; }
 
-  /* Row icons appear on hover or keyboard focus; «⋯» stays reachable. */
+  /* Row icons are always shown; on touch screens only «⋯» (see below). */
   .acts { display: inline-flex; gap: 2px; justify-content: flex-end; }
-  .acts .wide { opacity: 0; transition: opacity .1s; }
-  .files tr:hover .acts .wide, .files tr:focus-within .acts .wide, .files tr.menu-on .acts .wide { opacity: 1; }
+  /* The action column stays pinned at the right edge when the table scrolls sideways. */
+  .files td.c-act, .files th.c-act { position: sticky; right: 0; z-index: 1; background: var(--surface); box-shadow: -8px 0 8px -8px rgb(16 24 40 / 12%); }
+  .files th.c-act { background: var(--surface-2); }
   .ibtn { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--text-3); cursor: pointer; }
   .ibtn:hover { background: var(--surface-3); color: var(--text); text-decoration: none; }
   .ibtn:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -812,7 +838,7 @@
 
   .pop { position: absolute; z-index: 40; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 6px; text-align: left; color: var(--text); font-size: 13.5px; font-weight: 400; }
   .pop.create { top: calc(100% + 6px); right: 0; width: 220px; }
-  .pop.cols { top: calc(100% + 6px); right: 0; width: 190px; display: grid; gap: 2px; }
+  .pop.cols { position: fixed; z-index: 60; width: 200px; display: grid; gap: 2px; }
   .pop.cols .check { padding: 6px 8px; border-radius: 7px; }
   .pop.cols .check:hover { background: var(--surface-3); }
   .ph { font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); padding: 4px 8px; }
@@ -826,6 +852,7 @@
 
   .notice { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 70; padding: 10px 16px; border-radius: 10px; background: var(--text); color: var(--surface); font-size: 13.5px; box-shadow: var(--shadow-lg); }
   .dnd-hint { margin: 8px 2px 0; }
+  .nofind { margin: 0; padding: 18px; text-align: center; color: var(--text-3); font-size: 13.5px; }
   .embedded .page-head { margin-bottom: 12px; }
   .actions { text-align: right; white-space: nowrap; }
   .up-badge { margin-bottom: 10px; }
@@ -844,5 +871,6 @@
     .c-name { min-width: 0; }
     .rename { min-width: 0; width: 100%; }
     .tools .btn { flex: 1 1 auto; justify-content: center; }
+    .fsearch { width: 100%; }
   }
 </style>
