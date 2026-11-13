@@ -10,3 +10,6 @@ __pycache__/
 # Local backups and HTTPS proxy state
 /backups/
 deploy/caddy-local-root.crt
+
+# Transfer package: git history bundle
+/transfer/*.bundle
