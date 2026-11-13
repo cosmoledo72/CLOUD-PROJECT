@@ -737,7 +737,14 @@ pub fn touch(state: &AppState, user_id: Uuid) {
 
 /// Placeholders about the author of a generated document (`user.*`).
 pub async fn author_values(state: &AppState, user: &CurrentUser) -> ApiResult<Vec<(String, String)>> {
-    let u = load_row(state, user.tenant_id, user.user_id).await?;
+    Ok(person_values(state, user.tenant_id, user.user_id).await?.into_iter().map(|(k, v)| (format!("user.{k}"), v)).collect())
+}
+
+/// Requisites of one person for documents, keyed by the sub-key used in
+/// placeholders (`short_name`, `position`, ...): the author as `user.<sub>`,
+/// a person chosen in a project requisite as `project.<key>.<sub>`.
+pub async fn person_values(state: &AppState, tenant_id: Uuid, user_id: Uuid) -> ApiResult<Vec<(&'static str, String)>> {
+    let u = load_row(state, tenant_id, user_id).await?;
     let full = [u.last_name.as_str(), u.first_name.as_str(), u.middle_name.as_str()]
         .iter()
         .filter(|s| !s.is_empty())
@@ -746,17 +753,30 @@ pub async fn author_values(state: &AppState, user: &CurrentUser) -> ApiResult<Ve
         .join(" ");
     let short = if !u.doc_short_name.is_empty() { u.doc_short_name.clone() } else { short_name(&u.last_name, &u.first_name, &u.middle_name) };
     Ok(vec![
-        ("user.full_name".into(), if full.is_empty() { u.display_name.clone() } else { full }),
-        ("user.short_name".into(), short),
-        ("user.position".into(), if u.doc_position.is_empty() { u.position.clone() } else { u.doc_position.clone() }),
-        ("user.name_genitive".into(), u.name_genitive),
-        ("user.name_dative".into(), u.name_dative),
-        ("user.nrs".into(), u.nrs_number),
-        ("user.qual_cert".into(), u.qual_cert),
-        ("user.power_of_attorney".into(), u.power_of_attorney),
-        ("user.phone".into(), u.phone),
+        ("full_name", if full.is_empty() { u.display_name.clone() } else { full }),
+        ("short_name", short),
+        ("position", if u.doc_position.is_empty() { u.position.clone() } else { u.doc_position.clone() }),
+        ("name_genitive", u.name_genitive),
+        ("name_dative", u.name_dative),
+        ("nrs", u.nrs_number),
+        ("qual_cert", u.qual_cert),
+        ("power_of_attorney", u.power_of_attorney),
+        ("phone", u.phone),
     ])
 }
+
+/// Sub-keys of a person in placeholders, with labels for the catalogue.
+pub const PERSON_SUBKEYS: [(&str, &str); 9] = [
+    ("full_name", "ФИО полностью"),
+    ("short_name", "фамилия и инициалы"),
+    ("position", "должность"),
+    ("name_genitive", "ФИО в родительном падеже"),
+    ("name_dative", "ФИО в дательном падеже"),
+    ("nrs", "номер в НРС"),
+    ("qual_cert", "квалификационный аттестат"),
+    ("power_of_attorney", "доверенность"),
+    ("phone", "рабочий телефон"),
+];
 
 /// «Петрова А. С.» from the parts of the name.
 pub fn short_name(last: &str, first: &str, middle: &str) -> String {

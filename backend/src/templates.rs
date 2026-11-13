@@ -108,9 +108,42 @@ pub async fn catalogue(state: &AppState, tenant_id: Uuid, scope: &str) -> ApiRes
     ]);
     for d in load_defs(state, tenant_id, false).await? {
         let group = if scope == "sales" { format!("Проект сделки: {}", d.section) } else { format!("Реквизиты: {}", d.section) };
+        if d.field_type == "user" {
+            for (sub, what) in crate::profiles::PERSON_SUBKEYS {
+                out.push(PlaceholderInfo { key: format!("project.{}.{sub}", d.key), label: format!("{}: {what}", d.label), group: group.clone() });
+            }
+        }
         out.push(PlaceholderInfo { key: format!("project.{}", d.key), label: d.label, group });
     }
     Ok(out)
+}
+
+/// The catalogue key a template marker stands for. Project requisites are
+/// written `{{project.key}}`, but `{{key}}` and `{{project_key}}` are accepted
+/// too (people often type them so); built-in markers win over a bare key.
+pub fn resolve_key<'a>(marker: &'a str, known: &impl Fn(&str) -> bool) -> Option<std::borrow::Cow<'a, str>> {
+    use std::borrow::Cow;
+    if known(marker) {
+        return Some(Cow::Borrowed(marker));
+    }
+    let candidates = [
+        marker.strip_prefix("project_").map(|rest| format!("project.{rest}")),
+        Some(format!("project.{marker}")),
+    ];
+    candidates.into_iter().flatten().find(|c| known(c)).map(Cow::Owned)
+}
+
+/// Add the alternative spellings of project requisite markers to a value map
+/// (see [`resolve_key`]); existing entries are never replaced.
+fn add_aliases(map: &mut HashMap<String, String>) {
+    let extra: Vec<(String, String)> = map
+        .iter()
+        .filter_map(|(k, v)| k.strip_prefix("project.").map(|rest| (rest.to_string(), v.clone())))
+        .flat_map(|(rest, v)| [(format!("project_{rest}"), v.clone()), (rest, v)])
+        .collect();
+    for (k, v) in extra {
+        map.entry(k).or_insert(v);
+    }
 }
 
 #[derive(Deserialize)]
@@ -204,9 +237,23 @@ pub async fn values_for(state: &AppState, user: &CurrentUser, project_id: Uuid, 
 
     let values = project_values(state, project_id).await?;
     for def in load_defs(state, user.tenant_id, true).await? {
-        let text = values.get(&def.key).map(|v| format_value(&def, v, &users)).unwrap_or_default();
+        let raw = values.get(&def.key);
+        let text = raw.map(|v| format_value(&def, v, &users)).unwrap_or_default();
+        if def.field_type == "user" {
+            // Requisites of the chosen person: {{project.chief_engineer.short_name}} etc.
+            let person = raw.and_then(Value::as_str).and_then(|s| Uuid::parse_str(s).ok()).filter(|id| users.contains_key(id));
+            let parts = match person {
+                Some(id) => crate::profiles::person_values(state, user.tenant_id, id).await?,
+                None => vec![],
+            };
+            for (sub, _) in crate::profiles::PERSON_SUBKEYS {
+                let v = parts.iter().find(|(k, _)| *k == sub).map(|(_, v)| v.clone()).unwrap_or_default();
+                map.insert(format!("project.{}.{sub}", def.key), v);
+            }
+        }
         map.insert(format!("project.{}", def.key), text);
     }
+    add_aliases(&mut map);
     Ok(map)
 }
 
@@ -562,7 +609,10 @@ pub async fn check(
     let missing: Vec<Value> = keys
         .iter()
         .filter(|k| values.get(*k).is_none_or(|v| v.is_empty()))
-        .map(|k| json!({ "key": k, "label": labels.get(k).cloned().unwrap_or_else(|| format!("неизвестная метка {{{{{k}}}}}")), "known": labels.contains_key(k) }))
+        .map(|k| match resolve_key(k, &|c: &str| labels.contains_key(c)) {
+            Some(r) => json!({ "key": k, "label": labels[r.as_ref()].clone(), "known": true, "resolved": r }),
+            None => json!({ "key": k, "label": format!("неизвестная метка {{{{{k}}}}}"), "known": false }),
+        })
         .collect();
     Ok(Json(json!({ "missing": missing })))
 }
@@ -637,7 +687,29 @@ pub async fn generate(
 
 #[cfg(test)]
 mod tests {
-    use super::format_number;
+    use super::{add_aliases, format_number, resolve_key};
+    use std::collections::HashMap;
+
+    #[test]
+    fn marker_aliases() {
+        let known = |k: &str| ["date", "project.gip", "project.chief_engineer", "project.chief_engineer.short_name"].contains(&k);
+        assert_eq!(resolve_key("project.gip", &known).as_deref(), Some("project.gip"));
+        assert_eq!(resolve_key("gip", &known).as_deref(), Some("project.gip"));
+        assert_eq!(resolve_key("project_chief_engineer", &known).as_deref(), Some("project.chief_engineer"));
+        assert_eq!(resolve_key("chief_engineer.short_name", &known).as_deref(), Some("project.chief_engineer.short_name"));
+        assert_eq!(resolve_key("date", &known).as_deref(), Some("date"));
+        assert_eq!(resolve_key("nothing", &known), None);
+
+        let mut m: HashMap<String, String> = [("date", "1"), ("project.date", "2"), ("project.gip", "Иванов")]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        add_aliases(&mut m);
+        assert_eq!(m["date"], "1", "built-in markers are not overridden");
+        assert_eq!(m["gip"], "Иванов");
+        assert_eq!(m["project_gip"], "Иванов");
+        assert_eq!(m["project_date"], "2");
+    }
 
     #[test]
     fn russian_numbers() {

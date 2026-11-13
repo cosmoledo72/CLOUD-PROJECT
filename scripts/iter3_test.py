@@ -114,6 +114,23 @@ def main():
     assert "10 ноября 2026 г., 1 250 000,5 руб., ГИП Игорь Петров, " in doc, doc
     assert "{{" not in doc
     assert "ООО «Инж-Групп» © 2026" in part(out, "word/footer1.xml")
+    # Markers without the "project." prefix and requisites of the chosen person.
+    member.call("PUT", f"/users/{mid}/profile", {"last_name": "Петров", "first_name": "Игорь", "middle_name": "Олегович",
+                                                "doc_position": "Главный инженер проекта", "nrs_number": "П-777"})
+    alias_docx = make_docx('<w:p><w:r><w:t>[{{code}}|{{project_code}}|{{chief_engineer}}|{{project_chief_engineer}}|'
+                           '{{project.chief_engineer.short_name}}|{{chief_engineer.position}}|{{project_chief_engineer.nrs}}|{{date}}|{{gip}}]</w:t></w:r></w:p>')
+    body, hdr = multipart({"name": "Алиасы"}, "alias.docx", alias_docx)
+    alias = owner.call("POST", "/admin/templates", body, headers=hdr)["id"]
+    cat_keys = {p["key"] for p in owner.call("GET", "/templates/placeholders")["placeholders"]}
+    assert {"project.chief_engineer.short_name", "project.chief_engineer.qual_cert"} <= cat_keys
+    chk = member.call("GET", f"/projects/{pid}/templates/{alias}/check?today=2026-11-10")["missing"]
+    assert [(m["key"], m["known"]) for m in chk] == [("gip", False)], chk
+    ga = member.call("POST", f"/projects/{pid}/generate", {"template_id": alias, "today": "2026-11-10"})
+    doc = part(member.call("GET", f"/files/{ga['file_id']}/download", raw=True), "word/document.xml")
+    assert "[125-24-ТО|125-24-ТО|Игорь Петров|Игорь Петров|Петров И. О.|Главный инженер проекта|П-777|10.11.2026|]" in doc, doc
+    owner.call("DELETE", f"/admin/templates/{alias}")
+    step("templates: {{key}} and {{project_key}} mean {{project.key}}; person requisites {{project.<key>.short_name}} etc.")
+
     g2 = member.call("POST", f"/projects/{pid}/generate", {"template_id": act})
     assert g2["name"] == "Акт 125-24-ТО (2).docx"
     gx = owner.call("POST", f"/projects/{pid}/generate", {"template_id": smeta, "name": "Смета/v1"})

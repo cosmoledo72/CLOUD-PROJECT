@@ -26,7 +26,41 @@
   });
 
   const known = $derived(new Set(catalogue.map((p) => p.key)));
-  const labelOf = (k: string) => catalogue.find((p) => p.key === k)?.label ?? 'неизвестная метка';
+  // Same rule as the server: {{key}} and {{project_key}} also mean {{project.key}}.
+  function resolve(k: string): string | null {
+    if (known.has(k)) return k;
+    for (const c of [k.startsWith('project_') ? 'project.' + k.slice(8) : '', 'project.' + k]) if (c && known.has(c)) return c;
+    return null;
+  }
+  const labelOf = (k: string) => {
+    const r = resolve(k);
+    const label = catalogue.find((p) => p.key === r)?.label;
+    if (!label) return 'неизвестная метка';
+    return r === k ? label : `${label} — то же, что {{${r}}}`;
+  };
+  // Closest catalogue key for a marker that was not found (typo help).
+  function suggest(k: string): string | null {
+    const tail = (x: string) => x.replace(/^project[._]/, '');
+    const t = tail(k);
+    let best: string | null = null;
+    let bestD = 3;
+    for (const p of catalogue) {
+      const c = tail(p.key);
+      const d = c.includes(t) || t.includes(c) ? 1 : distance(t, c);
+      if (d < bestD) [best, bestD] = [p.key, d];
+    }
+    return best;
+  }
+  function distance(a: string, b: string): number {
+    if (Math.abs(a.length - b.length) > 2) return 99;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
   const categories = $derived([...new Set(templates.map((t) => t.category))]);
   const groups = $derived.by(() => {
     const out: { name: string; items: PlaceholderInfo[] }[] = [];
@@ -145,7 +179,7 @@
       {#each categories as cat (cat)}
         <h3 class="cat">{cat}</h3>
         {#each templates.filter((t) => t.category === cat) as t (t.id)}
-          {@const unknown = t.placeholders.filter((k) => !known.has(k))}
+          {@const unknown = t.placeholders.filter((k) => !resolve(k))}
           <article class="card tpl">
             <div class="row">
               <span class="ext {t.extension}">{t.extension === 'docx' ? 'W' : 'X'}</span>
@@ -164,11 +198,20 @@
             {:else}
               <div class="chips">
                 {#each t.placeholders as k}
-                  <span class="chip" class:bad={!known.has(k)} title={labelOf(k)}>{k}</span>
+                  <span class="chip" class:bad={!resolve(k)} title={labelOf(k)}>{k}</span>
                 {/each}
               </div>
               {#if unknown.length}
-                <p class="warn-note">Неизвестные метки: {unknown.join(', ')}. Проверьте написание или добавьте реквизит с таким ключом — иначе они будут заменены пустым текстом.</p>
+                <div class="warn-note">
+                  <p>Не найдены метки — при формировании документа они будут заменены пустым текстом:</p>
+                  <ul>
+                    {#each unknown as k}
+                      {@const s = suggest(k)}
+                      <li><span class="mono">{'{{' + k + '}}'}</span>{#if s}{' — возможно, имелось в виду'} <span class="mono">{'{{' + s + '}}'}</span> ({labelOf(s)}){/if}</li>
+                    {/each}
+                  </ul>
+                  <p>Реквизиты проекта пишутся как <span class="mono">{'{{project.ключ}}'}</span>; ключи всех реквизитов — в справочнике справа и в разделе «Администрирование → Реквизиты проектов».</p>
+                </div>
               {/if}
             {/if}
           </article>
@@ -236,6 +279,8 @@
   .chips { display: flex; flex-wrap: wrap; gap: 4px; }
   .chip { font-family: var(--mono); font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); }
   .chip.bad { background: var(--danger-soft); color: var(--danger); }
+  .warn-note p, .warn-note ul { margin: 2px 0; }
+  .warn-note ul { padding-left: 18px; }
   .warn-note { margin: 0; background: var(--warn-soft); color: var(--warn); padding: 6px 10px; border-radius: var(--radius); font-size: 12.5px; }
   .empty { padding: 32px; text-align: center; display: grid; gap: 6px; }
   .empty h3, .empty p { margin: 0; }

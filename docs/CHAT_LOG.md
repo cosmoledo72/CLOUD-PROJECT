@@ -349,9 +349,15 @@ SPEC.md из знаний проекта, затем сверь их с кодо
 - Свои реквизиты сотрудников настраивает администратор прямо в карточке.
 - Новые подстановки в шаблонах: ФИО и должность автора, падежи, НРС, аттестат, доверенность.
 
+### Итерация 28в (13.11.2026). Метки шаблонов
+Заказчик прислал снимок: после добавления реквизитов шаблон «Титульный лист отчёта (пример)» показывает неизвестные метки `gip` и `project_chief_engineer`. Причина: реквизиты проекта в шаблоне пишутся с префиксом `project.` (`{{project.chief_engineer}}`), а предупреждение неверно советовало «добавить реквизит с таким ключом».
+- Метки `{{ключ}}` и `{{project_ключ}}` теперь понимаются как `{{project.ключ}}`; встроенные метки важнее.
+- Для реквизита-сотрудника (ГИП) — подметки из его карточки: `{{project.chief_engineer.short_name}}`, `.position`, `.nrs`, `.qual_cert` и др.; они есть в справочнике меток.
+- Предупреждение перечисляет ненайденные метки, предлагает ближайший ключ и объясняет правильное написание; проверка перед генерацией тоже учитывает другие написания.
+
 ## Проверки
 
-Сквозные тесты (Python, `scripts/*_test.py`): smoke, admin, iter3, iter4, crm, mail, notify, crm_tasks, sales_docs, kb_chat, tasks, project_edit, modules, registration, view_settings, finance, calendar, attachments, backups, project_views, time, gantt_export, search, file_ops, public_links, kb_editor, crm_reports, profile — проходят (modules — с новым модулем `tools`). `cargo test` — 72 теста; `svelte-check` — без ошибок и предупреждений; сборка фронтенда проходит.
+Сквозные тесты (Python, `scripts/*_test.py`): smoke, admin, iter3, iter4, crm, mail, notify, crm_tasks, sales_docs, kb_chat, tasks, project_edit, modules, registration, view_settings, finance, calendar, attachments, backups, project_views, time, gantt_export, search, file_ops, public_links, kb_editor, crm_reports, profile — проходят (iter3 — с новым шагом о других написаниях меток) (modules — с новым модулем `tools`). `cargo test` — 73 теста; `svelte-check` — без ошибок и предупреждений; сборка фронтенда проходит.
 
 ## Следующие шаги
 
