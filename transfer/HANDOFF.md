@@ -7,7 +7,7 @@
 | Что | Где |
 |---|---|
 | Рабочая копия кода | `D:\PROGRAMS\CLOUD-PROJECT` на компьютере заказчика (git там нет) |
-| История git (41 коммит, итерации 1–28в) | `transfer/cloud-project.bundle` — восстановить: `git clone cloud-project.bundle cp` |
+| История git (итерации 1–28в и пакет переноса) | `transfer/cloud-project.bundle` — восстановить: `git clone cloud-project.bundle cp` |
 | Техническое задание | `docs/SPEC.md` |
 | Дорожная карта | `docs/PLAN.md` |
 | История решений по итерациям | `docs/CHAT_LOG.md` |
