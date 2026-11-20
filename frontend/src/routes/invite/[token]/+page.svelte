@@ -66,7 +66,7 @@
     <div class="stack">
       <h2>Ссылка недействительна</h2>
       <p class="muted">Приглашение устарело, уже использовано или было заменено новым. Попросите администратора портала отправить приглашение ещё раз.</p>
-      <a class="btn full" href="/login">Ко входу</a>
+      <a class="btn primary full" href="/login">Ко входу</a>
     </div>
   {:else if info}
     <form onsubmit={(e) => { e.preventDefault(); accept(); }}>

@@ -63,6 +63,13 @@ def main():
     assert created["entries"][0]["target_name"] in ("Admin", "Member")
     step("overview stats, audit pagination and action filter")
 
+    # Built-in root folders are shown under their Russian names in the audit log.
+    common = owner.call("GET", "/folders/roots")["common"]
+    owner.call("PUT", "/links", {"resource_type": "folder", "resource_id": common, "no_expiry": True})
+    entry = next(e for e in admin.call("GET", "/admin/audit?action=link.")["entries"] if e["action"] == "link.created")
+    assert entry["target_name"] == "Общие документы", entry
+    step("audit: root folder name is localized")
+
     # --- Portal settings ------------------------------------------------------
     admin.call("PATCH", "/admin/portal", {"name": "Партнер-Гарант Инжиниринг"})
     assert admin.call("GET", "/admin/portal")["name"] == "Партнер-Гарант Инжиниринг"

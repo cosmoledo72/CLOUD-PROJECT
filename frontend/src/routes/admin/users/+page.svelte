@@ -136,7 +136,7 @@
     <tbody>
       {#each shown as u (u.id)}
         <tr class:inactive={!u.is_active}>
-          <td><a href="/team/{u.id}">{u.display_name}</a>{#if u.invite_pending}{' '}<span class="badge warn" title="Пользователь ещё не принял приглашение">приглашён</span>{/if}{#if !u.is_active}{' '}<span class="badge grey">заблокирован</span>{/if}</td>
+          <td class="who"><a href="/team/{u.id}">{u.display_name}</a>{#if u.invite_pending}{' '}<span class="badge warn" title="Пользователь ещё не принял приглашение">приглашён</span>{/if}{#if !u.is_active}{' '}<span class="badge grey">заблокирован</span>{/if}</td>
           <td class="muted">{u.email}</td>
           <td>
             {#if manageable(u)}
@@ -232,6 +232,7 @@
 </Modal>
 
 <style>
+  .who a { white-space: nowrap; }
   .toolbar { margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
   .search { max-width: 320px; margin-bottom: 12px; }
   .n { font-size: 11.5px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--text-3); line-height: 18px; }

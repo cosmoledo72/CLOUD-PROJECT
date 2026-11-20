@@ -70,7 +70,7 @@
 {#if problems.length}<div class="warn-box">Чтобы сохранить: {problems.join('; ')}.</div>{/if}
 
 <div class="card">
-  <table class="list">
+  <table class="list stages">
     <thead><tr><th class="w-ord"></th><th>Название</th><th>Тип</th><th>Вероятность, %</th><th>Цвет</th><th></th></tr></thead>
     <tbody>
       {#each rows as r, i (r)}
@@ -103,4 +103,19 @@
   .num { width: 90px; }
   .color { width: 40px; height: 30px; border: 1px solid var(--border); border-radius: var(--radius); background: none; padding: 2px; cursor: pointer; }
   .foot { padding: 10px; }
+  /* Phone: each stage becomes a two-line block instead of a wide table row. */
+  @media (max-width: 640px) {
+    .stages thead { display: none; }
+    .stages, .stages tbody { display: block; }
+    .stages tr { display: grid; grid-template-columns: auto minmax(0, 1fr) 64px auto; gap: 8px; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); }
+    .stages td { padding: 0; border: 0; }
+    .stages td.w-ord { width: auto; grid-area: 2 / 1; }
+    .stages td:nth-child(2) { grid-area: 1 / 1 / 2 / 4; }
+    .stages td:nth-child(3) { grid-area: 2 / 2; }
+    .stages td:nth-child(4) { grid-area: 2 / 3; }
+    .stages td:nth-child(5) { grid-area: 2 / 4; }
+    .stages td:nth-child(6) { grid-area: 1 / 4; }
+    .stages .num { width: 100%; }
+    .stages tbody tr:hover td { background: none; }
+  }
 </style>

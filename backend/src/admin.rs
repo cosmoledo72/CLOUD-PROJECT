@@ -94,7 +94,7 @@ struct AuditRow {
 }
 
 async fn load_audit(state: &AppState, tenant_id: Uuid, q: &AuditQuery, limit: i64) -> ApiResult<Vec<AuditRow>> {
-    Ok(sqlx::query_as::<_, AuditRow>(
+    let mut rows = sqlx::query_as::<_, AuditRow>(
         "SELECT a.id, a.user_id, u.display_name AS user_name, a.action, a.target_type, a.target_id,
                 COALESCE(f.name, fo.name, p.name, tu.display_name) AS target_name, a.details, a.created_at
            FROM audit_log a
@@ -120,7 +120,14 @@ async fn load_audit(state: &AppState, tenant_id: Uuid, q: &AuditQuery, limit: i6
     .bind(q.before)
     .bind(limit)
     .fetch_all(&state.db)
-    .await?)
+    .await?;
+    // Built-in root folders are stored under English names; show them as the interface does.
+    for r in &mut rows {
+        if let Some(n) = r.target_name.as_mut() {
+            *n = crate::files::display_folder_name(n);
+        }
+    }
+    Ok(rows)
 }
 
 pub async fn audit(State(state): State<AppState>, user: CurrentUser, Query(q): Query<AuditQuery>) -> ApiResult<Json<Value>> {

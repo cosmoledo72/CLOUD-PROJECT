@@ -137,7 +137,7 @@
     Обязательные реквизиты запрашиваются при создании проекта.
   </p>
   <div class="spacer"></div>
-  <button class="btn" onclick={applyPreset}>Типовой набор: обследование и проектирование</button>
+  <button class="btn" onclick={applyPreset} title="Типовой набор: обследование и проектирование">Типовой набор<span class="long">: обследование и проектирование</span></button>
   <button class="btn primary" onclick={openNew}><Plus size={16} />Добавить реквизит</button>
 </div>
 {#if error}<div class="error-box">{error}</div>{/if}
@@ -242,6 +242,7 @@
   .seg { margin-bottom: 12px; }
   .toolbar { margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .intro { margin: 0; max-width: 620px; }
+  @media (max-width: 480px) { .long { display: none; } }
   .ok-box, .error-box { margin-bottom: 12px; }
   .sec { margin-bottom: 12px; overflow-x: auto; container-type: inline-size; }
   .sec-title { padding: 12px 14px 4px; margin: 0; }
@@ -261,6 +262,20 @@
     .c-act { width: 120px; }
     .fields col:nth-child(4) { width: 120px; }
     .fields td.actions { display: grid; justify-items: end; gap: 2px; }
+  }
+  /* Phone: a field is a block — arrows and name on top, type, flags and actions below. */
+  @container (max-width: 560px) {
+    .fields { min-width: 0; }
+    .fields, .fields tbody { display: block; }
+    .fields colgroup { display: none; }
+    .fields tr { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .fields tr:last-child { border-bottom: 0; }
+    .fields td { padding: 0; border: 0; overflow: visible; }
+    .fields td.order { grid-row: 1 / 5; }
+    .fields td.flags:empty { display: none; }
+    .fields td.actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start; }
+    .fields .opts { white-space: normal; }
+    .fields tbody tr:hover td { background: none; }
   }
   tr.archived td:not(.actions) { opacity: .55; }
   .empty { padding: 32px; text-align: center; display: grid; gap: 8px; justify-items: center; }

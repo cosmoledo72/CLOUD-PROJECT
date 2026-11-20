@@ -92,3 +92,38 @@ test('телефон: меню и переход в проекты @phone', asyn
   await page.getByRole('link', { name: 'Проекты' }).click();
   await expect(page).toHaveURL(/\/projects/);
 });
+
+test('панель уведомлений перекрывает заголовки страницы', async ({ page }) => {
+  const p = await newPortal();
+  await call(p, 'POST', 'projects', { name: 'Проект для проверки слоёв' });
+  await login(page, p);
+  await page.goto('/projects');
+  await expect(page.getByText('Проект для проверки слоёв')).toBeVisible();
+  await page.locator('button[aria-label^="Уведомления"]:visible').first().click();
+  const panel = page.locator('.panel[role=dialog]');
+  await expect(panel).toBeVisible();
+  // Every sampled point of the panel must belong to the panel, not to the page underneath.
+  const foreign = await panel.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    let n = 0;
+    for (let x = r.left + 4; x < r.right - 4; x += 16)
+      for (let y = r.top + 4; y < r.bottom - 4; y += 16) {
+        const hit = document.elementFromPoint(x, y);
+        if (hit && !el.contains(hit)) n++;
+      }
+    return n;
+  });
+  expect(foreign).toBe(0);
+});
+
+test('телефон: страницы настроек не шире экрана @phone', async ({ page }) => {
+  const p = await newPortal();
+  await call(p, 'POST', 'admin/project-fields/preset', {});
+  await login(page, p);
+  for (const path of ['/admin/organization', '/admin/requisites', '/crm/settings']) {
+    await page.goto(path);
+    await page.waitForLoadState('networkidle');
+    const width = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(width, path).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
+  }
+});

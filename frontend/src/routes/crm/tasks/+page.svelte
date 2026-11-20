@@ -1,4 +1,6 @@
 <script lang="ts">
+  import CalendarCheck from '@lucide/svelte/icons/calendar-check';
+  import EmptyState from '#lib/EmptyState.svelte';
   import { api, type CrmTask, type UserItem } from '#lib/api.ts';
   import { crmDue } from '#lib/crm/due.svelte.ts';
   import TaskDialog from '#lib/crm/TaskDialog.svelte';
@@ -110,9 +112,8 @@
     {/each}
   </section>
 {:else if loaded && !groups.length}
-  <div class="card empty-state">
-    <p class="muted">Запланированных дел нет.</p>
-    <p class="faint small">Дела — это следующие шаги по клиентам: позвонить, встретиться, отправить КП. О каждом придёт напоминание.</p>
+  <div class="card">
+    <EmptyState icon={CalendarCheck} title="Запланированных дел нет" text="Дела — это следующие шаги по клиентам: позвонить, встретиться, отправить КП. О каждом придёт напоминание." />
   </div>
 {:else}
   {#each groups as g (g.key)}
@@ -135,7 +136,5 @@
   .g-overdue { color: var(--danger); }
   .g-today { color: var(--warn); }
   .empty { margin: 10px 0; }
-  .empty-state { padding: 36px; text-align: center; }
-  .empty-state p { margin: 0 0 6px; }
   @media (max-width: 760px) { .who { flex: 1; } }
 </style>

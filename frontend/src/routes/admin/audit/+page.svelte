@@ -112,7 +112,7 @@
       {#each entries as e (e.id)}
         <tr class:alert={isAlert(e.action)}>
           <td class="muted nowrap">{formatDateTime(e.created_at)}</td>
-          <td>{e.user_name ?? 'Система'}</td>
+          <td class="nowrap">{e.user_name ?? 'Система'}</td>
           <td>{actionLabel[e.action] ?? e.action}</td>
           <td class="muted">{e.target_name ?? ''}</td>
           <td class="faint">{details(e)}</td>

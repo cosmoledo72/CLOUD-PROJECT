@@ -263,6 +263,9 @@
   aside {
     background: var(--surface); color: var(--text); border-right: 1px solid var(--border);
     display: flex; flex-direction: column; padding: 14px 12px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    /* The sidebar is a stacking context (sticky); keep it, and the notification panel inside it,
+       above the page's sticky headers and popovers (z 1–40) but below modals (z 60+). */
+    z-index: 45;
     scrollbar-width: thin;
   }
   .nav-count { margin-left: auto; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600;
@@ -332,7 +335,7 @@
   @media (max-width: 860px) {
     .shell, .shell.collapsed { grid-template-columns: 1fr; }
     .collapse { display: none; }
-    aside { position: fixed; z-index: 20; width: 260px; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow-lg); }
+    aside { position: fixed; z-index: 45; width: 260px; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow-lg); }
     aside.open { transform: none; }
     .mobile-bar { display: flex; }
     .bell-desktop { display: none; }

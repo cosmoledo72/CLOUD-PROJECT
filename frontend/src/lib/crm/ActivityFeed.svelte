@@ -106,10 +106,10 @@
             {#if a.contact_name}<span>· {a.contact_name}</span>{/if}
             {#if a.deal_title && !dealId}<span>· <a href="/crm/deals/{a.deal_id}">{a.deal_title}</a></span>{/if}
             <span class="faint">· {a.author_name ?? '—'} · {formatDateTime(a.happened_at)}</span>
-            {#if canDelete(a)}<button class="btn ghost sm del" onclick={() => remove(a)} aria-label="Удалить">✕</button>{/if}
           </div>
           <div class="body">{a.body}</div>
         </div>
+        {#if canDelete(a)}<button class="btn ghost sm del" onclick={() => remove(a)} aria-label="Удалить">✕</button>{/if}
       </li>
     {/each}
   </ol>
@@ -132,7 +132,7 @@
   .k-meeting .ic { background: var(--warn-soft); color: var(--warn); }
   .content { flex: 1; min-width: 0; }
   .meta { font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
-  .del { margin-left: auto; height: 20px; padding: 0 6px; color: var(--text-3); }
+  .del { flex: none; align-self: flex-start; height: 20px; padding: 0 6px; color: var(--text-3); }
   .body { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
   .k-system .body { color: var(--text-2); font-size: 13px; }
 </style>

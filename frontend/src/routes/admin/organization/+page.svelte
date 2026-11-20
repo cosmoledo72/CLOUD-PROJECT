@@ -145,7 +145,7 @@
     </div>
     {#if numError}<div class="error-box">{numError}</div>{/if}
     {#if numNotice}<div class="ok-box">{numNotice}</div>{/if}
-    <table class="list">
+    <table class="list numbering">
       <thead><tr><th>Документ</th><th>Формат номера</th><th>Следующий номер в {numbering[0]?.year} г.</th><th>Будет выглядеть так</th></tr></thead>
       <tbody>
         {#each numbering as x (x.kind)}
@@ -153,7 +153,7 @@
             <td>{docKindLabel[x.kind]}</td>
             <td><input class="input mono pat" bind:value={x.pattern} maxlength="60" aria-label="Формат: {x.label}" /></td>
             <td><input class="input num" type="number" min="1" bind:value={x.next} aria-label="Следующий номер: {x.label}" /></td>
-            <td class="mono">{x.pattern.includes('{n') ? preview(x.pattern, x.next) : '— нужен {n}'}</td>
+            <td class="mono example">{x.pattern.includes('{n') ? preview(x.pattern, x.next) : '— нужен {n}'}</td>
           </tr>
         {/each}
       </tbody>
@@ -182,4 +182,17 @@
   .ok-box, .error-box { margin: 0; }
   @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } .wide { grid-column: auto; } }
+  /* Phone: one block per document kind — name and example on top, the two inputs below. */
+  @media (max-width: 640px) {
+    .numbering thead { display: none; }
+    .numbering, .numbering tbody { display: block; }
+    .numbering tr { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .numbering td { padding: 0; border: 0; }
+    .numbering td:first-child { font-weight: 500; }
+    .numbering .example { grid-area: 1 / 2; text-align: right; color: var(--text-2); }
+    .numbering td:nth-child(2) { grid-area: 2 / 1; }
+    .numbering td:nth-child(3) { grid-area: 2 / 2; }
+    .numbering .pat, .numbering .num { width: 100%; }
+    .numbering tbody tr:hover td { background: none; }
+  }
 </style>

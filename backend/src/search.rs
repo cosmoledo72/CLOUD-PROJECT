@@ -309,7 +309,7 @@ async fn run(state: &AppState, user: &CurrentUser, key: &str, q: &Q, limit: i64,
             rows.into_iter()
                 .map(|(id, name, ext, size, updated, folder, sn)| {
                     json!({ "type": "files", "id": id, "title": name, "ext": ext, "size": size, "updated_at": updated,
-                            "subtitle": folder, "snippet": snip(sn), "url": format!("/editor/{id}") })
+                            "subtitle": crate::files::display_folder_name(&folder), "snippet": snip(sn), "url": format!("/editor/{id}") })
                 })
                 .collect()
         }
