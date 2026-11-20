@@ -1,4 +1,8 @@
 <script lang="ts">
+  import Mail from '@lucide/svelte/icons/mail';
+  import UserRound from '@lucide/svelte/icons/user-round';
+  import Building2 from '@lucide/svelte/icons/building-2';
+  import PasswordInput from '#lib/PasswordInput.svelte';
   // Self-registration in an existing portal: an application that the applicant
   // confirms by mail and an administrator approves (or that joins at once for
   // the portal's own mail domains).
@@ -86,20 +90,20 @@
   {:else}
     <form onsubmit={(e) => { e.preventDefault(); submit(); }}>
       <h2>Регистрация на портале</h2>
-      <label class="field">Портал <input class="input" bind:value={tenant} required autocomplete="organization" placeholder="company" /></label>
+      <label class="field">Портал <span class="with-icon"><Building2 size={17} /><input class="input" bind:value={tenant} required autocomplete="organization" placeholder="company" /></span></label>
       {#if closed}
         <div class="info-box">
           {brand ? `Регистрация на портале ${quoted(brand.display_name)} закрыта. Попросите администратора прислать приглашение.` : 'Портал не найден. Проверьте адрес портала.'}
         </div>
       {/if}
-      <label class="field">Имя и фамилия <input class="input" bind:value={name} required maxlength="200" autocomplete="name" /></label>
-      <label class="field">Email <input class="input" type="email" bind:value={email} required autocomplete="email" /></label>
+      <label class="field">Имя и фамилия <span class="with-icon"><UserRound size={17} /><input class="input" bind:value={name} required maxlength="200" autocomplete="name" placeholder="Имя Фамилия" /></span></label>
+      <label class="field">Email <span class="with-icon"><Mail size={17} /><input class="input" type="email" bind:value={email} required autocomplete="email" placeholder="name@company.ru" /></span></label>
       <label class="field">Пароль
-        <input class="input" type="password" bind:value={password} required minlength="10" autocomplete="new-password" />
-        <span class="faint">не менее 10 символов</span>
+        <PasswordInput bind:value={password} autocomplete="new-password" minlength={10} strength />
+        {#if !password}<span class="faint">не менее 10 символов</span>{/if}
       </label>
       <label class="field">Пароль ещё раз
-        <input class="input" type="password" bind:value={password2} required autocomplete="new-password" aria-invalid={mismatch} />
+        <PasswordInput bind:value={password2} autocomplete="new-password" invalid={mismatch} />
         {#if mismatch}<span class="err small">пароли не совпадают</span>{/if}
       </label>
       <label class="field"><span>Комментарий для администратора <span class="faint">(необязательно)</span></span>

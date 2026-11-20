@@ -26,6 +26,8 @@ pub struct Config {
     pub cookie_secure: bool,
     /// Session lifetime in hours.
     pub session_ttl_hours: i64,
+    /// Lifetime of a session with «Запомнить меня» (REMEMBER_TTL_HOURS, default 720 = 30 days).
+    pub remember_ttl_hours: i64,
     /// Allow public self-service tenant registration.
     pub signup_enabled: bool,
     /// Allowed browser origin for CORS (the SvelteKit app), if served separately.
@@ -100,6 +102,7 @@ impl Config {
             storage_dir: var_or("STORAGE_DIR", "./data/blobs"),
             cookie_secure: var_or("COOKIE_SECURE", "false") == "true",
             session_ttl_hours: var_or("SESSION_TTL_HOURS", "168").parse().context("SESSION_TTL_HOURS")?,
+            remember_ttl_hours: var_or("REMEMBER_TTL_HOURS", "720").parse().context("REMEMBER_TTL_HOURS")?,
             signup_enabled: var_or("SIGNUP_ENABLED", "true") == "true",
             cors_origin: std::env::var("CORS_ORIGIN").ok().filter(|s| !s.is_empty()),
             max_upload_bytes: var_or("MAX_UPLOAD_MB", "512").parse::<usize>().context("MAX_UPLOAD_MB")? * 1024 * 1024,

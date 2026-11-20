@@ -1,4 +1,6 @@
 <script lang="ts">
+  import UserRound from '@lucide/svelte/icons/user-round';
+  import PasswordInput from '#lib/PasswordInput.svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { api, authError, quoted, type Me } from '#lib/api.ts';
@@ -80,13 +82,13 @@
         </div>
       {/if}
       <div class="field"><span>Логин</span><div class="ro">{info.email}</div></div>
-      <label class="field">Как вас называть <input class="input" bind:value={name} required autocomplete="name" /></label>
+      <label class="field">Как вас называть <span class="with-icon"><UserRound size={17} /><input class="input" bind:value={name} required autocomplete="name" /></span></label>
       <label class="field">Пароль
-        <input class="input" type="password" bind:value={password} required minlength="10" autocomplete="new-password" />
-        <span class="faint">не менее 10 символов</span>
+        <PasswordInput bind:value={password} autocomplete="new-password" minlength={10} strength />
+        {#if !password}<span class="faint">не менее 10 символов</span>{/if}
       </label>
       <label class="field">Пароль ещё раз
-        <input class="input" type="password" bind:value={password2} required autocomplete="new-password" aria-invalid={mismatch} />
+        <PasswordInput bind:value={password2} autocomplete="new-password" invalid={mismatch} />
         {#if mismatch}<span class="err small">пароли не совпадают</span>{/if}
       </label>
       {#if error}<div class="error-box">{error}</div>{/if}

@@ -178,6 +178,7 @@ fn router(state: AppState) -> Router {
         .route("/admin/registration/requests/{id}/reject", post(registration::reject))
         .route("/public/register", post(registration::register))
         .route("/public/register/confirm", post(registration::confirm))
+        .route("/public/system", get(branding::public_system))
         .route("/public/branding/{slug}", get(branding::get_public))
         .route("/public/branding/{slug}/{kind}", get(branding::serve_asset))
         .route("/project-fields", get(fields::list_defs))

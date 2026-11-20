@@ -88,18 +88,20 @@ async fn start_session(
     tenant_id: Uuid,
     user_id: Uuid,
     stage: &str,
+    remember: bool,
 ) -> ApiResult<axum_extra::extract::cookie::Cookie<'static>> {
     let (token, hash) = new_token();
     let (ttl_sql, hours) = if stage == "active" {
-        (format!("{} hours", state.cfg.session_ttl_hours), state.cfg.session_ttl_hours)
+        let h = if remember { state.cfg.remember_ttl_hours } else { state.cfg.session_ttl_hours };
+        (format!("{h} hours"), h)
     } else {
         (format!("{PENDING_MFA_MINUTES} minutes"), 1)
     };
     let ua = headers.get("user-agent").and_then(|v| v.to_str().ok()).map(|s| s.chars().take(300).collect::<String>());
     let ip = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok()).map(str::to_string);
     sqlx::query(
-        "INSERT INTO sessions (token_hash, tenant_id, user_id, stage, user_agent, ip, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, now() + $7::interval)",
+        "INSERT INTO sessions (token_hash, tenant_id, user_id, stage, user_agent, ip, expires_at, remember)
+         VALUES ($1, $2, $3, $4, $5, $6, now() + $7::interval, $8)",
     )
     .bind(&hash)
     .bind(tenant_id)
@@ -108,6 +110,7 @@ async fn start_session(
     .bind(ua)
     .bind(ip)
     .bind(ttl_sql)
+    .bind(remember)
     .execute(&state.db)
     .await?;
     Ok(session_cookie(token, state.cfg.cookie_secure, hours))
@@ -172,7 +175,7 @@ pub async fn signup(
     tx.commit().await?;
 
     state.audit(tenant_id, Some(user_id), "tenant.created", Some("tenant"), Some(tenant_id), json!({ "slug": slug })).await;
-    let cookie = start_session(&state, &headers, tenant_id, user_id, "active").await?;
+    let cookie = start_session(&state, &headers, tenant_id, user_id, "active", false).await?;
     Ok((jar.add(cookie), Json(load_me(&state, user_id).await?)))
 }
 
@@ -185,6 +188,9 @@ pub struct LoginRequest {
     pub tenant: String,
     pub email: String,
     pub password: String,
+    /// «Запомнить меня»: a longer session (REMEMBER_TTL_HOURS).
+    #[serde(default)]
+    pub remember: bool,
 }
 
 pub async fn login(
@@ -231,10 +237,10 @@ pub async fn login(
 
     state.limiter.reset(&account_key);
     if totp_enabled {
-        let cookie = start_session(&state, &headers, tenant_id, user_id, "pending_mfa").await?;
+        let cookie = start_session(&state, &headers, tenant_id, user_id, "pending_mfa", req.remember).await?;
         return Ok((jar.add(cookie), Json(json!({ "mfa_required": true }))));
     }
-    let cookie = start_session(&state, &headers, tenant_id, user_id, "active").await?;
+    let cookie = start_session(&state, &headers, tenant_id, user_id, "active", req.remember).await?;
     state.audit(tenant_id, Some(user_id), "auth.login", None, None, json!({})).await;
     Ok((jar.add(cookie), Json(json!({ "mfa_required": false, "user": load_me(&state, user_id).await? }))))
 }
@@ -268,15 +274,15 @@ pub async fn verify_totp(
     let token = token_from_headers(&headers).ok_or(ApiError::Unauthorized)?;
     let hash = token_hash(&token);
 
-    let row: Option<(Uuid, Uuid, i16, Option<Vec<u8>>, String, String)> = sqlx::query_as(
-        "SELECT s.user_id, s.tenant_id, s.mfa_attempts, u.totp_secret_enc, u.email::text, t.name
+    let row: Option<(Uuid, Uuid, i16, Option<Vec<u8>>, String, String, bool)> = sqlx::query_as(
+        "SELECT s.user_id, s.tenant_id, s.mfa_attempts, u.totp_secret_enc, u.email::text, t.name, s.remember
            FROM sessions s JOIN users u ON u.id = s.user_id JOIN tenants t ON t.id = s.tenant_id
           WHERE s.token_hash = $1 AND s.stage = 'pending_mfa' AND s.expires_at > now()",
     )
     .bind(&hash)
     .fetch_optional(&state.db)
     .await?;
-    let (user_id, tenant_id, attempts, secret, email, tenant_name) = row.ok_or(ApiError::Unauthorized)?;
+    let (user_id, tenant_id, attempts, secret, email, tenant_name, remember) = row.ok_or(ApiError::Unauthorized)?;
     let secret = secret.and_then(|b| super::mfa::open_secret(&state, &b)).ok_or(ApiError::Unauthorized)?;
     // Wrong codes count across pending sessions, so re-logging in does not reset the budget.
     let mfa_key = format!("mfa:{user_id}");
@@ -305,7 +311,7 @@ pub async fn verify_totp(
 
     state.limiter.reset(&mfa_key);
     sqlx::query("DELETE FROM sessions WHERE token_hash = $1").bind(&hash).execute(&state.db).await?;
-    let cookie = start_session(&state, &headers, tenant_id, user_id, "active").await?;
+    let cookie = start_session(&state, &headers, tenant_id, user_id, "active", remember).await?;
     if by_recovery {
         let left = super::mfa::codes_left(&state, user_id).await?;
         state.audit(tenant_id, Some(user_id), "auth.recovery_code_used", None, None, json!({ "left": left })).await;

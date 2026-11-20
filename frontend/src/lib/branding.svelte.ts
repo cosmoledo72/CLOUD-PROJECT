@@ -96,6 +96,38 @@ export function loadFont(key: FontKey) {
 }
 
 export const DEFAULT_ACCENT = '#1f4e79';
+
+/**
+ * The product's own look on sign-in pages that belong to no portal yet: the
+ * first start of the system, «Создать портал», a mistyped portal address.
+ * Same as the CLOUD-PROJECT portal: logo, half-tone background, light tone.
+ */
+export const PRODUCT_BRAND: Branding = {
+  tenant_slug: '',
+  display_name: 'CLOUD-PROJECT',
+  accent_color: DEFAULT_ACCENT,
+  sidebar_style: 'light',
+  color_scheme: 'auto',
+  corner_style: 'default',
+  login_title: '',
+  login_subtitle: '',
+  logo_plate: false,
+  login_logo_plate: false,
+  login_bg_overlay: 0,
+  login_bg_tone: 'light',
+  login_bg_base: 'light',
+  font_family: 'noto_sans',
+  font_size: 'default',
+  has_logo: true,
+  has_icon: true,
+  has_login_bg: true,
+  asset_version: 1,
+  logo_url: '/brand/cloud-project-logo.svg',
+  icon_url: '/brand/cloud-project-icon.svg',
+  login_bg_url: '/brand/cloud-project-login-bg.svg'
+};
+/** Light logo of the product for the dark colour scheme. */
+export const PRODUCT_LOGO_DARK = '/brand/cloud-project-logo-white.svg';
 const DEFAULT_FAVICON = '/favicon.svg';
 
 /**
@@ -159,13 +191,11 @@ class BrandingStore {
     }
   }
 
+  /** No portal: the product's own look (PRODUCT_BRAND) on the whole page. */
   reset() {
     this.current = null;
-    const root = document.documentElement;
-    ['--brand', '--on-brand', '--on-brand-dark'].forEach((p) => root.style.removeProperty(p));
-    delete root.dataset.theme;
-    delete root.dataset.corners;
-    setFavicon(DEFAULT_FAVICON);
+    applyBranding(document.documentElement, PRODUCT_BRAND);
+    setFavicon(PRODUCT_BRAND.icon_url ?? DEFAULT_FAVICON);
     document.title = 'CLOUD-PROJECT';
   }
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PasswordInput from '#lib/PasswordInput.svelte';
   import Avatar from '#lib/Avatar.svelte';
   import UserRound from '@lucide/svelte/icons/user-round';
   import { goto } from '$app/navigation';
@@ -151,7 +152,7 @@
       <input class="pm-user" type="email" name="username" autocomplete="username" value={session.me.email} readonly tabindex="-1" aria-hidden="true" />
       <div class="grid">
         <label class="field">Текущий пароль <input class="input" type="password" bind:value={current} autocomplete="current-password" /></label>
-        <label class="field">Новый пароль (не менее 10 символов) <input class="input" type="password" bind:value={next} minlength="10" autocomplete="new-password" /></label>
+        <label class="field">Новый пароль (не менее 10 символов) <PasswordInput bind:value={next} autocomplete="new-password" minlength={10} required={false} strength /></label>
       </div>
       <p class="faint">После смены пароля все сеансы будут завершены.</p>
       <button class="btn" disabled={!current || next.length < 10} onclick={changePassword}>Сменить пароль</button>

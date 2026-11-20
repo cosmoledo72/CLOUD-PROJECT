@@ -6,8 +6,12 @@
   import AuthShell from '#lib/AuthShell.svelte';
   import { session } from '#lib/session.svelte.ts';
   import Building2 from '@lucide/svelte/icons/building-2';
-  import Lock from '@lucide/svelte/icons/lock';
   import Mail from '@lucide/svelte/icons/mail';
+  import UserRound from '@lucide/svelte/icons/user-round';
+  import Link2 from '@lucide/svelte/icons/link-2';
+  import Rocket from '@lucide/svelte/icons/rocket';
+  import PasswordInput from '#lib/PasswordInput.svelte';
+  import { onMount } from 'svelte';
 
   type Mode = 'login' | 'mfa' | 'recovery' | 'signup' | 'forgot' | 'sent';
   let mode = $state<Mode>('login');
@@ -21,11 +25,45 @@
   // ?portal=<slug> comes from the login link shown in the admin panel.
   const linkPortal = page.url.searchParams.get('portal') ?? '';
   let tenant = $state(linkPortal || storedTenant());
-  let email = $state('');
+  // «Запомнить меня»: a 30-day session; the choice itself is remembered too.
+  let remember = $state((() => { try { return localStorage.getItem('wh_remember') === '1'; } catch { return false; } })());
+  $effect(() => {
+    try { localStorage.setItem('wh_remember', remember ? '1' : '0'); } catch { /* storage unavailable */ }
+  });
+  function storedEmail(): string {
+    try { return localStorage.getItem('wh_email') ?? ''; } catch { return ''; }
+  }
+  let email = $state(storedEmail());
   let password = $state('');
   let code = $state('');
   let tenantName = $state('');
   let displayName = $state('');
+
+  // --- First start of the system, portal creation allowed -------------------
+  let firstRun = $state(false);
+  let signupEnabled = $state(false);
+  onMount(async () => {
+    try {
+      const s = await api.get<{ first_run: boolean; signup_enabled: boolean }>('/public/system');
+      firstRun = s.first_run;
+      signupEnabled = s.signup_enabled;
+      if (firstRun) mode = 'signup';
+    } catch {
+      /* older server: keep the login form */
+    }
+  });
+
+  // Portal address suggested from the organisation's name until edited by hand.
+  let slugTouched = $state(false);
+  const TR: Record<string, string> = { а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya' };
+  function slugFrom(name: string): string {
+    const words = name.toLowerCase().replace(/[«»"']/g, ' ').replace(/(^|\s)(ооо|оао|зао|пао|ао|ип|llc|ltd)(?=\s|$)/g, ' ');
+    const t = [...words].map((c) => TR[c] ?? c).join('');
+    return t.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  }
+  $effect(() => {
+    if (mode === 'signup' && !slugTouched) tenant = slugFrom(tenantName);
+  });
 
   // --- Portal branding (debounced lookup by slug) -----------------------------
   let brand = $state<Branding | null>(null);
@@ -79,7 +117,10 @@
   }
 
   async function finish(me: Me) {
-    try { localStorage.setItem('wh_tenant', me.tenant_slug); } catch { /* storage unavailable */ }
+    try {
+      localStorage.setItem('wh_tenant', me.tenant_slug);
+      localStorage.setItem('wh_email', me.email);
+    } catch { /* storage unavailable */ }
     session.me = me;
     session.loaded = true;
     await branding.loadOwn();
@@ -87,7 +128,7 @@
   }
 
   const login = () => run(async () => {
-    const r = await api.post<{ mfa_required: boolean; user?: Me }>('/auth/login', { tenant, email, password });
+    const r = await api.post<{ mfa_required: boolean; user?: Me }>('/auth/login', { tenant, email, password, remember });
     if (r.mfa_required) {
       mode = 'mfa';
       code = '';
@@ -113,7 +154,7 @@
   {#if mode === 'login'}
     <form onsubmit={(e) => { e.preventDefault(); login(); }}>
       <div class="intro">
-        {#if portalChip && brand}
+        {#if portalChip && brand && !brand.logo_url}
           <span class="chip"><span class="dot"></span>{brand.display_name}</span>
         {/if}
         <h2>Вход на портал</h2>
@@ -123,8 +164,11 @@
         <label class="field">Портал <span class="with-icon"><Building2 size={17} /><input class="input" bind:this={portalInput} bind:value={tenant} required autocomplete="organization" placeholder="company" /></span></label>
       {/if}
       <label class="field">Email <span class="with-icon"><Mail size={17} /><input class="input" type="email" bind:value={email} required autocomplete="username" placeholder="name@company.ru" /></span></label>
-      <label class="field">Пароль <span class="with-icon"><Lock size={17} /><input class="input" type="password" bind:value={password} required autocomplete="current-password" /></span></label>
-      <button type="button" class="linkish forgot" onclick={() => { mode = 'forgot'; error = ''; }}>Забыли пароль?</button>
+      <label class="field">Пароль <PasswordInput bind:value={password} /></label>
+      <div class="row-between">
+        <label class="check remember"><input type="checkbox" bind:checked={remember} />Запомнить меня</label>
+        <button type="button" class="linkish forgot" onclick={() => { mode = 'forgot'; error = ''; }}>Забыли пароль?</button>
+      </div>
       {#if error}<div class="error-box">{error}</div>{/if}
       <button class="btn primary full" disabled={busy}>Войти</button>
       {#if brand?.registration_open}
@@ -175,20 +219,32 @@
     </form>
   {:else}
     <form onsubmit={(e) => { e.preventDefault(); signup(); }}>
-      <h2>Новый портал</h2>
-      <label class="field">Название организации <input class="input" bind:value={tenantName} required /></label>
+      <div class="intro">
+        {#if firstRun}
+          <span class="chip first"><Rocket size={14} />Первый запуск</span>
+          <h2>Создайте портал организации</h2>
+          <p class="muted">Вы станете его владельцем и сможете пригласить сотрудников</p>
+        {:else}
+          <h2>Новый портал</h2>
+          <p class="muted">Отдельное пространство для другой организации</p>
+        {/if}
+      </div>
+      {#if !signupEnabled && firstRun}
+        <div class="note-box">Создание порталов на этом сервере выключено. Для первого портала запустите сервер один раз с <code>PROD_SIGNUP_ENABLED=true</code> в <code>.env</code> (SPEC, раздел 12).</div>
+      {/if}
+      <label class="field">Название организации <span class="with-icon"><Building2 size={17} /><input class="input" bind:value={tenantName} required autocomplete="organization" placeholder="ООО «Партнер-Гарант»" /></span></label>
       <label class="field">Адрес портала
-        <input class="input" bind:value={tenant} required pattern="[a-z0-9][a-z0-9\-]{'{'}1,62{'}'}" placeholder="company" />
-        <span class="faint">латиница в нижнем регистре, цифры и «-»</span>
+        <span class="with-icon"><Link2 size={17} /><input class="input" bind:value={tenant} oninput={() => (slugTouched = true)} required pattern="[a-z0-9][a-z0-9\-]{'{'}1,62{'}'}" placeholder="partner-garant" /></span>
+        <span class="faint">{tenant ? `Вход сотрудников: ${location.host}/login?portal=${tenant}` : 'латиница в нижнем регистре, цифры и «-»'}</span>
       </label>
-      <label class="field">Ваше имя <input class="input" bind:value={displayName} required autocomplete="name" /></label>
-      <label class="field">Email <input class="input" type="email" bind:value={email} required autocomplete="username" /></label>
-      <label class="field">Пароль <input class="input" type="password" bind:value={password} required minlength="10" autocomplete="new-password" />
-        <span class="faint">не менее 10 символов</span>
+      <label class="field">Ваше имя <span class="with-icon"><UserRound size={17} /><input class="input" bind:value={displayName} required autocomplete="name" placeholder="Имя Фамилия" /></span></label>
+      <label class="field">Email <span class="with-icon"><Mail size={17} /><input class="input" type="email" bind:value={email} required autocomplete="username" placeholder="name@company.ru" /></span></label>
+      <label class="field">Пароль <PasswordInput bind:value={password} autocomplete="new-password" minlength={10} strength />
+        {#if !password}<span class="faint">не менее 10 символов</span>{/if}
       </label>
       {#if error}<div class="error-box">{error}</div>{/if}
-      <button class="btn primary full" disabled={busy}>Создать портал</button>
-      <button type="button" class="btn ghost full" onclick={() => { mode = 'login'; error = ''; }}>У меня уже есть портал</button>
+      <button class="btn primary full" disabled={busy || (firstRun && !signupEnabled)}>Создать портал</button>
+      {#if !firstRun}<button type="button" class="btn ghost full" onclick={() => { mode = 'login'; error = ''; }}>У меня уже есть портал</button>{/if}
     </form>
   {/if}
   {#snippet below()}
@@ -196,7 +252,7 @@
       {#if portalChip}
         <span>Другой портал? <button type="button" class="linkish" onclick={changePortal}>Сменить</button></span>
       {:else}<span></span>{/if}
-      <button type="button" class="linkish" onclick={() => { mode = 'signup'; error = ''; }}>Создать портал</button>
+      {#if signupEnabled}<button type="button" class="linkish" onclick={() => { mode = 'signup'; error = ''; tenantName = ''; slugTouched = false; }}>Создать портал</button>{/if}
     {/if}
   {/snippet}
 </AuthShell>
@@ -209,11 +265,16 @@
   .linkish.alt { display: block; margin: 10px auto 2px; font-size: 13.5px; text-align: center; }
   .rcode { letter-spacing: .14em; text-transform: uppercase; }
   .rcode::placeholder { text-transform: none; letter-spacing: .14em; }
-  .forgot { justify-self: end; font-size: 13px; margin-top: -4px; }
+  .forgot { font-size: 13px; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; }
+  .remember { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
   .join { margin: 0; text-align: center; font-size: 13.5px; color: var(--text-2); }
   .intro { display: grid; gap: 2px; margin-bottom: 6px; }
   .chip { justify-self: start; display: inline-flex; align-items: center; gap: 7px; margin-bottom: 14px;
           padding: 4px 11px; border-radius: 99px; font-size: 12.5px; font-weight: 500;
           background: color-mix(in srgb, var(--brand) 9%, transparent); color: var(--accent); }
+  .chip.first { gap: 6px; background: var(--accent-soft); }
+  .note-box { font-size: 13px; line-height: 1.5; padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); }
+  .note-box code { font-size: 12px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
 </style>

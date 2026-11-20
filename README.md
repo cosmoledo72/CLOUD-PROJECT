@@ -150,6 +150,7 @@ The simulated Document Server listens on port 9999, so run the backend with `DOC
 | `STORAGE_DIR` | | Blob directory (default `./data/blobs`) |
 | `COOKIE_SECURE` | | `true` behind HTTPS |
 | `SESSION_TTL_HOURS` | | Default `168` |
+| `REMEMBER_TTL_HOURS` | | Session lifetime with «Запомнить меня», default `720` (30 days) |
 | `SIGNUP_ENABLED` | | Allow public portal registration (default `true`) |
 | `MAX_UPLOAD_MB` | | Default `512` |
 | `CORS_ORIGIN` | | Only if the SPA is served from another origin |

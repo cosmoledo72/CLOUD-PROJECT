@@ -23,7 +23,7 @@
 
 ## 2. Состояние
 
-Сделаны итерации 1–29, 33 (SvelteKit 3) и 32 (защита 2FA, резервные коды, письма владельцу о сбоях копий, GitHub Actions, Playwright) — 20.11.2026; 30 и 31 отложены заказчиком. Последняя — **29 «Гигиена и надёжность»** (20.11.2026, по ревизии — документ проекта AUDIT_2026-11-20.md): расписание резервных копий в портале (час — в «Резервных копиях», пояс — пояс системного портала, миграция 0030), догоняющая копия, плашка «Портал обновлён» и запрет кэширования `index.html`, защитные заголовки nginx, обновление зависимостей, clippy, git в рабочей папке и GitHub.
+Сделаны итерации 1–29, 33 (SvelteKit 3) и 32 (защита 2FA, резервные коды, письма владельцу о сбоях копий, GitHub Actions, Playwright) — 20.11.2026; 34 (страницы входа: оформление CLOUD-PROJECT без портала, первый запуск, «Запомнить меня», поле пароля) — 21.11.2026; 30 и 31 отложены заказчиком. Последняя — **29 «Гигиена и надёжность»** (20.11.2026, по ревизии — документ проекта AUDIT_2026-11-20.md): расписание резервных копий в портале (час — в «Резервных копиях», пояс — пояс системного портала, миграция 0030), догоняющая копия, плашка «Портал обновлён» и запрет кэширования `index.html`, защитные заголовки nginx, обновление зависимостей, clippy, git в рабочей папке и GitHub.
 
 Следующее по плану (PLAN.md, пересчитан 20.11.2026): итерация 30 «Запуск в офисе» (A1–A4, нужен заказчик); пилот A5–A7; итерация 31 — XLSX и расширенные шаблоны (C8); 32 — D3, оповещения, CI (D6), Playwright (D7); 33 — SvelteKit 3.
 
@@ -63,7 +63,7 @@ python3 transfer/dev-env/seed/seed.py   # portal "demo"
 
 Демо-портал: `demo`, владелец o@example.com / owner-password-1; Борис Ковалёв — b@example.com / boris-password-1 (или b-password-123 по seed.py); Анна Петрова — a@example.com. Остальные `seed*.py` дозаполняют проекты, финансы, CRM (пути внутри скриптов — `/home/claude/cp/...`).
 
-Сквозные тесты (31 файл, onlyoffice_live_test — только с настоящим ONLYOFFICE). Проще всего — `scripts/run_e2e.sh` (с `WEB=http://localhost:8090`, если запущен nginx с `frontend/nginx.conf`); то же запускается на GitHub (`.github/workflows/ci.yml`, раздел 13 SPEC):
+Сквозные тесты (32 файла, onlyoffice_live_test — только с настоящим ONLYOFFICE). Проще всего — `scripts/run_e2e.sh` (с `WEB=http://localhost:8090`, если запущен nginx с `frontend/nginx.conf`); то же запускается на GitHub (`.github/workflows/ci.yml`, раздел 13 SPEC):
 
 ```bash
 export BACKUP_DIR=/home/claude/run/backups BACKUP_PORTAL=bkptest BACKUP_ALERT_SECS=2 PGHOST=localhost PGUSER=postgres PGPASSWORD=postgres PGDATABASE=workhub BLOBS_DIR=/home/claude/run/data

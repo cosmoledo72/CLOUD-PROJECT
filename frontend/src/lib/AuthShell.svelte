@@ -1,7 +1,7 @@
 <script lang="ts">
   // Two-pane layout of the sign-in pages: portal branding on the left, the form on the right.
   import type { Snippet } from 'svelte';
-  import { loginHero, type Branding } from '#lib/branding.svelte.ts';
+  import { branding, loginHero, PRODUCT_BRAND, PRODUCT_LOGO_DARK, type Branding } from '#lib/branding.svelte.ts';
   import type { Component } from 'svelte';
   import FileText from '@lucide/svelte/icons/file-text';
   import FolderKanban from '@lucide/svelte/icons/folder-kanban';
@@ -10,14 +10,38 @@
 
   let { brand = null, children, below }: { brand?: Branding | null; children: Snippet; below?: Snippet } = $props();
 
+  // No portal (first start, «Создать портал», unknown address): the product's own look.
+  const product = $derived(!brand);
+  const b = $derived(brand ?? PRODUCT_BRAND);
+  $effect(() => {
+    if (!brand && !branding.current) branding.reset();
+  });
+
+  // Dark colour scheme (portal setting or the system's): a light-toned panel
+  // would glare next to the dark form, so it turns dark with the picture dimmed.
+  let systemDark = $state(false);
+  $effect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    systemDark = mq.matches;
+    const on = (e: MediaQueryListEvent) => (systemDark = e.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  });
+  const dark = $derived(b.color_scheme === 'dark' || (b.color_scheme === 'auto' && systemDark));
+  const darkened = $derived(dark && b.login_bg_tone === 'light');
+  const heroStyle = $derived(
+    darkened
+      ? loginHero({ login_bg_tone: 'dark', login_bg_base: '#111b27', login_bg_overlay: 40 }, b.login_bg_url)
+      : loginHero(b, b.login_bg_url)
+  );
+  const logoSrc = $derived(product && dark ? PRODUCT_LOGO_DARK : b.logo_url);
+  // A dark logo on the darkened panel gets a white plate.
+  const plate = $derived(darkened && !product ? true : b.login_logo_plate !== false);
+
   // An empty title hides the heading; the portal name is used only when there is
   // no logo or icon either, so the page never ends up without any identity.
-  const title = $derived(
-    !brand ? 'CLOUD-PROJECT' : brand.login_title.trim() || (brand.logo_url || brand.icon_url ? '' : brand.display_name)
-  );
-  const subtitle = $derived(
-    brand ? brand.login_subtitle : 'Документы, совместное редактирование и проекты в одном рабочем пространстве'
-  );
+  const title = $derived(b.login_title.trim() || (b.logo_url || b.icon_url ? '' : b.display_name));
+  const subtitle = $derived(b.login_subtitle);
   // What the portal is for, under the title (not over a custom photo).
   const features: [Component, string][] = [
     [FolderKanban, 'Проекты, задачи и график работ'],
@@ -27,28 +51,27 @@
 </script>
 
 <div class="wrap">
-  <section class="hero" class:photo={!!brand?.login_bg_url} class:light={brand?.login_bg_tone === 'light'}
-           aria-label="Портал"
-           style={brand ? loginHero(brand, brand.login_bg_url) : ''}>
+  <section class="hero" class:photo={!!b.login_bg_url} class:light={b.login_bg_tone === 'light' && !darkened}
+           aria-label="Портал" style={heroStyle}>
     <div class="hero-inner">
-      {#if brand?.logo_url}
-        <div class="logo-plate" class:bare={brand.login_logo_plate === false}><img src={brand.logo_url} alt={brand.display_name} /></div>
-      {:else if brand?.icon_url}
-        <img class="hero-icon" src={brand.icon_url} alt="" width="56" height="56" />
+      {#if logoSrc}
+        <div class="logo-plate" class:bare={!plate}><img src={logoSrc} alt={b.display_name} /></div>
+      {:else if b.icon_url}
+        <img class="hero-icon" src={b.icon_url} alt="" width="56" height="56" />
       {:else}
         <svg viewBox="0 0 32 32" width="52" height="52" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor" opacity=".16"/><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" transform="translate(4 4.5)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="currentColor"/></svg>
       {/if}
       <div class="text">
         {#if title}<h1>{title}</h1>{/if}
         {#if subtitle}<p>{subtitle}</p>{/if}
-        {#if !brand?.login_bg_url}
+        {#if !b.login_bg_url}
           <ul class="feats">
             {#each features as [Icon, text] (text)}<li><span class="fi"><Icon size={18} /></span>{text}</li>{/each}
           </ul>
         {/if}
       </div>
     </div>
-    <div class="powered">Работает на CLOUD-PROJECT</div>
+    {#if !product}<div class="powered">Работает на CLOUD-PROJECT</div>{/if}
   </section>
 
   <section class="form-side">

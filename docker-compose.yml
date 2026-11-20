@@ -50,6 +50,8 @@ services:
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-512}
       TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
       LOGIN_ACCOUNT_LIMIT: ${LOGIN_ACCOUNT_LIMIT:-8}
+      # Session lifetime with «Запомнить меня» on the login page (hours).
+      REMEMBER_TTL_HOURS: ${REMEMBER_TTL_HOURS:-720}
       LOGIN_IP_LIMIT: ${LOGIN_IP_LIMIT:-30}
       SIGNUP_IP_LIMIT: ${SIGNUP_IP_LIMIT:-10}
       # Address users open the portal at; used in links sent by email.

@@ -103,6 +103,14 @@ pub async fn get_own(State(state): State<AppState>, user: CurrentUser) -> ApiRes
     Ok(Json(with_urls(load_by_tenant(&state, user.tenant_id).await?)))
 }
 
+/// `GET /api/public/system` — what the sign-in pages need before any portal is
+/// known: whether this is the first start (no portals yet) and whether new
+/// portals may be created here. The number of portals is not disclosed.
+pub async fn public_system(State(state): State<AppState>) -> ApiResult<Json<Value>> {
+    let any: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM tenants)").fetch_one(&state.db).await?;
+    Ok(Json(json!({ "first_run": !any, "signup_enabled": state.cfg.signup_enabled })))
+}
+
 /// Public branding by portal slug, used by the login page.
 pub async fn get_public(State(state): State<AppState>, Path(slug): Path<String>) -> ApiResult<Json<Value>> {
     let b = sqlx::query_as::<_, Branding>(&format!("{BRANDING_SELECT} WHERE t.slug = $1 AND t.status = 'active'"))

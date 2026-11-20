@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PasswordInput from '#lib/PasswordInput.svelte';
   import { page } from '$app/state';
   import { api, authError, quoted } from '#lib/api.ts';
   import AuthShell from '#lib/AuthShell.svelte';
@@ -60,11 +61,11 @@
       <h2>Новый пароль</h2>
       <p class="muted">Портал {quoted(info.tenant_name)}, учётная запись {info.email}.</p>
       <label class="field">Новый пароль
-        <input class="input" type="password" bind:value={password} required minlength="10" autocomplete="new-password" />
-        <span class="faint">не менее 10 символов</span>
+        <PasswordInput bind:value={password} autocomplete="new-password" minlength={10} strength />
+        {#if !password}<span class="faint">не менее 10 символов</span>{/if}
       </label>
       <label class="field">Ещё раз
-        <input class="input" type="password" bind:value={password2} required autocomplete="new-password" aria-invalid={mismatch} />
+        <PasswordInput bind:value={password2} autocomplete="new-password" invalid={mismatch} />
         {#if mismatch}<span class="err small">пароли не совпадают</span>{/if}
       </label>
       {#if error}<div class="error-box">{error}</div>{/if}
