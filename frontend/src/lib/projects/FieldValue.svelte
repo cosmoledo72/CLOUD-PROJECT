@@ -1,8 +1,8 @@
 <script lang="ts">
   // One requisite value of a project in the list: deadline as a coloured pill,
   // person with an avatar, money, code in monospace, customer, yes/no.
-  import { formatDate, formatFieldValue, type FieldDef } from '$lib/api';
-  import { avatarHue, companyOf, deadline, initials, isCode, isDeadline, isMoney, money } from '$lib/fieldLook';
+  import { formatDate, formatFieldValue, type FieldDef } from '#lib/api.ts';
+  import { avatarHue, companyOf, deadline, initials, isCode, isDeadline, isMoney, money } from '#lib/fieldLook.ts';
 
   let {
     def,

@@ -3,7 +3,7 @@
   // the URL returned by the backend and mounts DocsAPI.DocEditor with the
   // server-signed config.
   import { page } from '$app/state';
-  import { api } from '$lib/api';
+  import { api } from '#lib/api.ts';
 
   interface EditorResponse {
     docs_url: string;

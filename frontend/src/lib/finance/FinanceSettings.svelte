@@ -1,8 +1,8 @@
 <script lang="ts">
   // Finance settings (finance editors): income and expense categories, the
   // invoice payment term.
-  import { api, plainMessage, type FinanceCategory, type PayKind } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, plainMessage, type FinanceCategory, type PayKind } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
 

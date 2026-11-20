@@ -10,7 +10,7 @@
   import ListChecks from '@lucide/svelte/icons/list-checks';
   import MessageSquare from '@lucide/svelte/icons/message-square';
   import Paperclip from '@lucide/svelte/icons/paperclip';
-  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
+  import ProjectBadge from '#lib/projects/ProjectBadge.svelte';
   import Diamond from '@lucide/svelte/icons/diamond';
   import Search from '@lucide/svelte/icons/search';
 

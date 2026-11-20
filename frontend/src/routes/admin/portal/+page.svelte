@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { ruZones, otherZones as otherZones_ } from '$lib/timezones';
-  import { api, formatDate, formatSize, type Overview } from '$lib/api';
-  import RegistrationSettings from '$lib/admin/RegistrationSettings.svelte';
-  import { session } from '$lib/session.svelte';
+  import { ruZones, otherZones as otherZones_ } from '#lib/timezones.ts';
+  import { api, formatDate, formatSize, type Overview } from '#lib/api.ts';
+  import RegistrationSettings from '#lib/admin/RegistrationSettings.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   interface Portal {
     slug: string;

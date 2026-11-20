@@ -29,8 +29,8 @@
   import Heading2 from '@lucide/svelte/icons/heading-2';
   import Heading3 from '@lucide/svelte/icons/heading-3';
   import Pilcrow from '@lucide/svelte/icons/pilcrow';
-  import Modal from '$lib/Modal.svelte';
-  import { api, type KbNode } from '$lib/api';
+  import Modal from '#lib/Modal.svelte';
+  import { api, type KbNode } from '#lib/api.ts';
   import { kbExtensions, BG_COLORS, TEXT_COLORS } from './extensions';
   import './content.css';
 
@@ -82,8 +82,12 @@
         handleKeyDown: (_view, event) => slashKey(event)
       },
       onTransaction: () => {
-        tick++;
-        updateSlash();
+        // Deferred: ProseMirror may dispatch (blur) while Svelte is removing the
+        // editor from the page, and state must not change during that update.
+        queueMicrotask(() => {
+          tick++;
+          updateSlash();
+        });
       },
       onUpdate: ({ editor: e }) => {
         html = e.getHTML();

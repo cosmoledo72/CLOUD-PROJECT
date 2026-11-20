@@ -2,11 +2,11 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onDestroy, tick } from 'svelte';
-  import { api, type ChatChannel, type UserItem } from '$lib/api';
-  import Avatar from '$lib/Avatar.svelte';
-  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
-  import { chats, type ChatEvent, type ChatMessage } from '$lib/chat.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, type ChatChannel, type UserItem } from '#lib/api.ts';
+  import Avatar from '#lib/Avatar.svelte';
+  import ProjectBadge from '#lib/projects/ProjectBadge.svelte';
+  import { chats, type ChatEvent, type ChatMessage } from '#lib/chat.svelte.ts';
+  import { session } from '#lib/session.svelte.ts';
   import Search from '@lucide/svelte/icons/search';
   import UsersRound from '@lucide/svelte/icons/users-round';
   import SquarePen from '@lucide/svelte/icons/square-pen';

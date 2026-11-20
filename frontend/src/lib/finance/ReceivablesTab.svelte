@@ -1,11 +1,11 @@
 <script lang="ts">
   // «Финансы → Дебиторка»: unpaid invoices (debt, payment term, overdue days)
   // by counterparty, and planned income that is overdue or due in 30 days.
-  import { api, formatDate, formatMoney, invoiceStateLabel, plainMessage, type InvoiceDebt, type Payment } from '$lib/api';
-  import { session } from '$lib/session.svelte';
-  import EmptyState from '$lib/EmptyState.svelte';
-  import { plural } from '$lib/fieldLook';
-  import StatTile from '$lib/ui/StatTile.svelte';
+  import { api, formatDate, formatMoney, invoiceStateLabel, plainMessage, type InvoiceDebt, type Payment } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
+  import EmptyState from '#lib/EmptyState.svelte';
+  import { plural } from '#lib/fieldLook.ts';
+  import StatTile from '#lib/ui/StatTile.svelte';
   import AlarmClock from '@lucide/svelte/icons/alarm-clock';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
   import CircleCheck from '@lucide/svelte/icons/circle-check';

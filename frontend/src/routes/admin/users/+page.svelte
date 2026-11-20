@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { generatePassword } from '$lib/people/password';
+  import { generatePassword } from '#lib/people/password.ts';
   import UserPlus from '@lucide/svelte/icons/user-plus';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { api, crmRoleLabel, formatDate, plainMessage, roleLabel, type Invitation, type RegistrationSettings, type UserItem } from '$lib/api';
-  import InvitationsPanel from '$lib/admin/InvitationsPanel.svelte';
-  import InviteDialog from '$lib/admin/InviteDialog.svelte';
-  import RequestsPanel from '$lib/admin/RequestsPanel.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, crmRoleLabel, formatDate, plainMessage, roleLabel, type Invitation, type RegistrationSettings, type UserItem } from '#lib/api.ts';
+  import InvitationsPanel from '#lib/admin/InvitationsPanel.svelte';
+  import InviteDialog from '#lib/admin/InviteDialog.svelte';
+  import RequestsPanel from '#lib/admin/RequestsPanel.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   let users = $state<UserItem[]>([]);
   let invitations = $state<Invitation[]>([]);
@@ -20,7 +20,7 @@
   // Sub-tabs: people, invitations, registration requests (?tab=… — used by notification links).
   type Tab = 'people' | 'invites' | 'requests';
   const tab = $derived<Tab>((['invites', 'requests'] as const).find((t) => t === page.url.searchParams.get('tab')) ?? 'people');
-  const setTab = (t: Tab) => goto(t === 'people' ? '/admin/users' : `/admin/users?tab=${t}`, { replaceState: true, noScroll: true, keepFocus: true });
+  const setTab = (t: Tab) => goto(t === 'people' ? '/admin/users' : `/admin/users?tab=${t}`, { replace: true, reset: false });
 
   async function load() {
     const [u, i, r] = await Promise.all([

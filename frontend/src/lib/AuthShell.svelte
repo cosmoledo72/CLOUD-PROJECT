@@ -1,7 +1,7 @@
 <script lang="ts">
   // Two-pane layout of the sign-in pages: portal branding on the left, the form on the right.
   import type { Snippet } from 'svelte';
-  import { loginHero, type Branding } from '$lib/branding.svelte';
+  import { loginHero, type Branding } from '#lib/branding.svelte.ts';
   import type { Component } from 'svelte';
   import FileText from '@lucide/svelte/icons/file-text';
   import FolderKanban from '@lucide/svelte/icons/folder-kanban';

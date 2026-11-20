@@ -3,10 +3,10 @@
   // documents and project folders, browsed down to any subfolder.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import FolderPlus from '@lucide/svelte/icons/folder-plus';
-  import { api, can, folderName, type FolderView, type Project } from '$lib/api';
-  import FileIcon from '$lib/FileIcon.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, can, folderName, type FolderView, type Project } from '#lib/api.ts';
+  import FileIcon from '#lib/FileIcon.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   let {
     open = $bindable(false),

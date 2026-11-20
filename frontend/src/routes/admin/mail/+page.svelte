@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { api, formatDateTime, mailKindLabel, type MailSecurity, type MailSettings, type OutboxItem } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import { api, formatDateTime, mailKindLabel, type MailSecurity, type MailSettings, type OutboxItem } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
 
   type Loaded = {
     settings: MailSettings;

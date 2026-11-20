@@ -8,7 +8,7 @@
   import MessageSquareText from '@lucide/svelte/icons/message-square-text';
   import MessagesSquare from '@lucide/svelte/icons/messages-square';
   import UserRound from '@lucide/svelte/icons/user-round';
-  import FileIcon from '$lib/FileIcon.svelte';
+  import FileIcon from '#lib/FileIcon.svelte';
   import type { Hit } from './search.svelte';
 
   let { hit }: { hit: Hit } = $props();

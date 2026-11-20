@@ -42,7 +42,9 @@
     if (!n.read_at) notifications.markRead([n.id]).catch(() => {});
     if (n.link) {
       open = false;
-      goto(n.link);
+      // goto rejects a link that is not a portal route: fall back to a full load.
+      const link = n.link;
+      goto(link).catch(() => (location.href = link));
     }
   }
 

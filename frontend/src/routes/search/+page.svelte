@@ -6,12 +6,12 @@
   import { page } from '$app/state';
   import Search from '@lucide/svelte/icons/search';
   import SearchX from '@lucide/svelte/icons/search-x';
-  import EmptyState from '$lib/EmptyState.svelte';
-  import Hl from '$lib/search/Hl.svelte';
-  import HitIcon from '$lib/search/HitIcon.svelte';
-  import { queryWords, remember, runSearch, type Hit, type HitGroup, type HitType } from '$lib/search/search.svelte';
-  import { api, localToday, type Project } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
+  import Hl from '#lib/search/Hl.svelte';
+  import HitIcon from '#lib/search/HitIcon.svelte';
+  import { queryWords, remember, runSearch, type Hit, type HitGroup, type HitType } from '#lib/search/search.svelte.ts';
+  import { api, localToday, type Project } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
 
   const TABS: { k: HitType | 'all'; label: string; scoped?: boolean }[] = [
     { k: 'all', label: 'Все', scoped: true },
@@ -95,12 +95,12 @@
   }
 
   function nav(change: Record<string, string>) {
-    const u = new URLSearchParams(page.url.searchParams);
+    const u = new URLSearchParams(page.url.search);
     for (const [k, v] of Object.entries(change)) {
       if (v) u.set(k, v);
       else u.delete(k);
     }
-    goto(`/search?${u}`, { keepFocus: true, noScroll: true, replaceState: 'q' in change && !!q });
+    goto(`/search?${u}`, { reset: false, replace: 'q' in change && !!q });
   }
   function submit(e: SubmitEvent) {
     e.preventDefault();

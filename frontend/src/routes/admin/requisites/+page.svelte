@@ -1,8 +1,8 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
-  import { api, fieldTypeLabel, type FieldDef, type FieldType, type FieldValues, type UserItem } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
-  import RequisitesForm from '$lib/RequisitesForm.svelte';
+  import { api, fieldTypeLabel, type FieldDef, type FieldType, type FieldValues, type UserItem } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
+  import RequisitesForm from '#lib/RequisitesForm.svelte';
 
   let defs = $state<FieldDef[]>([]);
   let users = $state<UserItem[]>([]);

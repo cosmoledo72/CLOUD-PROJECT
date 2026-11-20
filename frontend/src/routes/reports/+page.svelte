@@ -10,13 +10,13 @@
   import BadgePercent from '@lucide/svelte/icons/badge-russian-ruble';
   import ListChecks from '@lucide/svelte/icons/list-checks';
   import Timer from '@lucide/svelte/icons/timer';
-  import StatTile from '$lib/ui/StatTile.svelte';
-  import { api, formatDate, localToday } from '$lib/api';
-  import EmptyState from '$lib/EmptyState.svelte';
-  import { money, moneyShort } from '$lib/fieldLook';
-  import MultiPick from '$lib/time/MultiPick.svelte';
-  import { hm, hours } from '$lib/time/timer.svelte';
-  import { fromDay, toDay } from '$lib/workCalendar.svelte';
+  import StatTile from '#lib/ui/StatTile.svelte';
+  import { api, formatDate, localToday } from '#lib/api.ts';
+  import EmptyState from '#lib/EmptyState.svelte';
+  import { money, moneyShort } from '#lib/fieldLook.ts';
+  import MultiPick from '#lib/time/MultiPick.svelte';
+  import { hm, hours } from '#lib/time/timer.svelte.ts';
+  import { fromDay, toDay } from '#lib/workCalendar.svelte.ts';
 
   interface Row {
     id: string;

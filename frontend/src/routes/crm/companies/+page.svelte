@@ -1,14 +1,14 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
-  import EmptyState from '$lib/EmptyState.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import Building2 from '@lucide/svelte/icons/building-2';
   import SearchX from '@lucide/svelte/icons/search-x';
   import { goto } from '$app/navigation';
-  import { api, formatDate, formatMoney, upload, type CompanyInput, type CompanyListItem, type UserItem } from '$lib/api';
-  import CompanyForm from '$lib/crm/CompanyForm.svelte';
-  import { emptyCompany, toPayload } from '$lib/crm/company';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, formatDate, formatMoney, upload, type CompanyInput, type CompanyListItem, type UserItem } from '#lib/api.ts';
+  import CompanyForm from '#lib/crm/CompanyForm.svelte';
+  import { emptyCompany, toPayload } from '#lib/crm/company.ts';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   let companies = $state<CompanyListItem[]>([]);
   let users = $state<UserItem[]>([]);

@@ -3,7 +3,7 @@
 // when the window regains focus and every minute, so a timer started or
 // stopped on another computer shows up here too.
 
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 
 export interface RunningTimer {
   task_id: string;

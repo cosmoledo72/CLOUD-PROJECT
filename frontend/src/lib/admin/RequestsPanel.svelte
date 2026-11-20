@@ -1,7 +1,7 @@
 <script lang="ts">
   // Registration requests: approve (with role) or reject (with a reason); history.
-  import { api, formatDate, plainMessage, type RegistrationRequest, type RegistrationSettings } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, formatDate, plainMessage, type RegistrationRequest, type RegistrationSettings } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
 
   let { settings, onchange }: { settings: RegistrationSettings | null; onchange: () => void } = $props();
 

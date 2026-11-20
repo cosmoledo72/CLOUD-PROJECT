@@ -10,10 +10,10 @@
   import LinkOff from '@lucide/svelte/icons/unlink';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Archive from '@lucide/svelte/icons/archive';
-  import KbView from '$lib/kb/KbView.svelte';
-  import { api, docKind } from '$lib/api';
-  import FileIcon from '$lib/FileIcon.svelte';
-  import { itemsLabel, plural, relTime, sizeLabel } from '$lib/files/fmt';
+  import KbView from '#lib/kb/KbView.svelte';
+  import { api, docKind } from '#lib/api.ts';
+  import FileIcon from '#lib/FileIcon.svelte';
+  import { itemsLabel, plural, relTime, sizeLabel } from '#lib/files/fmt.ts';
 
   interface PubFile { id: string; name: string; extension: string; size_bytes: number; updated_at: string }
   interface Info {
@@ -94,7 +94,7 @@
   const view = (f: PubFile) => `/s/${encodeURIComponent(token)}/view/${f.id}${kq}`;
   const zipUrl = $derived(`/api/public/s/${encodeURIComponent(token)}/zip?${new URLSearchParams({ ...(k ? { k } : {}), ...(sub ? { folder: sub } : {}) })}`);
   const viewable = (f: PubFile) => docKind(f.extension) !== 'other';
-  const go = (id: string | null) => goto(id && id !== info?.folder?.crumbs[0]?.id ? `?folder=${id}` : '?', { keepFocus: true });
+  const go = (id: string | null) => goto(id && id !== info?.folder?.crumbs[0]?.id ? `?folder=${id}` : '?');
   const fmtDate = (d: string) => new Date(d + 'T00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 </script>
 

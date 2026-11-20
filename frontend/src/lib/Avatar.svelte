@@ -2,8 +2,8 @@
   // Round avatar: the person's photo when there is one, else initials on a
   // colour derived from the id.
   import { onMount } from 'svelte';
-  import { avatarHue, initials } from '$lib/api';
-  import { avatars } from '$lib/avatars.svelte';
+  import { avatarHue, initials } from '#lib/api.ts';
+  import { avatars } from '#lib/avatars.svelte.ts';
 
   let { id, name, size = 32 }: { id: string; name: string; size?: number } = $props();
   const src = $derived(avatars.url(id));

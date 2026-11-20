@@ -2,16 +2,16 @@
   // "All tasks": tasks of every project the user can see, as a list, a month
   // calendar or a combined Gantt chart, with server-side filters.
   import { page } from '$app/state';
-  import { api, localToday, priorityLabel, type BoardProject, type BoardResponse, type Dependency, type Task, type TaskStatus, type UserItem } from '$lib/api';
-  import Gantt from '$lib/Gantt.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import TaskRows from '$lib/TaskRows.svelte';
-  import { session } from '$lib/session.svelte';
-  import LabelChip from '$lib/tasks/LabelChip.svelte';
-  import MultiFilter from '$lib/tasks/MultiFilter.svelte';
-  import TaskCalendar from '$lib/tasks/TaskCalendar.svelte';
-  import TaskCard from '$lib/tasks/TaskCard.svelte';
-  import { LABEL_COLORS, labels } from '$lib/tasks/labels.svelte';
+  import { api, localToday, priorityLabel, type BoardProject, type BoardResponse, type Dependency, type Task, type TaskStatus, type UserItem } from '#lib/api.ts';
+  import Gantt from '#lib/Gantt.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import TaskRows from '#lib/TaskRows.svelte';
+  import { session } from '#lib/session.svelte.ts';
+  import LabelChip from '#lib/tasks/LabelChip.svelte';
+  import MultiFilter from '#lib/tasks/MultiFilter.svelte';
+  import TaskCalendar from '#lib/tasks/TaskCalendar.svelte';
+  import TaskCard from '#lib/tasks/TaskCard.svelte';
+  import { LABEL_COLORS, labels } from '#lib/tasks/labels.svelte.ts';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import ChartGantt from '@lucide/svelte/icons/chart-gantt';
   import List from '@lucide/svelte/icons/list';

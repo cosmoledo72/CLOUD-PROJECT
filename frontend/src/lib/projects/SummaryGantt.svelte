@@ -4,9 +4,9 @@
   // last one with the share of done tasks; milestones are diamonds, the
   // contract deadline (when a «Срок…» requisite differs) is a flag; the today
   // line shows where the bureau stands. Read-only: a click opens the project.
-  import { formatDate, type Project } from '$lib/api';
-  import { avatarHue, initials } from '$lib/fieldLook';
-  import { fromDay, toDay } from '$lib/workCalendar.svelte';
+  import { formatDate, type Project } from '#lib/api.ts';
+  import { avatarHue, initials } from '#lib/fieldLook.ts';
+  import { fromDay, toDay } from '#lib/workCalendar.svelte.ts';
   import ProjectBadge from './ProjectBadge.svelte';
 
   type Group = { id: string; label: string; items: Project[] };

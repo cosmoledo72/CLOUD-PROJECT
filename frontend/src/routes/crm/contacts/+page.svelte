@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onIntent } from '$lib/intent';
-  import EmptyState from '$lib/EmptyState.svelte';
+  import { onIntent } from '#lib/intent.ts';
+  import EmptyState from '#lib/EmptyState.svelte';
   import ContactIcon from '@lucide/svelte/icons/contact';
   import SearchX from '@lucide/svelte/icons/search-x';
-  import { api, contactName, type CompanyListItem, type Contact } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, contactName, type CompanyListItem, type Contact } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
 
   let contacts = $state<Contact[]>([]);
   let companies = $state<CompanyListItem[]>([]);

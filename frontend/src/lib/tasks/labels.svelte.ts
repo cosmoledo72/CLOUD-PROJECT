@@ -1,6 +1,6 @@
 // Shared catalogue of task labels (one per portal), loaded once per page session.
 
-import { api, type TaskLabel } from '$lib/api';
+import { api, type TaskLabel } from '#lib/api.ts';
 
 /** Colours offered for a new label. */
 export const LABEL_COLORS = ['#64748b', '#2563eb', '#0891b2', '#16a34a', '#ca8a04', '#ea580c', '#dc2626', '#c026d3', '#7c3aed'];

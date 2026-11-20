@@ -2,8 +2,8 @@
   // Project tab «Финансы»: budget (contract amount or deal), paid, due, spent,
   // profit; the payment schedule; invoices of the project's deal; payments.
   // Finance editors manage every payment; the project manager adds expenses.
-  import { api, formatDate, formatMoney, invoiceStateLabel, plainMessage, type Payment, type ProjectFinance } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import { api, formatDate, formatMoney, invoiceStateLabel, plainMessage, type Payment, type ProjectFinance } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
   import Plus from '@lucide/svelte/icons/plus';
   import PaymentDialog from './PaymentDialog.svelte';
   import { signed } from './period';

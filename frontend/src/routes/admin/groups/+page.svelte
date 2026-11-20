@@ -1,7 +1,7 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
-  import { api, type UserItem } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, type UserItem } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
 
   interface Group { id: string; name: string; member_ids: string[] }
 

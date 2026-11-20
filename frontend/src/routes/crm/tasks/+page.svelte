@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { api, type CrmTask, type UserItem } from '$lib/api';
-  import { crmDue } from '$lib/crm/due.svelte';
-  import TaskDialog from '$lib/crm/TaskDialog.svelte';
-  import TaskItem from '$lib/crm/TaskItem.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, type CrmTask, type UserItem } from '#lib/api.ts';
+  import { crmDue } from '#lib/crm/due.svelte.ts';
+  import TaskDialog from '#lib/crm/TaskDialog.svelte';
+  import TaskItem from '#lib/crm/TaskItem.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   let tasks = $state<CrmTask[]>([]);
   let done = $state<CrmTask[]>([]);

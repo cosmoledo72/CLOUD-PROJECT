@@ -4,14 +4,14 @@
   import {
     api, formatDate, formatMoney,
     type Activity, type Company, type CompanyInput, type Contact, type Deal, type UserItem
-  } from '$lib/api';
-  import { contactName } from '$lib/api';
-  import ActivityFeed from '$lib/crm/ActivityFeed.svelte';
-  import SalesDocs from '$lib/crm/SalesDocs.svelte';
-  import TaskBlock from '$lib/crm/TaskBlock.svelte';
-  import CompanyForm from '$lib/crm/CompanyForm.svelte';
-  import { emptyCompany, toInput, toPayload } from '$lib/crm/company';
-  import Modal from '$lib/Modal.svelte';
+  } from '#lib/api.ts';
+  import { contactName } from '#lib/api.ts';
+  import ActivityFeed from '#lib/crm/ActivityFeed.svelte';
+  import SalesDocs from '#lib/crm/SalesDocs.svelte';
+  import TaskBlock from '#lib/crm/TaskBlock.svelte';
+  import CompanyForm from '#lib/crm/CompanyForm.svelte';
+  import { emptyCompany, toInput, toPayload } from '#lib/crm/company.ts';
+  import Modal from '#lib/Modal.svelte';
 
   const id = $derived(page.params.id);
   let company = $state<Company | null>(null);

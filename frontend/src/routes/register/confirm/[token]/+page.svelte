@@ -1,9 +1,9 @@
 <script lang="ts">
   // Address confirmation link from the registration email.
   import { page } from '$app/state';
-  import { api, authError, quoted } from '$lib/api';
-  import AuthShell from '$lib/AuthShell.svelte';
-  import { branding, type Branding } from '$lib/branding.svelte';
+  import { api, authError, quoted } from '#lib/api.ts';
+  import AuthShell from '#lib/AuthShell.svelte';
+  import { branding, type Branding } from '#lib/branding.svelte.ts';
 
   type Result = { status: 'active' | 'pending'; tenant_slug: string; tenant_name: string; email?: string };
   const token = $derived(page.params.token ?? '');

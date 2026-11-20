@@ -6,10 +6,10 @@
   import FolderKanban from '@lucide/svelte/icons/folder-kanban';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
   import BookOpen from '@lucide/svelte/icons/book-open';
-  import FileIcon from '$lib/FileIcon.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { api, type Project } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import FileIcon from '#lib/FileIcon.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { api, type Project } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
   import { quick } from './quick.svelte';
 
   type Kind = 'docx' | 'xlsx';

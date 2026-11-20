@@ -1,7 +1,7 @@
 <script lang="ts">
   // Administration: a grouped side menu of settings sections and the section itself.
   import { page } from '$app/state';
-  import { session } from '$lib/session.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import Blocks from '@lucide/svelte/icons/blocks';
   import Building from '@lucide/svelte/icons/building';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';

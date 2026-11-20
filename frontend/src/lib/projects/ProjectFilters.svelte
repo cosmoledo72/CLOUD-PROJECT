@@ -11,7 +11,7 @@
 <script lang="ts">
   // «Фильтры» popover of the project list: managers (ГИП), members and
   // customers. Within a section any choice matches; sections combine.
-  import type { ProjectPerson } from '$lib/api';
+  import type { ProjectPerson } from '#lib/api.ts';
   import Filter from '@lucide/svelte/icons/list-filter';
 
   let {

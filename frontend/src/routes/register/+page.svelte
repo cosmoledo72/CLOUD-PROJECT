@@ -3,9 +3,9 @@
   // confirms by mail and an administrator approves (or that joins at once for
   // the portal's own mail domains).
   import { page } from '$app/state';
-  import { api, authError, quoted } from '$lib/api';
-  import AuthShell from '$lib/AuthShell.svelte';
-  import { branding, type Branding } from '$lib/branding.svelte';
+  import { api, authError, quoted } from '#lib/api.ts';
+  import AuthShell from '#lib/AuthShell.svelte';
+  import { branding, type Branding } from '#lib/branding.svelte.ts';
 
   function storedTenant(): string {
     try { return localStorage.getItem('wh_tenant') ?? ''; } catch { return ''; }

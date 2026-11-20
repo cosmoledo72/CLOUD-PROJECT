@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { api, docKindLabel, vatLabel, type DocKind, type OrgRequisites } from '$lib/api';
-  import { accountValid, innValid, ogrnValid } from '$lib/crm/validate';
-  import { session } from '$lib/session.svelte';
+  import { api, docKindLabel, vatLabel, type DocKind, type OrgRequisites } from '#lib/api.ts';
+  import { accountValid, innValid, ogrnValid } from '#lib/crm/validate.ts';
+  import { session } from '#lib/session.svelte.ts';
 
   let r = $state<OrgRequisites | null>(null);
   let vatRates = $state<string[]>([]);

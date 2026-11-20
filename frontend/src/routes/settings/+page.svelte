@@ -1,11 +1,11 @@
 <script lang="ts">
-  import Avatar from '$lib/Avatar.svelte';
+  import Avatar from '#lib/Avatar.svelte';
   import UserRound from '@lucide/svelte/icons/user-round';
   import { goto } from '$app/navigation';
   import QRCode from 'qrcode';
-  import { api, plainMessage, roleLabel } from '$lib/api';
-  import NotificationPrefs from '$lib/NotificationPrefs.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, plainMessage, roleLabel } from '#lib/api.ts';
+  import NotificationPrefs from '#lib/NotificationPrefs.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   let error = $state('');
   let notice = $state('');

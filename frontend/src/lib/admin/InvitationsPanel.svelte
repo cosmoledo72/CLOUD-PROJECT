@@ -1,6 +1,6 @@
 <script lang="ts">
   // Pending invitations: who, by whom, where to, until when; resend, copy, revoke.
-  import { api, formatDate, plainMessage, roleLabel, type Invitation } from '$lib/api';
+  import { api, formatDate, plainMessage, roleLabel, type Invitation } from '#lib/api.ts';
 
   let { items, onchange }: { items: Invitation[]; onchange: () => void } = $props();
 

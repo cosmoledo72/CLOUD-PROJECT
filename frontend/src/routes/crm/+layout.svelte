@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { crmDue } from '$lib/crm/due.svelte';
-  import { session } from '$lib/session.svelte';
+  import { crmDue } from '#lib/crm/due.svelte.ts';
+  import { session } from '#lib/session.svelte.ts';
   import Building2 from '@lucide/svelte/icons/building-2';
   import ChartColumn from '@lucide/svelte/icons/chart-column';
   import Contact from '@lucide/svelte/icons/contact';

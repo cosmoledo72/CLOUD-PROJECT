@@ -1,13 +1,13 @@
 <script lang="ts">
   // «Финансы → Аналитика»: income, expense and profit for a period; bars by
   // month or week; expenses and income by category (donuts); projects by profit.
-  import { api, formatMoney, plainMessage } from '$lib/api';
-  import { moneyShort } from '$lib/fieldLook';
+  import { api, formatMoney, plainMessage } from '#lib/api.ts';
+  import { moneyShort } from '#lib/fieldLook.ts';
   import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
-  import StatTile from '$lib/ui/StatTile.svelte';
+  import StatTile from '#lib/ui/StatTile.svelte';
   import PeriodPicker from './PeriodPicker.svelte';
   import { MONTHS_SHORT, periodRange, type Period } from './period';
 

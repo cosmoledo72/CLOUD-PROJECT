@@ -1,6 +1,6 @@
 // Shared catalogue of project labels (one per portal), loaded once per page session.
 
-import { api, type ProjectLabel } from '$lib/api';
+import { api, type ProjectLabel } from '#lib/api.ts';
 
 class ProjectLabels {
   list = $state<ProjectLabel[]>([]);

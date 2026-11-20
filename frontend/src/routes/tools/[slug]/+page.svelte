@@ -1,9 +1,9 @@
 <script lang="ts">
   // Page of one tool. While a tool is being built it shows what it will do.
   import { page } from '$app/state';
-  import EmptyState from '$lib/EmptyState.svelte';
-  import { session } from '$lib/session.svelte';
-  import { toolBySlug } from '$lib/tools/registry';
+  import EmptyState from '#lib/EmptyState.svelte';
+  import { session } from '#lib/session.svelte.ts';
+  import { toolBySlug } from '#lib/tools/registry.ts';
   import Construction from '@lucide/svelte/icons/construction';
   import SearchX from '@lucide/svelte/icons/search-x';
   import CircleCheck from '@lucide/svelte/icons/circle-check';

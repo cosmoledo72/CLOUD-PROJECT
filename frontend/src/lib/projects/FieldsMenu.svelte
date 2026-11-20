@@ -2,7 +2,7 @@
   // "Поля" popover of the project list: which fields the table and the cards
   // show and in what order (drag to reorder), the line under the name, and
   // resetting to the portal default / saving it as the default (admins).
-  import type { FieldDef } from '$lib/api';
+  import type { FieldDef } from '#lib/api.ts';
   import Columns from '@lucide/svelte/icons/columns-3';
   import GripVertical from '@lucide/svelte/icons/grip-vertical';
   import { BUILTIN, usableDefs, type ListConfig } from './listConfig';

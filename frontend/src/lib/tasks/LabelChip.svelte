@@ -1,6 +1,6 @@
 <script lang="ts">
   // Coloured task label; with `onremove` shows a small × button.
-  import type { TaskLabel } from '$lib/api';
+  import type { TaskLabel } from '#lib/api.ts';
 
   let { label, onremove, small = false }: { label: Pick<TaskLabel, 'name' | 'color'>; onremove?: () => void; small?: boolean } = $props();
 </script>

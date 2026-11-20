@@ -4,14 +4,14 @@
   import { nameDef,
     api, formatDateTime, formatMoney,
     type Activity, type CompanyListItem, type Contact, type Deal, type FieldDef, type FieldValues, type Stage, type UserItem
-  } from '$lib/api';
-  import { contactName } from '$lib/api';
-  import ActivityFeed from '$lib/crm/ActivityFeed.svelte';
-  import SalesDocs from '$lib/crm/SalesDocs.svelte';
-  import TaskBlock from '$lib/crm/TaskBlock.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import RequisitesForm from '$lib/RequisitesForm.svelte';
-  import { session } from '$lib/session.svelte';
+  } from '#lib/api.ts';
+  import { contactName } from '#lib/api.ts';
+  import ActivityFeed from '#lib/crm/ActivityFeed.svelte';
+  import SalesDocs from '#lib/crm/SalesDocs.svelte';
+  import TaskBlock from '#lib/crm/TaskBlock.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import RequisitesForm from '#lib/RequisitesForm.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   const id = $derived(page.params.id);
   let deal = $state<Deal | null>(null);

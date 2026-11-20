@@ -1,10 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { api, ApiError, type Me } from '$lib/api';
-  import { branding, type Branding } from '$lib/branding.svelte';
-  import AuthShell from '$lib/AuthShell.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, ApiError, type Me } from '#lib/api.ts';
+  import { branding, type Branding } from '#lib/branding.svelte.ts';
+  import AuthShell from '#lib/AuthShell.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Lock from '@lucide/svelte/icons/lock';
   import Mail from '@lucide/svelte/icons/mail';

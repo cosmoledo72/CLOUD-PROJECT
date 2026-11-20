@@ -1,9 +1,9 @@
 <script lang="ts">
-  import EmptyState from '$lib/EmptyState.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import Share2 from '@lucide/svelte/icons/share-2';
-  import StorageTabs from '$lib/StorageTabs.svelte';
-  import { api, docKind, formatDateTime, type FileItem, type Folder } from '$lib/api';
-  import FileIcon from '$lib/FileIcon.svelte';
+  import StorageTabs from '#lib/StorageTabs.svelte';
+  import { api, docKind, formatDateTime, type FileItem, type Folder } from '#lib/api.ts';
+  import FileIcon from '#lib/FileIcon.svelte';
 
   let data = $state<{ folders: Folder[]; files: FileItem[] } | null>(null);
   $effect(() => {

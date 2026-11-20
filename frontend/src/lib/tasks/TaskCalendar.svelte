@@ -2,7 +2,7 @@
   // Month calendar of tasks by due date (tasks with only a start date are
   // shown on their start). Weeks start on Monday.
   import { untrack } from 'svelte';
-  import type { Task } from '$lib/api';
+  import type { Task } from '#lib/api.ts';
   import { isOverdue } from './dates';
   import { labels } from './labels.svelte';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';

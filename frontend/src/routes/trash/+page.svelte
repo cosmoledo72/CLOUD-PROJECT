@@ -1,10 +1,10 @@
 <script lang="ts">
-  import StorageTabs from '$lib/StorageTabs.svelte';
-  import EmptyState from '$lib/EmptyState.svelte';
+  import StorageTabs from '#lib/StorageTabs.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import { api, formatDate, formatDateTime, formatSize, type TrashItem } from '$lib/api';
-  import FileIcon from '$lib/FileIcon.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, formatDate, formatDateTime, formatSize, type TrashItem } from '#lib/api.ts';
+  import FileIcon from '#lib/FileIcon.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   let items = $state<TrashItem[]>([]);
   let retention = $state(30);

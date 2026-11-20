@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   $effect(() => {
-    goto('/crm/deals', { replaceState: true });
+    goto('/crm/deals', { replace: true });
   });
 </script>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import Upload from '@lucide/svelte/icons/upload';
-  import { api, docKindLabel, formatDateTime, formatSize, type DocKind, type DocTemplate, type PlaceholderInfo } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, docKindLabel, formatDateTime, formatSize, type DocKind, type DocTemplate, type PlaceholderInfo } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
 
   let allTemplates = $state<DocTemplate[]>([]);
   let catalogue = $state<PlaceholderInfo[]>([]);

@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { onIntent } from '$lib/intent';
+  import { onIntent } from '#lib/intent.ts';
   import { goto, beforeNavigate } from '$app/navigation';
   import { page } from '$app/state';
-  import { api, formatDateTime, type KbHit, type KbNode, type KbPage, type KbViewer } from '$lib/api';
-  import { session } from '$lib/session.svelte';
-  import KbTree from '$lib/kb/KbTree.svelte';
-  import KbEditor from '$lib/kb/KbEditor.svelte';
-  import KbView from '$lib/kb/KbView.svelte';
-  import KbHistory from '$lib/kb/KbHistory.svelte';
-  import Avatar from '$lib/Avatar.svelte';
+  import { api, formatDateTime, type KbHit, type KbNode, type KbPage, type KbViewer } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
+  import KbTree from '#lib/kb/KbTree.svelte';
+  import KbEditor from '#lib/kb/KbEditor.svelte';
+  import KbView from '#lib/kb/KbView.svelte';
+  import KbHistory from '#lib/kb/KbHistory.svelte';
+  import Avatar from '#lib/Avatar.svelte';
   import BookOpen from '@lucide/svelte/icons/book-open';
   import Search from '@lucide/svelte/icons/search';
   import Plus from '@lucide/svelte/icons/plus';
@@ -23,8 +23,8 @@
   import History from '@lucide/svelte/icons/history';
   import Pin from '@lucide/svelte/icons/pin';
   import PinOff from '@lucide/svelte/icons/pin-off';
-  import Modal from '$lib/Modal.svelte';
-  import PublicLink from '$lib/files/PublicLink.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import PublicLink from '#lib/files/PublicLink.svelte';
 
   let nodes = $state<KbNode[]>([]);
   let expanded = $state<Record<string, boolean>>({});
@@ -120,7 +120,9 @@
   let saved = $state('');
   let editorKey = $state(0);
   const ICONS = ['', '📘', '📄', '📌', '🛠️', '🧭', '📐', '🏗️', '⚙️', '🧾', '💡', '✅', '⚠️', '👥', '📞', '🎓'];
-  const dirty = $derived(editing && (eHtml !== startHtml || eTitle !== startTitle));
+  // The editor reports an empty document as «<p></p>»: same as no text at all.
+  const sameHtml = (a: string, b: string) => a.replace(/^<p><\/p>$/, '') === b.replace(/^<p><\/p>$/, '');
+  const dirty = $derived(editing && (!sameHtml(eHtml, startHtml) || eTitle !== startTitle));
 
   onIntent('new', () => startNew(null));
   function startNew(parent: string | null) {
@@ -203,6 +205,7 @@
     if (created) goto(`/kb?p=${editId}`);
   }
   beforeNavigate((nav) => {
+    if (nav.shallow && nav.type === 'goto') return;
     if (dirty && nav.type !== 'leave' && !confirm('Есть несохранённые изменения. Уйти со страницы без сохранения?')) nav.cancel();
   });
   function onUnload(e: BeforeUnloadEvent) {

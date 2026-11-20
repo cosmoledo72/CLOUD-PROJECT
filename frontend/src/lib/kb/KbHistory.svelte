@@ -2,8 +2,8 @@
   // Page history: every save is a version (who and when); look at an old
   // version and bring it back — it becomes the newest one.
   import History from '@lucide/svelte/icons/history';
-  import { api, formatDateTime } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, formatDateTime } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
   import KbView from './KbView.svelte';
 
   let { open = $bindable(false), pageId, current, onrestored }: { open?: boolean; pageId: string; current: number; onrestored: () => void } = $props();

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { KbNode } from '$lib/api';
+  import type { KbNode } from '#lib/api.ts';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import FileText from '@lucide/svelte/icons/file-text';
   import Plus from '@lucide/svelte/icons/plus';

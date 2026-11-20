@@ -1,5 +1,5 @@
 // Portal-wide search: the Ctrl+K palette and the /search page share one API.
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 
 export type HitType = 'projects' | 'tasks' | 'files' | 'kb' | 'companies' | 'contacts' | 'deals' | 'comments' | 'messages' | 'people';
 

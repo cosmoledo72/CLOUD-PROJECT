@@ -4,8 +4,8 @@
 // administrator may set; without either, a built-in default is derived from
 // the requisites marked "show in project card".
 
-import { nameDef, type FieldDef } from '$lib/api';
-import { isDeadline } from '$lib/fieldLook';
+import { nameDef, type FieldDef } from '#lib/api.ts';
+import { isDeadline } from '#lib/fieldLook.ts';
 
 /** Built-in columns; anything else is a requisite key. */
 export const BUILTIN = {

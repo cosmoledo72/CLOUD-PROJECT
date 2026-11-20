@@ -3,12 +3,12 @@
   // documents registry (CRM users). The tab is kept in the address (?tab=).
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import AnalyticsTab from '$lib/finance/AnalyticsTab.svelte';
-  import DocumentsTab from '$lib/finance/DocumentsTab.svelte';
-  import FinanceSettings from '$lib/finance/FinanceSettings.svelte';
-  import PaymentsTab from '$lib/finance/PaymentsTab.svelte';
-  import ReceivablesTab from '$lib/finance/ReceivablesTab.svelte';
-  import { session } from '$lib/session.svelte';
+  import AnalyticsTab from '#lib/finance/AnalyticsTab.svelte';
+  import DocumentsTab from '#lib/finance/DocumentsTab.svelte';
+  import FinanceSettings from '#lib/finance/FinanceSettings.svelte';
+  import PaymentsTab from '#lib/finance/PaymentsTab.svelte';
+  import ReceivablesTab from '#lib/finance/ReceivablesTab.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import ChartColumn from '@lucide/svelte/icons/chart-column';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
   import FileText from '@lucide/svelte/icons/file-text';
@@ -29,7 +29,7 @@
   const tab = $derived<Tab | undefined>(
     tabs.find(([k]) => k === page.url.searchParams.get('tab'))?.[0] ?? tabs[0]?.[0]
   );
-  const setTab = (t: Tab) => goto(`/finance?tab=${t}`, { replaceState: true, noScroll: true, keepFocus: true });
+  const setTab = (t: Tab) => goto(`/finance?tab=${t}`, { replace: true, reset: false });
   let settingsOpen = $state(false);
 </script>
 

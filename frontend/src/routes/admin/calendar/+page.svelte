@@ -3,9 +3,9 @@
   // days off, working weekends and shortened days. The official calendar ships
   // with the portal; an administrator can change any day (a corporate day
   // off) or fill a year without official data with the Labour Code holidays.
-  import { api } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
-  import { toDay, workCalendar, type CalendarDay, type DayKind } from '$lib/workCalendar.svelte';
+  import { api } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
+  import { toDay, workCalendar, type CalendarDay, type DayKind } from '#lib/workCalendar.svelte.ts';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';

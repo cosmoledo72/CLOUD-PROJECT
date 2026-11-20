@@ -1,7 +1,7 @@
 <script lang="ts">
   // Read-only ONLYOFFICE viewer for a file opened through a public link.
   import { page } from '$app/state';
-  import { api } from '$lib/api';
+  import { api } from '#lib/api.ts';
 
   interface ViewerResponse {
     docs_url: string;

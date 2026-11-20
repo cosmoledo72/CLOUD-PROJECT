@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { api, type Stage } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import { api, type Stage } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
 
   type Row = { id: string | null; name: string; kind: Stage['kind']; probability: number; color: string };
   let rows = $state<Row[]>([]);

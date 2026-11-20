@@ -59,7 +59,8 @@
   function open(h: Hit) {
     remember(q);
     close();
-    goto(h.url);
+    // goto rejects a link that is not a portal route: fall back to a full load.
+    goto(h.url).catch(() => (location.href = h.url));
   }
   function all(type = '') {
     remember(q);

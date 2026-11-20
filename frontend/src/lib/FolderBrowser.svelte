@@ -1,5 +1,5 @@
 <script lang="ts">
-  import EmptyState from '$lib/EmptyState.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import FolderPlus from '@lucide/svelte/icons/folder-plus';
   import ArrowUpToLine from '@lucide/svelte/icons/arrow-up-to-line';
@@ -20,13 +20,13 @@
   import Users from '@lucide/svelte/icons/users';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Search from '@lucide/svelte/icons/search';
-  import { api, can, docKind, folderName, formatDateTime, type FileItem, type FolderItem, type FolderView, type Version } from '$lib/api';
-  import FileIcon from '$lib/FileIcon.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import ShareDialog from '$lib/ShareDialog.svelte';
-  import Author from '$lib/files/Author.svelte';
-  import FolderPicker from '$lib/files/FolderPicker.svelte';
-  import { downloadZip, itemsLabel, plural, portalUrl, relTime, sizeLabel } from '$lib/files/fmt';
+  import { api, can, docKind, folderName, formatDateTime, type FileItem, type FolderItem, type FolderView, type Version } from '#lib/api.ts';
+  import FileIcon from '#lib/FileIcon.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import ShareDialog from '#lib/ShareDialog.svelte';
+  import Author from '#lib/files/Author.svelte';
+  import FolderPicker from '#lib/files/FolderPicker.svelte';
+  import { downloadZip, itemsLabel, plural, portalUrl, relTime, sizeLabel } from '#lib/files/fmt.ts';
 
   /**
    * Folder browser. As a page it links folders to /files/{id}; embedded (e.g. a

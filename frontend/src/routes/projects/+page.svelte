@@ -1,28 +1,28 @@
 <script lang="ts">
-  import StatTile from '$lib/ui/StatTile.svelte';
-  import { onIntent } from '$lib/intent';
+  import StatTile from '#lib/ui/StatTile.svelte';
+  import { onIntent } from '#lib/intent.ts';
   import Banknote from '@lucide/svelte/icons/banknote';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
   import CircleAlert from '@lucide/svelte/icons/circle-alert';
   import HandCoins from '@lucide/svelte/icons/hand-coins';
-  import EmptyState from '$lib/EmptyState.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import FolderKanban from '@lucide/svelte/icons/folder-kanban';
   import Plus from '@lucide/svelte/icons/plus';
   import SearchX from '@lucide/svelte/icons/search-x';
   import { goto } from '$app/navigation';
-  import { api, formatDate, formatFieldValue, localToday, nameDef, type ProjectMoney, type FieldDef, type FieldValues, type Project, type UserItem } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
-  import RequisitesForm from '$lib/RequisitesForm.svelte';
-  import { session } from '$lib/session.svelte';
-  import { avatarHue, daysBetween, initials, isDeadline, isMoney, money as fmtMoney, moneyShort } from '$lib/fieldLook';
-  import FieldValue from '$lib/projects/FieldValue.svelte';
-  import FieldsMenu from '$lib/projects/FieldsMenu.svelte';
-  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
-  import ProjectLabelsDialog from '$lib/projects/ProjectLabelsDialog.svelte';
+  import { api, formatDate, formatFieldValue, localToday, nameDef, type ProjectMoney, type FieldDef, type FieldValues, type Project, type UserItem } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
+  import RequisitesForm from '#lib/RequisitesForm.svelte';
+  import { session } from '#lib/session.svelte.ts';
+  import { avatarHue, daysBetween, initials, isDeadline, isMoney, money as fmtMoney, moneyShort } from '#lib/fieldLook.ts';
+  import FieldValue from '#lib/projects/FieldValue.svelte';
+  import FieldsMenu from '#lib/projects/FieldsMenu.svelte';
+  import ProjectBadge from '#lib/projects/ProjectBadge.svelte';
+  import ProjectLabelsDialog from '#lib/projects/ProjectLabelsDialog.svelte';
   import Tags from '@lucide/svelte/icons/tags';
-  import { projectLabels } from '$lib/projects/projectLabels.svelte';
-  import LabelChip from '$lib/tasks/LabelChip.svelte';
-  import { BUILTIN, MONEY_KEYS, groupable, normalize, type ListConfig } from '$lib/projects/listConfig';
+  import { projectLabels } from '#lib/projects/projectLabels.svelte.ts';
+  import LabelChip from '#lib/tasks/LabelChip.svelte';
+  import { BUILTIN, MONEY_KEYS, groupable, normalize, type ListConfig } from '#lib/projects/listConfig.ts';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -31,10 +31,10 @@
   import Users from '@lucide/svelte/icons/users';
   import ChartGantt from '@lucide/svelte/icons/chart-gantt';
   import X from '@lucide/svelte/icons/x';
-  import ProjectBoard, { type BoardColumn } from '$lib/projects/ProjectBoard.svelte';
-  import SummaryGantt from '$lib/projects/SummaryGantt.svelte';
-  import ProjectFilters, { EMPTY_FILTER, filterCount, type ProjectFilter } from '$lib/projects/ProjectFilters.svelte';
-  import type { ProjectPerson } from '$lib/api';
+  import ProjectBoard, { type BoardColumn } from '#lib/projects/ProjectBoard.svelte';
+  import SummaryGantt from '#lib/projects/SummaryGantt.svelte';
+  import ProjectFilters, { EMPTY_FILTER, filterCount, type ProjectFilter } from '#lib/projects/ProjectFilters.svelte';
+  import type { ProjectPerson } from '#lib/api.ts';
 
   let projects = $state<Project[]>([]);
   /** Everyone taking part in the listed projects (from the list itself). */

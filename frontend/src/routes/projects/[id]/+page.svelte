@@ -1,31 +1,31 @@
 <script lang="ts">
   import Plus from '@lucide/svelte/icons/plus';
-  import GanttExportDialog from '$lib/projects/GanttExportDialog.svelte';
+  import GanttExportDialog from '#lib/projects/GanttExportDialog.svelte';
   import Download from '@lucide/svelte/icons/download';
-  import ProjectFinance from '$lib/finance/ProjectFinance.svelte';
+  import ProjectFinance from '#lib/finance/ProjectFinance.svelte';
   import Wallet from '@lucide/svelte/icons/wallet';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import {
     api, formatDate, nameDef, roleLabel,
     localToday, type CompanyListItem, type DayMode, type BaselineEntry, type DocTemplate, type Dependency, type Schedule, type FieldDef, type FieldValues, type Member, type Project, type Task, type TaskStatus, type UserItem
-  } from '$lib/api';
-  import Gantt from '$lib/Gantt.svelte';
-  import BadgeEditor from '$lib/projects/BadgeEditor.svelte';
-  import ProjectBadge from '$lib/projects/ProjectBadge.svelte';
-  import ProjectLabelPicker from '$lib/projects/ProjectLabelPicker.svelte';
-  import TaskRows from '$lib/TaskRows.svelte';
-  import TaskCard from '$lib/tasks/TaskCard.svelte';
+  } from '#lib/api.ts';
+  import Gantt from '#lib/Gantt.svelte';
+  import BadgeEditor from '#lib/projects/BadgeEditor.svelte';
+  import ProjectBadge from '#lib/projects/ProjectBadge.svelte';
+  import ProjectLabelPicker from '#lib/projects/ProjectLabelPicker.svelte';
+  import TaskRows from '#lib/TaskRows.svelte';
+  import TaskCard from '#lib/tasks/TaskCard.svelte';
   import ChartGantt from '@lucide/svelte/icons/chart-gantt';
   import ListTodo from '@lucide/svelte/icons/list-todo';
   import ClipboardList from '@lucide/svelte/icons/clipboard-list';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import UsersRound from '@lucide/svelte/icons/users-round';
-  import FolderBrowser from '$lib/FolderBrowser.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import RequisitesForm from '$lib/RequisitesForm.svelte';
-  import RequisitesView from '$lib/RequisitesView.svelte';
-  import { session } from '$lib/session.svelte';
+  import FolderBrowser from '#lib/FolderBrowser.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import RequisitesForm from '#lib/RequisitesForm.svelte';
+  import RequisitesView from '#lib/RequisitesView.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   const id = $derived(page.params.id);
   let project = $state<Project | null>(null);

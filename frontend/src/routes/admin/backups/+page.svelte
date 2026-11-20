@@ -3,10 +3,10 @@
   // «make a backup now», downloads and how to restore. The backups are made
   // by the backup service (scripts/backup.sh); restoring stays a server command
   // because the portal is stopped while it runs.
-  import { api, formatSize, type BackupItem, type BackupStatus } from '$lib/api';
-  import { session } from '$lib/session.svelte';
-  import EmptyState from '$lib/EmptyState.svelte';
-  import { zoneLabel } from '$lib/timezones';
+  import { api, formatSize, type BackupItem, type BackupStatus } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
+  import EmptyState from '#lib/EmptyState.svelte';
+  import { zoneLabel } from '#lib/timezones.ts';
   import Clock from '@lucide/svelte/icons/clock';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import Copy from '@lucide/svelte/icons/copy';

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { api, upload } from '$lib/api';
-  import { applyBranding, branding, DEFAULT_ACCENT, FONT_SIZES, FONTS, loadFont, LOGIN_BASES, loginHero, type Branding, type FontKey } from '$lib/branding.svelte';
-  import { contrast, isHex, LIGHT_TEXT, textOn } from '$lib/color';
+  import { api, upload } from '#lib/api.ts';
+  import { applyBranding, branding, DEFAULT_ACCENT, FONT_SIZES, FONTS, loadFont, LOGIN_BASES, loginHero, type Branding, type FontKey } from '#lib/branding.svelte.ts';
+  import { contrast, isHex, LIGHT_TEXT, textOn } from '#lib/color.ts';
 
   type Editable = Pick<Branding, 'display_name' | 'accent_color' | 'sidebar_style' | 'color_scheme' | 'corner_style' | 'login_title' | 'login_subtitle'
     | 'logo_plate' | 'login_logo_plate' | 'login_bg_overlay' | 'login_bg_tone' | 'login_bg_base' | 'font_family' | 'font_size'>;

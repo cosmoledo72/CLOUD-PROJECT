@@ -5,7 +5,7 @@
   import Link2 from '@lucide/svelte/icons/link-2';
   import Copy from '@lucide/svelte/icons/copy';
   import Check from '@lucide/svelte/icons/check';
-  import { api, localToday } from '$lib/api';
+  import { api, localToday } from '#lib/api.ts';
   import { plural, relTime } from './fmt';
 
   type RType = 'file' | 'folder' | 'kb_page';

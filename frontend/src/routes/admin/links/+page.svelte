@@ -4,9 +4,9 @@
   // the whole portal.
   import Link2 from '@lucide/svelte/icons/link-2';
   import Lock from '@lucide/svelte/icons/lock';
-  import { api, formatDateTime } from '$lib/api';
-  import EmptyState from '$lib/EmptyState.svelte';
-  import { relTime } from '$lib/files/fmt';
+  import { api, formatDateTime } from '#lib/api.ts';
+  import EmptyState from '#lib/EmptyState.svelte';
+  import { relTime } from '#lib/files/fmt.ts';
 
   interface Row {
     id: string;

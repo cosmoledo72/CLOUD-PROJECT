@@ -1,10 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { api, authError, quoted, type Me } from '$lib/api';
-  import AuthShell from '$lib/AuthShell.svelte';
-  import { branding, type Branding } from '$lib/branding.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, authError, quoted, type Me } from '#lib/api.ts';
+  import AuthShell from '#lib/AuthShell.svelte';
+  import { branding, type Branding } from '#lib/branding.svelte.ts';
+  import { session } from '#lib/session.svelte.ts';
 
   type Info = {
     email: string; display_name: string; tenant_slug: string; tenant_name: string;

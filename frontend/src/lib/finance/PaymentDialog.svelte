@@ -5,10 +5,10 @@
   import {
     api, formatDate, formatMoney, localToday, plainMessage, vatLabel,
     type CompanyRef, type FinanceCategory, type InvoiceDebt, type Payment, type PayKind, type PayStatus
-  } from '$lib/api';
-  import CompanyPicker from '$lib/crm/CompanyPicker.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  } from '#lib/api.ts';
+  import CompanyPicker from '#lib/crm/CompanyPicker.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
 
   type Preset = { kind?: PayKind; status?: PayStatus; project_id?: string | null; invoice_id?: string | null };
   let {

@@ -6,8 +6,8 @@
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import FileText from '@lucide/svelte/icons/file-text';
   import FileCode from '@lucide/svelte/icons/file-code';
-  import { api } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
 
   let { open = $bindable(false), projectId, hasBaseline = false }: { open?: boolean; projectId: string; hasBaseline?: boolean } = $props();
 

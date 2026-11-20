@@ -1,10 +1,10 @@
 <script lang="ts">
-  import EmptyState from '$lib/EmptyState.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import Banknote from '@lucide/svelte/icons/banknote';
   // «Финансы → Платежи»: income and expenses for a period with filters, totals,
   // CSV export; finance editors add and change payments.
-  import { api, formatDate, formatMoney, plainMessage, type FinanceCategory, type Payment, type PaymentTotals } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import { api, formatDate, formatMoney, plainMessage, type FinanceCategory, type Payment, type PaymentTotals } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
   import ArrowDownLeft from '@lucide/svelte/icons/arrow-down-left';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -14,9 +14,9 @@
   import Scale from '@lucide/svelte/icons/scale';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
-  import { plural } from '$lib/fieldLook';
-  import PickFilter from '$lib/ui/PickFilter.svelte';
-  import StatTile from '$lib/ui/StatTile.svelte';
+  import { plural } from '#lib/fieldLook.ts';
+  import PickFilter from '#lib/ui/PickFilter.svelte';
+  import StatTile from '#lib/ui/StatTile.svelte';
   import PaymentDialog from './PaymentDialog.svelte';
   import PeriodPicker from './PeriodPicker.svelte';
   import { periodRange, signed, type Period } from './period';

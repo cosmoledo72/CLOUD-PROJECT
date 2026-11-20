@@ -9,13 +9,13 @@
   import Scale from '@lucide/svelte/icons/scale';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import Trophy from '@lucide/svelte/icons/trophy';
-  import StatTile from '$lib/ui/StatTile.svelte';
-  import { api, formatDate, formatMoney, plainMessage, type UserItem } from '$lib/api';
-  import { moneyShort } from '$lib/fieldLook';
-  import Avatar from '$lib/Avatar.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import PeriodPicker from '$lib/finance/PeriodPicker.svelte';
-  import { MONTHS_SHORT, periodRange, type Period } from '$lib/finance/period';
+  import StatTile from '#lib/ui/StatTile.svelte';
+  import { api, formatDate, formatMoney, plainMessage, type UserItem } from '#lib/api.ts';
+  import { moneyShort } from '#lib/fieldLook.ts';
+  import Avatar from '#lib/Avatar.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import PeriodPicker from '#lib/finance/PeriodPicker.svelte';
+  import { MONTHS_SHORT, periodRange, type Period } from '#lib/finance/period.ts';
 
   type Kpi = {
     new: number; new_amount: number; new_prev: number; won: number; won_amount: number; won_prev: number; won_amount_prev: number;

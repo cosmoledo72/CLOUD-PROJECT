@@ -2,9 +2,9 @@
   // Files of a task: upload from the computer (button or drag and drop) into
   // the task's folder inside the project folder, attach files that already lie
   // in the project folder, open, download and detach.
-  import { api, docKind, type FolderView, type TaskAttachment } from '$lib/api';
-  import FileIcon from '$lib/FileIcon.svelte';
-  import Modal from '$lib/Modal.svelte';
+  import { api, docKind, type FolderView, type TaskAttachment } from '#lib/api.ts';
+  import FileIcon from '#lib/FileIcon.svelte';
+  import Modal from '#lib/Modal.svelte';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Download from '@lucide/svelte/icons/download';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
@@ -12,8 +12,8 @@
   import Upload from '@lucide/svelte/icons/upload';
   import X from '@lucide/svelte/icons/x';
   import Link2 from '@lucide/svelte/icons/link-2';
-  import Author from '$lib/files/Author.svelte';
-  import { portalUrl, relTime, sizeLabel } from '$lib/files/fmt';
+  import Author from '#lib/files/Author.svelte';
+  import { portalUrl, relTime, sizeLabel } from '#lib/files/fmt.ts';
 
   let { taskId, projectId, attachments = $bindable([]), canEdit = false, canDetachAny = false, meId, onchange }: {
     taskId: string;

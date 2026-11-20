@@ -1,8 +1,8 @@
 <script lang="ts">
   // Portal modules: switch whole sections on and off. Data of a switched-off
   // module is kept and comes back when the module is switched on again.
-  import { api, type ModuleKey } from '$lib/api';
-  import { session } from '$lib/session.svelte';
+  import { api, type ModuleKey } from '#lib/api.ts';
+  import { session } from '#lib/session.svelte.ts';
   import Boxes from '@lucide/svelte/icons/boxes';
 
   interface ModuleRow {

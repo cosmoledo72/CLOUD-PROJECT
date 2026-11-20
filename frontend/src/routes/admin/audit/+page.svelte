@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { actionLabel, api, formatDateTime, type AuditEntry, type UserItem } from '$lib/api';
+  import { actionLabel, api, formatDateTime, type AuditEntry, type UserItem } from '#lib/api.ts';
 
   const categories = [
     { v: '', l: 'Все действия' },

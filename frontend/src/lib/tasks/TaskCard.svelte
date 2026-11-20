@@ -5,17 +5,17 @@
   import {
     api, localToday, priorityLabel, statusLabel, timeAgo,
     type ChecklistItem, type Dependency, type Task, type TaskCardData, type TaskComment, type TaskStatus
-  } from '$lib/api';
-  import Avatar from '$lib/Avatar.svelte';
-  import MentionInput from '$lib/MentionInput.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  } from '#lib/api.ts';
+  import Avatar from '#lib/Avatar.svelte';
+  import MentionInput from '#lib/MentionInput.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import { isOverdue, rangeLabel } from './dates';
-  import { durationLabel, toDay, workCalendar } from '$lib/workCalendar.svelte';
+  import { durationLabel, toDay, workCalendar } from '#lib/workCalendar.svelte.ts';
   import { LABEL_COLORS, labels } from './labels.svelte';
   import LabelChip from './LabelChip.svelte';
   import TaskFiles from './TaskFiles.svelte';
-  import TaskTime from '$lib/time/TaskTime.svelte';
+  import TaskTime from '#lib/time/TaskTime.svelte';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import GripVertical from '@lucide/svelte/icons/grip-vertical';
   import ListChecks from '@lucide/svelte/icons/list-checks';

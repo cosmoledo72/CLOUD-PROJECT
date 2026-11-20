@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { actionLabel, api, formatDateTime, formatSize, type AuditEntry, type FieldDef, type Overview } from '$lib/api';
-  import { branding } from '$lib/branding.svelte';
+  import { actionLabel, api, formatDateTime, formatSize, type AuditEntry, type FieldDef, type Overview } from '#lib/api.ts';
+  import { branding } from '#lib/branding.svelte.ts';
 
   let stats = $state<Overview | null>(null);
   let recent = $state<AuditEntry[]>([]);

@@ -1,7 +1,7 @@
 <script lang="ts">
   // «Инструменты»: tiles of the engineering tools, grouped (lib/tools/registry.ts).
-  import { session } from '$lib/session.svelte';
-  import { STATUS_LABEL, TOOL_GROUPS, TOOLS } from '$lib/tools/registry';
+  import { session } from '#lib/session.svelte.ts';
+  import { STATUS_LABEL, TOOL_GROUPS, TOOLS } from '#lib/tools/registry.ts';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
 </script>
 

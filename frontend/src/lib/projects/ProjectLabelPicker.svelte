@@ -1,9 +1,9 @@
 <script lang="ts">
   // Labels of a project: chips, and for project managers a menu to assign
   // labels and add a new one to the portal catalogue on the fly.
-  import { api, type Project } from '$lib/api';
-  import LabelChip from '$lib/tasks/LabelChip.svelte';
-  import { LABEL_COLORS } from '$lib/tasks/labels.svelte';
+  import { api, type Project } from '#lib/api.ts';
+  import LabelChip from '#lib/tasks/LabelChip.svelte';
+  import { LABEL_COLORS } from '#lib/tasks/labels.svelte.ts';
   import Tag from '@lucide/svelte/icons/tag';
   import { projectLabels } from './projectLabels.svelte';
 

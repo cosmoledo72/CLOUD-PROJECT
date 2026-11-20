@@ -7,8 +7,8 @@
   import Play from '@lucide/svelte/icons/play';
   import Square from '@lucide/svelte/icons/square';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import { api, formatDate, localToday } from '$lib/api';
-  import { money } from '$lib/fieldLook';
+  import { api, formatDate, localToday } from '#lib/api.ts';
+  import { money } from '#lib/fieldLook.ts';
   import { clock, hm, parseDuration, timer } from './timer.svelte';
 
   let { taskId, onchanged }: { taskId: string; onchanged?: () => void } = $props();

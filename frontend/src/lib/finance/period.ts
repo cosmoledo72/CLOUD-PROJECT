@@ -1,5 +1,5 @@
 // Reporting periods of the finance section.
-import { localToday } from '$lib/api';
+import { localToday } from '#lib/api.ts';
 
 export type Period = 'month' | 'quarter' | 'year' | 'prev_year' | 'all' | 'custom';
 export const PERIODS: [Period, string][] = [

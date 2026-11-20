@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { onIntent } from '$lib/intent';
+  import { onIntent } from '#lib/intent.ts';
   import { goto } from '$app/navigation';
-  import { api, roleLabel, type TeamGroup, type TeamMember } from '$lib/api';
-  import Avatar from '$lib/Avatar.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, roleLabel, type TeamGroup, type TeamMember } from '#lib/api.ts';
+  import Avatar from '#lib/Avatar.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import Search from '@lucide/svelte/icons/search';
   import Mail from '@lucide/svelte/icons/mail';
   import Phone from '@lucide/svelte/icons/phone';

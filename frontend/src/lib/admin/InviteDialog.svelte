@@ -1,8 +1,8 @@
 <script lang="ts">
   // Invite several people at once: role, groups, projects and a personal message.
-  import { api, plainMessage, type InviteResult } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, plainMessage, type InviteResult } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import X from '@lucide/svelte/icons/x';
 
   let { open = $bindable(false), ondone }: { open?: boolean; ondone?: () => void } = $props();

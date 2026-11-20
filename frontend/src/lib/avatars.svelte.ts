@@ -1,6 +1,6 @@
 // Who has a photo (user id → upload time). Loaded once per page load; every
 // Avatar shows the photo instead of initials when there is one.
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 
 class Avatars {
   map = $state<Record<string, number>>({});

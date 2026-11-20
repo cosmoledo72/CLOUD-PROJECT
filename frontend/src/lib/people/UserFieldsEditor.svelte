@@ -5,8 +5,8 @@
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import Modal from '$lib/Modal.svelte';
-  import { api, plainMessage } from '$lib/api';
+  import Modal from '#lib/Modal.svelte';
+  import { api, plainMessage } from '#lib/api.ts';
   import type { UserFieldDef, UserFieldType } from './types';
 
   let { open = $bindable(false), fields, onsaved }: { open?: boolean; fields: UserFieldDef[]; onsaved: () => void } = $props();

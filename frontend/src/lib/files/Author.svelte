@@ -1,6 +1,6 @@
 <script lang="ts">
   // Author chip: avatar with initials and the name.
-  import Avatar from '$lib/Avatar.svelte';
+  import Avatar from '#lib/Avatar.svelte';
   let { id, name }: { id: string; name: string } = $props();
 </script>
 

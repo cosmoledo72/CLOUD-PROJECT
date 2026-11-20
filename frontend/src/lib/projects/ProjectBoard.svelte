@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Project } from '$lib/api';
+  import type { Project } from '#lib/api.ts';
   export interface BoardColumn {
     id: string;
     title: string;
@@ -15,11 +15,11 @@
   // Read-only board of the project list: one column per manager (ГИП) or per
   // project label. A project with several managers or labels is shown in each
   // of its columns. Cards are compact: badge, name, labels, deadline, progress.
-  import { formatDate } from '$lib/api';
-  import { avatarHue, initials, moneyShort } from '$lib/fieldLook';
+  import { formatDate } from '#lib/api.ts';
+  import { avatarHue, initials, moneyShort } from '#lib/fieldLook.ts';
   import ProjectBadge from './ProjectBadge.svelte';
   import { projectLabels } from './projectLabels.svelte';
-  import LabelChip from '$lib/tasks/LabelChip.svelte';
+  import LabelChip from '#lib/tasks/LabelChip.svelte';
 
 
   let {

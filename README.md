@@ -3,7 +3,7 @@
 Multi-tenant collaboration platform: document management with real-time co-editing in **ONLYOFFICE Docs**, projects and tasks with a **Gantt chart**, and an **admin panel** with configurable project requisites and portal branding.
 
 - **Backend:** Rust (axum, sqlx, PostgreSQL)
-- **Frontend:** SvelteKit + Svelte 5 SPA
+- **Frontend:** SvelteKit 3 + Svelte 5 SPA (Vite 8)
 - **Editor:** ONLYOFFICE Document Server
 - **Deployment:** Docker Compose
 

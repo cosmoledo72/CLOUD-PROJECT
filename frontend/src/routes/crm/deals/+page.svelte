@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { onIntent } from '$lib/intent';
-  import EmptyState from '$lib/EmptyState.svelte';
+  import { onIntent } from '#lib/intent.ts';
+  import EmptyState from '#lib/EmptyState.svelte';
   import Handshake from '@lucide/svelte/icons/handshake';
   // Sales pipeline. Board: open stages fit the screen width; won/lost are drop
   // zones under the board. List: a sortable table with a stage filter.
   import { goto } from '$app/navigation';
-  import { api, formatDate, formatMoney, localToday, taskWhen, type CompanyListItem, type Contact, type Deal, type Stage, type UserItem } from '$lib/api';
-  import { contactName } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
-  import { session } from '$lib/session.svelte';
+  import { api, formatDate, formatMoney, localToday, taskWhen, type CompanyListItem, type Contact, type Deal, type Stage, type UserItem } from '#lib/api.ts';
+  import { contactName } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
+  import { session } from '#lib/session.svelte.ts';
   import Kanban from '@lucide/svelte/icons/square-kanban';
   import List from '@lucide/svelte/icons/list';
   import Plus from '@lucide/svelte/icons/plus';

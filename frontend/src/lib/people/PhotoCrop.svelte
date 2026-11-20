@@ -1,7 +1,7 @@
 <script lang="ts">
   // Choose a photo and frame it: drag to move, slider to zoom; the square
   // inside the circle is uploaded as a 400×400 JPEG.
-  import Modal from '$lib/Modal.svelte';
+  import Modal from '#lib/Modal.svelte';
   import ImageUp from '@lucide/svelte/icons/image-up';
 
   let { open = $bindable(false), onsave, onremove }: { open?: boolean; onsave: (file: File) => Promise<void>; /** Shown when there is a photo. */ onremove?: () => Promise<void> } = $props();

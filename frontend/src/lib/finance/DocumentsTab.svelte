@@ -1,17 +1,17 @@
 <script lang="ts">
-  import EmptyState from '$lib/EmptyState.svelte';
+  import EmptyState from '#lib/EmptyState.svelte';
   import FileText from '@lucide/svelte/icons/file-text';
   // «Финансы → Документы»: registry of sales documents (contracts, invoices, acts) for CRM users.
-  import { api, docKindLabel, docStatusLabel, formatDate, formatMoney, type DocKind, type DocStatus, type SalesDoc } from '$lib/api';
+  import { api, docKindLabel, docStatusLabel, formatDate, formatMoney, type DocKind, type DocStatus, type SalesDoc } from '#lib/api.ts';
   import Search from '@lucide/svelte/icons/search';
   import Receipt from '@lucide/svelte/icons/receipt';
   import FileCheck2 from '@lucide/svelte/icons/file-check-2';
   import FileSignature from '@lucide/svelte/icons/file-signature';
   import Scale from '@lucide/svelte/icons/scale';
   import Download from '@lucide/svelte/icons/download';
-  import { session } from '$lib/session.svelte';
-  import PickFilter from '$lib/ui/PickFilter.svelte';
-  import StatTile from '$lib/ui/StatTile.svelte';
+  import { session } from '#lib/session.svelte.ts';
+  import PickFilter from '#lib/ui/PickFilter.svelte';
+  import StatTile from '#lib/ui/StatTile.svelte';
   import PeriodPicker from './PeriodPicker.svelte';
   import { periodRange, type Period } from './period';
 

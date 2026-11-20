@@ -1,6 +1,6 @@
 <script lang="ts">
   // "Администрирование → Портал → Регистрация": who may join the portal by themselves.
-  import { api, plainMessage, type RegistrationMode, type RegistrationSettings } from '$lib/api';
+  import { api, plainMessage, type RegistrationMode, type RegistrationSettings } from '#lib/api.ts';
 
   type Group = { id: string; name: string };
   let s = $state<RegistrationSettings | null>(null);

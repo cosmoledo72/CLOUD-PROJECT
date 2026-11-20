@@ -17,15 +17,15 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
   import UserRound from '@lucide/svelte/icons/user-round';
-  import Avatar from '$lib/Avatar.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { api, crmRoleLabel, formatDate, formatDateTime, plainMessage, roleLabel, timeAgo, upload, type UserItem } from '$lib/api';
-  import { avatars } from '$lib/avatars.svelte';
-  import { session } from '$lib/session.svelte';
-  import PhotoCrop from '$lib/people/PhotoCrop.svelte';
-  import UserFieldsEditor from '$lib/people/UserFieldsEditor.svelte';
-  import { generatePassword, validPhone } from '$lib/people/password';
-  import type { Profile, UserFieldDef } from '$lib/people/types';
+  import Avatar from '#lib/Avatar.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { api, crmRoleLabel, formatDate, formatDateTime, plainMessage, roleLabel, timeAgo, upload, type UserItem } from '#lib/api.ts';
+  import { avatars } from '#lib/avatars.svelte.ts';
+  import { session } from '#lib/session.svelte.ts';
+  import PhotoCrop from '#lib/people/PhotoCrop.svelte';
+  import UserFieldsEditor from '#lib/people/UserFieldsEditor.svelte';
+  import { generatePassword, validPhone } from '#lib/people/password.ts';
+  import type { Profile, UserFieldDef } from '#lib/people/types.ts';
 
   type Tab = 'main' | 'docs' | 'access' | 'work' | 'security';
 
@@ -118,6 +118,7 @@
     }
   }
   beforeNavigate((nav) => {
+    if (nav.shallow && nav.type === 'goto') return;
     if (dirty && !saving && !confirm('Изменения в карточке не сохранены. Уйти со страницы?')) nav.cancel();
   });
 

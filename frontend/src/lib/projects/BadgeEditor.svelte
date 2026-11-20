@@ -1,7 +1,7 @@
 <script lang="ts">
   // Choose the project's badge: colour and either the first letter or an icon.
-  import { api, type Project } from '$lib/api';
-  import Modal from '$lib/Modal.svelte';
+  import { api, type Project } from '#lib/api.ts';
+  import Modal from '#lib/Modal.svelte';
   import { autoBadgeColor, BADGE_COLORS, BADGE_ICONS, badgeLetter } from './badge';
   import ProjectBadge from './ProjectBadge.svelte';
 

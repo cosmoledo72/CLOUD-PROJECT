@@ -1,9 +1,9 @@
 <script lang="ts">
   // Catalogue of project labels: administrators rename, recolour and delete;
   // managers of projects (and administrators) add new ones.
-  import Modal from '$lib/Modal.svelte';
-  import LabelChip from '$lib/tasks/LabelChip.svelte';
-  import { LABEL_COLORS } from '$lib/tasks/labels.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import LabelChip from '#lib/tasks/LabelChip.svelte';
+  import { LABEL_COLORS } from '#lib/tasks/labels.svelte.ts';
   import { projectLabels } from './projectLabels.svelte';
 
   let { open = $bindable(false), onchange }: { open?: boolean; onchange?: () => void } = $props();
