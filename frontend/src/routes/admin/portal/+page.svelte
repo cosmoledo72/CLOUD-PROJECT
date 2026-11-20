@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ruZones, otherZones as otherZones_ } from '$lib/timezones';
   import { api, formatDate, formatSize, type Overview } from '$lib/api';
   import RegistrationSettings from '$lib/admin/RegistrationSettings.svelte';
   import { session } from '$lib/session.svelte';
@@ -19,21 +20,7 @@
   let name = $state('');
   let timezone = $state('Europe/Moscow');
   // Russian zones first, then every zone the browser knows.
-  const ruZones: [string, string][] = [
-    ['Europe/Kaliningrad', 'Калининград (UTC+2)'], ['Europe/Moscow', 'Москва (UTC+3)'], ['Europe/Samara', 'Самара (UTC+4)'],
-    ['Asia/Yekaterinburg', 'Екатеринбург (UTC+5)'], ['Asia/Omsk', 'Омск (UTC+6)'], ['Asia/Novosibirsk', 'Новосибирск (UTC+7)'],
-    ['Asia/Krasnoyarsk', 'Красноярск (UTC+7)'], ['Asia/Irkutsk', 'Иркутск (UTC+8)'], ['Asia/Yakutsk', 'Якутск (UTC+9)'],
-    ['Asia/Vladivostok', 'Владивосток (UTC+10)'], ['Asia/Sakhalin', 'Сахалин (UTC+11)'], ['Asia/Magadan', 'Магадан (UTC+11)'],
-    ['Asia/Kamchatka', 'Камчатка (UTC+12)']
-  ];
-  const otherZones = (() => {
-    try {
-      const known = new Set(ruZones.map(([z]) => z));
-      return (Intl as unknown as { supportedValuesOf(k: string): string[] }).supportedValuesOf('timeZone').filter((z) => !known.has(z));
-    } catch {
-      return [] as string[];
-    }
-  })();
+  const otherZones = otherZones_();
   let error = $state('');
   let notice = $state('');
 
@@ -87,7 +74,7 @@
           {#if otherZones.length}<optgroup label="Другие">{#each otherZones as z}<option value={z}>{z}</option>{/each}</optgroup>{/if}
           {#if !ruZones.some(([z]) => z === timezone) && !otherZones.includes(timezone)}<option value={timezone}>{timezone}</option>{/if}
         </select>
-        <span class="faint small">По нему определяется «сегодня» и «завтра» в напоминаниях о сроках задач. Напоминания приходят с 8:00 по местному времени.</span>
+        <span class="faint small">По нему определяется «сегодня» и «завтра» в напоминаниях о сроках задач. Напоминания приходят с 8:00 по местному времени.{#if session.me?.backups}{" "}По этому же поясу делаются ночные резервные копии сервера.{/if}</span>
       </label>
       <div class="row">
         <div class="spacer"></div>

@@ -217,7 +217,7 @@ pub fn write(data: &Data, scale: &str) -> Result<Vec<u8>, XlsxError> {
     ws.set_repeat_rows(h1, h2)?;
     ws.set_repeat_columns(0, first_t - 1)?;
     ws.set_print_area(0, 0, last_row, last_col)?;
-    ws.set_header(&format!("&L&8{}&R&8Лист &P из &N", data.title_line().replace('&', "&&")));
+    ws.set_header(format!("&L&8{}&R&8Лист &P из &N", data.title_line().replace('&', "&&")));
 
     // --- «Задачи» ----------------------------------------------------------------------
     let ws = wb.add_worksheet().set_name("Задачи")?;

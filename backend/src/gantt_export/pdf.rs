@@ -67,7 +67,7 @@ impl Metrics {
         let chars: Vec<char> = s.chars().collect();
         let (mut lo, mut hi) = (0usize, chars.len());
         while lo < hi {
-            let mid = (lo + hi + 1) / 2;
+            let mid = (lo + hi).div_ceil(2);
             let t: String = chars[..mid].iter().collect::<String>() + "…";
             if self.width(&t, size, bold) <= max { lo = mid } else { hi = mid - 1 }
         }

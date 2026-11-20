@@ -28,6 +28,7 @@
   import Search from '@lucide/svelte/icons/search';
   import Plus from '@lucide/svelte/icons/plus';
   import SearchPalette from '$lib/search/SearchPalette.svelte';
+  import UpdateBanner from '$lib/UpdateBanner.svelte';
   import QuickCreate from '$lib/search/QuickCreate.svelte';
   import { palette } from '$lib/search/search.svelte';
   import { openQuick } from '$lib/search/quick.svelte';
@@ -255,6 +256,7 @@
   <SearchPalette />
   {#if staff}<QuickCreate />{/if}
 {/if}
+<UpdateBanner />
 
 <style>
   .shell { display: grid; grid-template-columns: 252px 1fr; min-height: 100vh; transition: grid-template-columns .15s; }

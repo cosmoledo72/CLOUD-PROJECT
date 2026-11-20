@@ -84,7 +84,10 @@ export interface BackupStatus {
   alive: boolean;
   heartbeat: number | null;
   now: number;
+  /** Hour of the nightly backup (0–23) in `timezone`. */
   hour: number;
+  /** Time zone of the backup portal, IANA name. */
+  timezone: string;
   keep_days: number;
   requested_at: number | null;
   running: boolean;

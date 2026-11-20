@@ -4,7 +4,8 @@
 #
 #   backup.sh loop             nightly at BACKUP_HOUR, keep BACKUP_KEEP_DAYS days (service default)
 #   backup.sh now              make a backup right away
-#   backup.sh once             one turn of the loop: heartbeat, serve a REQUEST (tests)
+#   backup.sh once             heartbeat and serve a REQUEST, no schedule (tests)
+#   backup.sh tick             one full turn of the loop: request + schedule (tests)
 #   backup.sh list             list backups
 #   backup.sh restore NAME     restore a backup (stop the backend first!)
 #
@@ -19,15 +20,36 @@
 #   REQUEST      written by the portal: «make a backup now»; taken within a minute
 #
 # Connection: PGHOST, PGUSER, PGDATABASE, PGPASSWORD. Paths: BLOBS_DIR, BACKUP_DIR.
-# Times are taken from PostgreSQL in the TZ time zone (default Asia/Sakhalin).
+#
+# Schedule. The hour and the time zone are set in the portal: the hour in
+# «Резервные копии» (table backup_settings), the time zone is the one of the
+# BACKUP_PORTAL portal («Администрирование → Портал»). BACKUP_HOUR and TZ are
+# only defaults (an old database, no BACKUP_PORTAL). Times come from PostgreSQL.
+#
+# Catch-up. The computer may be off at the backup hour, so a backup is made
+#   - at the hour or any time later the same day, if there is none for today yet;
+#   - at any time, if the newest ready backup is older than 26 hours.
+# After a failed attempt the next one waits RETRY_SECS (default an hour).
 
 set -eu
 
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 BLOBS_DIR="${BLOBS_DIR:-/data/blobs}"
-BACKUP_HOUR="$(printf '%02d' "$(echo "${BACKUP_HOUR:-03}" | sed 's/^0*//; s/^$/0/')")"
+# Two-digit hour, "03"; anything unusable becomes 03.
+norm_hour() {
+    h="$(echo "$1" | sed 's/^0*//; s/^$/0/')"
+    case "$h" in *[!0-9]*) h=3 ;; esac
+    [ "$h" -le 23 ] || h=3
+    printf '%02d' "$h"
+}
+DEFAULT_HOUR="$(norm_hour "${BACKUP_HOUR:-03}")"
+DEFAULT_TZ="${TZ:-Asia/Sakhalin}"
+BACKUP_HOUR="$DEFAULT_HOUR"
+TZ_NAME="$DEFAULT_TZ"
+RETRY_SECS="${RETRY_SECS:-3600}"
+# A ready backup newer than this (minutes) counts as current.
+FRESH_MIN=1560
 BACKUP_KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
-TZ_NAME="${TZ:-Asia/Sakhalin}"
 PREFIX="cloud-project-"
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') backup: $*"; }
@@ -48,6 +70,59 @@ wait_db() {
 write_file() {
     tmp="$1.tmp.$$"
     cat > "$tmp" && mv -f "$tmp" "$1"
+}
+
+# Read the schedule set in the portal; keep the defaults on any error
+# (the table appears with migration 0030, the portal may be missing).
+load_settings() {
+    h="$(psql -XAtc "SELECT hour FROM backup_settings WHERE id AND hour IS NOT NULL" 2>/dev/null || true)"
+    if [ -n "$h" ]; then BACKUP_HOUR="$(norm_hour "$h")"; else BACKUP_HOUR="$DEFAULT_HOUR"; fi
+    tz=""
+    if [ -n "${BACKUP_PORTAL:-}" ]; then
+        tz="$(printf "SELECT timezone FROM tenants WHERE slug = :'slug'\n" | psql -XAt -v slug="$BACKUP_PORTAL" 2>/dev/null || true)"
+    fi
+    # Only plain zone names ("Asia/Yekaterinburg", "UTC") reach the SQL of db_now.
+    case "$tz" in
+        "" | *[!A-Za-z0-9/_+-]*) TZ_NAME="$DEFAULT_TZ" ;;
+        *) TZ_NAME="$tz" ;;
+    esac
+}
+
+# Is a scheduled or catch-up backup due now? (settings loaded, database up)
+due() {
+    today="$(db_now 'YYYY-MM-DD')" || return 1
+    hour="$(db_now 'HH24')" || return 1
+    if [ "$hour" -ge "$BACKUP_HOUR" ] 2>/dev/null && ! ls -d "$BACKUP_DIR/$PREFIX$today"_* > /dev/null 2>&1; then
+        return 0
+    fi
+    # No ready backup within FRESH_MIN minutes: the computer was off at the hour.
+    if [ -z "$(find "$BACKUP_DIR" -mindepth 2 -maxdepth 2 -name COMPLETE -path "*/$PREFIX*" -mmin -"$FRESH_MIN" 2>/dev/null | head -n 1)" ]; then
+        return 0
+    fi
+    return 1
+}
+
+LAST_FAIL=0
+
+# One turn of the loop: heartbeat, a request from the portal, the schedule.
+tick() {
+    heartbeat
+    # A request from the portal («Сделать копию сейчас»).
+    if [ -f "$BACKUP_DIR/REQUEST" ]; then
+        log "backup requested from the portal: $(tr '\n' ' ' < "$BACKUP_DIR/REQUEST")"
+        rm -f "$BACKUP_DIR/REQUEST"
+        make_backup || LAST_FAIL="$(date +%s)"
+        prune
+        heartbeat
+    fi
+    if pg_isready -q; then
+        load_settings
+        if [ $(( $(date +%s) - LAST_FAIL )) -ge "$RETRY_SECS" ] && due; then
+            log "scheduled backup (hour ${BACKUP_HOUR}, $TZ_NAME)"
+            if make_backup; then LAST_FAIL=0; else LAST_FAIL="$(date +%s)"; fi
+            prune
+        fi
+    fi
 }
 
 heartbeat() {
@@ -144,28 +219,14 @@ restore() {
 }
 
 loop() {
-    log "nightly backups at ${BACKUP_HOUR}:00 ($TZ_NAME), keep $BACKUP_KEEP_DAYS days, into $BACKUP_DIR"
+    wait_db || true
+    load_settings
+    log "nightly backups at ${BACKUP_HOUR}:00 ($TZ_NAME, set in the portal), catch-up when missed, keep $BACKUP_KEEP_DAYS days, into $BACKUP_DIR"
     mkdir -p "$BACKUP_DIR"
     # The backend (uid 10001, backend/Dockerfile) leaves REQUEST files here.
     chown 10001 "$BACKUP_DIR" 2>/dev/null || true
     while true; do
-        heartbeat
-        # A request from the portal («Сделать копию сейчас»).
-        if [ -f "$BACKUP_DIR/REQUEST" ]; then
-            log "backup requested from the portal: $(tr '\n' ' ' < "$BACKUP_DIR/REQUEST")"
-            rm -f "$BACKUP_DIR/REQUEST"
-            make_backup || true
-            prune
-            heartbeat
-        fi
-        if wait_db; then
-            today="$(db_now 'YYYY-MM-DD')"
-            hour="$(db_now 'HH24')"
-            if [ "$hour" = "$BACKUP_HOUR" ] && ! ls -d "$BACKUP_DIR/$PREFIX$today"_* > /dev/null 2>&1; then
-                make_backup || true
-                prune
-            fi
-        fi
+        tick
         sleep "${BACKUP_POLL_SECS:-60}"
     done
 }
@@ -174,9 +235,10 @@ cmd="${1:-loop}"
 if [ $# -gt 0 ]; then shift; fi
 case "$cmd" in
     loop) loop ;;
-    now) mkdir -p "$BACKUP_DIR"; make_backup; prune ;;
-    once) mkdir -p "$BACKUP_DIR"; heartbeat; if [ -f "$BACKUP_DIR/REQUEST" ]; then rm -f "$BACKUP_DIR/REQUEST"; make_backup; prune; fi ;;
+    now) mkdir -p "$BACKUP_DIR"; load_settings; make_backup; prune ;;
+    once) mkdir -p "$BACKUP_DIR"; load_settings; heartbeat; if [ -f "$BACKUP_DIR/REQUEST" ]; then rm -f "$BACKUP_DIR/REQUEST"; make_backup; prune; fi ;;
+    tick) mkdir -p "$BACKUP_DIR"; tick ;;
     list) list ;;
     restore) restore "$@" ;;
-    *) echo "usage: backup.sh loop|now|once|list|restore NAME"; exit 2 ;;
+    *) echo "usage: backup.sh loop|now|once|tick|list|restore NAME"; exit 2 ;;
 esac

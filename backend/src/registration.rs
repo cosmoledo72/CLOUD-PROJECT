@@ -4,7 +4,7 @@
 //! * `off`     — only invitations;
 //! * `request` — anyone may apply, an administrator approves or rejects;
 //! * `domain`  — confirmed addresses of the listed domains join at once,
-//!               other addresses become requests.
+//!   other addresses become requests.
 //!
 //! The applicant's address is confirmed by an emailed link when the portal can
 //! send mail; without mail every application goes straight to the

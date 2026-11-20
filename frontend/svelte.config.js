@@ -6,6 +6,9 @@ export default {
   preprocess: vitePreprocess(),
   kit: {
     // Single-page app: the Rust API and the static bundle are served behind one reverse proxy.
-    adapter: adapter({ fallback: 'index.html' })
+    adapter: adapter({ fallback: 'index.html' }),
+    // Open tabs notice a rebuilt portal within a minute (UpdateBanner); index.html
+    // and version.json are served with «Cache-Control: no-cache» (nginx.conf).
+    version: { pollInterval: 60_000 }
   }
 };

@@ -16,6 +16,8 @@ import subprocess
 import sys
 import time
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(__file__))
 from smoke_test import Client, step  # noqa: E402
@@ -69,6 +71,9 @@ def main():
 
     admin, _ = portal_admin()
     assert admin.call("GET", "/auth/me")["backups"] is True
+    portal = admin.call("GET", "/admin/portal")
+    admin.call("PATCH", "/admin/portal", {"name": portal["name"], "timezone": "Asia/Sakhalin"})
+    admin.call("PATCH", "/admin/reserve/settings", {"hour": 3})
 
     # --- Who sees the section -------------------------------------------------
     admin.call("POST", "/users", {"email": "m" + uuid.uuid4().hex[:6] + "@example.com", "display_name": "Марк",
@@ -85,6 +90,8 @@ def main():
     assert other.call("GET", "/auth/me")["backups"] is False
     other.call("GET", "/admin/reserve", expect=404)
     other.call("POST", "/admin/reserve/now", expect=404)
+    other.call("PATCH", "/admin/reserve/settings", {"hour": 5}, expect=404)
+    member.call("PATCH", "/admin/reserve/settings", {"hour": 5}, expect=404)
     step("Only administrators of the BACKUP_PORTAL portal see the section; others get 404")
 
     # --- Empty folder, service silent -----------------------------------------
@@ -110,6 +117,16 @@ def main():
     assert (b["db_bytes"], b["files_bytes"], b["created"]) == (2048, 4096, "2026-11-12 03:00:41 Asia/Sakhalin")
     assert r["running"] is True and r["warnings"] == [], r["warnings"]
     step("Backups listed newest first with sizes and states (ready / running / unfinished); a fresh one — no warnings")
+
+    # --- Schedule: hour set here, time zone of the portal ----------------------
+    assert r["timezone"] == "Asia/Sakhalin", r["timezone"]
+    admin.call("PATCH", "/admin/reserve/settings", {"hour": 24}, expect=400)
+    r = admin.call("PATCH", "/admin/reserve/settings", {"hour": 5})
+    assert r["hour"] == 5 and admin.call("GET", "/admin/reserve")["hour"] == 5
+    assert len(admin.call("GET", "/admin/audit?action=backup.settings_changed&limit=5")["entries"]) >= 1
+    admin.call("PATCH", "/admin/portal", {"name": portal["name"], "timezone": "Asia/Yekaterinburg"})
+    assert admin.call("GET", "/admin/reserve")["timezone"] == "Asia/Yekaterinburg"
+    step("The backup hour is changed in the section (0–23, audited); the time zone follows the portal's")
 
     # --- Warnings: old backups, failed attempt --------------------------------
     shutil.rmtree(os.path.join(DIR, "cloud-project-2026-11-11_0300"))
@@ -154,6 +171,39 @@ def main():
         assert new, r["backups"]
         assert admin.call("GET", f"/admin/reserve/{new[0]['name']}/db.dump", raw=True)[:5] == b"PGDMP"
         step("backup.sh takes the request, makes a real backup and records the result")
+
+        # Schedule and catch-up, with the portal's hour and time zone.
+        def tick():
+            subprocess.run(["sh", script, "tick"], env=env, check=True, capture_output=True, timeout=300)
+            return sorted(b["name"] for b in admin.call("GET", "/admin/reserve")["backups"] if b["state"] == "ready")
+
+        def clear():
+            for x in os.listdir(DIR):
+                if x.startswith("cloud-project-"):
+                    shutil.rmtree(os.path.join(DIR, x))
+
+        tz = "Asia/Yekaterinburg"
+        clear()
+        admin.call("PATCH", "/admin/reserve/settings", {"hour": 0})
+        names = tick()
+        now = datetime.now(ZoneInfo(tz))
+        assert len(names) == 1 and names[0].startswith("cloud-project-" + now.strftime("%Y-%m-%d_")), (names, now)
+        assert abs(int(names[0][-4:-2]) - now.hour) in (0, 1, 23), (names, now)
+        assert tick() == names, "no second backup the same day"
+        step("Missed hour today (computer was off): backup.sh makes the backup later the same day, once, in the portal's time zone")
+
+        if now.hour < 23:
+            clear()
+            make_folder("cloud-project-2026-11-01_0300", age=2 * 86400)
+            make_folder("cloud-project-" + now.strftime("%Y-%m-%d") + "_0000", complete=False)  # failed today
+            admin.call("PATCH", "/admin/reserve/settings", {"hour": now.hour + 1})
+            names = tick()
+            assert len(names) == 2, names
+            clear()
+            make_folder("cloud-project-2026-11-01_0300", age=3600)
+            assert len(tick()) == 1, "fresh backup, hour not reached: nothing to do"
+            step("No ready backup for 26 h: a catch-up backup is made before the hour; a fresh one — nothing")
+        admin.call("PATCH", "/admin/reserve/settings", {"hour": 3})
     else:
         print("  (backup.sh not run: no pg_dump / PGHOST)")
 

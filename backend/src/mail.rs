@@ -299,8 +299,8 @@ async fn process_due(state: &AppState) -> anyhow::Result<()> {
     .await?;
     let mut transports: HashMap<Uuid, Option<Smtp>> = HashMap::new();
     for m in due {
-        if !transports.contains_key(&m.tenant_id) {
-            transports.insert(m.tenant_id, effective_smtp(state, m.tenant_id).await.ok().flatten());
+        if let std::collections::hash_map::Entry::Vacant(e) = transports.entry(m.tenant_id) {
+            e.insert(effective_smtp(state, m.tenant_id).await.ok().flatten());
         }
         let Some(smtp) = transports[&m.tenant_id].clone() else {
             // Nothing to send through yet: keep the message and look again later.

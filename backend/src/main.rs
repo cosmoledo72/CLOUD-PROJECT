@@ -1,5 +1,9 @@
 //! WorkHub server entry point: configuration, database migrations and routing.
 
+// Rows are read as sqlx tuples and handlers take extractors, so these two
+// lints fire on idiomatic code; everything else clippy reports is fixed.
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
+
 mod accounts;
 mod acl;
 mod admin;
@@ -136,6 +140,7 @@ fn router(state: AppState) -> Router {
         .route("/admin/calendar/{year}/holidays", post(calendar::fill_holidays))
         .route("/admin/reserve", get(backups::list))
         .route("/admin/reserve/now", post(backups::request_now))
+        .route("/admin/reserve/settings", patch(backups::update_settings))
         .route("/admin/reserve/{name}/{file}", get(backups::download))
         .route("/finance/settings", get(finance::get_settings).put(finance::save_settings))
         .route("/finance/categories", get(finance::list_categories).post(finance::create_category))

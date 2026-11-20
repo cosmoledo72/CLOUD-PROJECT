@@ -63,7 +63,7 @@ pub fn account_valid(bik: &str, account: &str, correspondent: bool) -> bool {
         .enumerate()
         .map(|(i, c)| c.to_digit(10).unwrap_or(0) * weights[i % 3] % 10)
         .sum();
-    sum % 10 == 0
+    sum.is_multiple_of(10)
 }
 
 #[cfg(test)]

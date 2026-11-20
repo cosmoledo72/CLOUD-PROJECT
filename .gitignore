@@ -13,3 +13,7 @@ deploy/caddy-local-root.crt
 
 # Transfer package: git history bundle
 /transfer/*.bundle
+
+# Leftovers that do not belong to the repository
+/Claude outputs/
+/transfer/skills/

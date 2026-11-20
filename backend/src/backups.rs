@@ -12,6 +12,10 @@
 //!
 //! A backup holds every portal of the server, so the section is open only to
 //! administrators of the portal named in `BACKUP_PORTAL`.
+//!
+//! Schedule: the hour is kept in `backup_settings` (edited here, `BACKUP_HOUR`
+//! is the default) and the time zone is the backup portal's own
+//! («Администрирование → Портал»). The service reads both from the database.
 
 use std::{
     collections::HashMap,
@@ -27,7 +31,7 @@ use axum::{
     Json,
 };
 use bytes::Bytes;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::AsyncReadExt;
 
@@ -124,7 +128,22 @@ fn scan(dir: &FsPath) -> Vec<BackupItem> {
     out
 }
 
-fn status(state: &AppState) -> Value {
+/// Effective schedule: hour (stored or `BACKUP_HOUR`) and the backup portal's time zone.
+async fn schedule(state: &AppState) -> ApiResult<(u32, String)> {
+    let hour: Option<i16> = sqlx::query_scalar("SELECT hour FROM backup_settings WHERE id").fetch_optional(&state.db).await?.flatten();
+    let tz: Option<String> = sqlx::query_scalar("SELECT timezone FROM tenants WHERE slug = $1")
+        .bind(state.cfg.backup_portal.as_deref().unwrap_or(""))
+        .fetch_optional(&state.db)
+        .await?;
+    Ok((hour.map(|h| h as u32).unwrap_or(state.cfg.backup_hour), tz.unwrap_or_else(|| "Asia/Sakhalin".into())))
+}
+
+async fn status(state: &AppState) -> ApiResult<Value> {
+    let (hour, timezone) = schedule(state).await?;
+    Ok(status_with(state, hour, &timezone))
+}
+
+fn status_with(state: &AppState, hour: u32, timezone: &str) -> Value {
     let dir = PathBuf::from(&state.cfg.backup_dir);
     let now = now_secs();
     let items = scan(&dir);
@@ -155,7 +174,8 @@ fn status(state: &AppState) -> Value {
         "alive": alive,
         "heartbeat": heartbeat,
         "now": now,
-        "hour": state.cfg.backup_hour,
+        "hour": hour,
+        "timezone": timezone,
         "keep_days": state.cfg.backup_keep_days,
         "requested_at": requested_at,
         "running": items.iter().any(|i| i.state == "running"),
@@ -168,7 +188,7 @@ fn status(state: &AppState) -> Value {
 /// `GET /api/admin/reserve`
 pub async fn list(State(state): State<AppState>, user: CurrentUser) -> ApiResult<Json<Value>> {
     require(&state, &user).await?;
-    Ok(Json(status(&state)))
+    Ok(Json(status(&state).await?))
 }
 
 /// `POST /api/admin/reserve/now` — ask the service for a backup right away.
@@ -186,7 +206,31 @@ pub async fn request_now(State(state): State<AppState>, user: CurrentUser) -> Ap
             .map_err(|e| ApiError::BadRequest(format!("не удалось записать заявку в папку копий: {e}")))?;
         state.audit(user.tenant_id, Some(user.user_id), "backup.requested", Some("backup"), None, json!({})).await;
     }
-    Ok(Json(status(&state)))
+    Ok(Json(status(&state).await?))
+}
+
+#[derive(Deserialize)]
+pub struct SettingsReq {
+    /// Hour of the nightly backup in the portal's time zone, 0–23.
+    pub hour: u32,
+}
+
+/// `PATCH /api/admin/reserve/settings` — change the hour of the nightly backup.
+pub async fn update_settings(State(state): State<AppState>, user: CurrentUser, Json(req): Json<SettingsReq>) -> ApiResult<Json<Value>> {
+    require(&state, &user).await?;
+    if req.hour > 23 {
+        return Err(ApiError::BadRequest("час копии — от 0 до 23".into()));
+    }
+    sqlx::query(
+        "INSERT INTO backup_settings (id, hour, updated_at, updated_by) VALUES (TRUE, $1, now(), $2)
+         ON CONFLICT (id) DO UPDATE SET hour = EXCLUDED.hour, updated_at = now(), updated_by = EXCLUDED.updated_by",
+    )
+    .bind(req.hour as i16)
+    .bind(user.user_id)
+    .execute(&state.db)
+    .await?;
+    state.audit(user.tenant_id, Some(user.user_id), "backup.settings_changed", Some("backup"), None, json!({ "hour": req.hour })).await;
+    Ok(Json(status(&state).await?))
 }
 
 /// `GET /api/admin/reserve/{name}/{file}` — download `db.dump` or `files.tar.gz`

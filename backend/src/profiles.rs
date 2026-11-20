@@ -86,7 +86,7 @@ fn require_view(user: &CurrentUser, id: Uuid) -> ApiResult<()> {
 }
 
 async fn load_row(state: &AppState, tenant_id: Uuid, id: Uuid) -> ApiResult<ProfileRow> {
-    Ok(sqlx::query_as::<_, ProfileRow>(
+    sqlx::query_as::<_, ProfileRow>(
         "SELECT u.id, u.email::text AS email, u.display_name, u.role, u.crm_role, u.finance_role, u.is_active, u.totp_enabled,
                 u.invite_pending, u.position, u.phone, u.last_name, u.first_name, u.middle_name, u.birth_date, u.department,
                 u.manager_id, m.display_name AS manager_name, u.hired_on, u.phone_mobile, u.telegram, u.doc_short_name,
@@ -99,7 +99,7 @@ async fn load_row(state: &AppState, tenant_id: Uuid, id: Uuid) -> ApiResult<Prof
     .bind(tenant_id)
     .fetch_optional(&state.db)
     .await?
-    .ok_or(ApiError::NotFound)?)
+    .ok_or(ApiError::NotFound)
 }
 
 /// `GET /api/users/{id}/profile`

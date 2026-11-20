@@ -24,3 +24,4 @@ if /i "%~1"=="" (
 )
 if /i "%~1"=="local" echo First time on this PC: scripts\hosts-local.cmd ^(as administrator^) and scripts\trust-local-cert.cmd
 echo ONLYOFFICE needs 1-2 minutes after the first start.
+pause

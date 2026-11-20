@@ -162,7 +162,7 @@ async fn editable_entry(state: &AppState, user: &CurrentUser, id: Uuid) -> ApiRe
         .await?
         .ok_or(ApiError::NotFound)?;
     let project_id: Uuid = sqlx::query_scalar("SELECT project_id FROM tasks WHERE id = $1").bind(row.task_id).fetch_one(&state.db).await?;
-    let role = project_role(&state, user, project_id).await?;
+    let role = project_role(state, user, project_id).await?;
     let ok = role == ProjectRole::Manager || (row.user_id == user.user_id && role >= ProjectRole::Member);
     if !ok {
         return Err(ApiError::Forbidden);
@@ -781,9 +781,8 @@ fn write_xlsx(r: &Report, from: NaiveDate, to: NaiveDate) -> Result<Vec<u8>, rus
     for (i, c) in cols.iter().enumerate() {
         ws.write_string_with_format(0, i as u16, *c, &head)?;
     }
-    let mut row = 1u32;
     let mut last = String::new();
-    for ((p, u), (m, c)) in &sum {
+    for (row, ((p, u), (m, c))) in (1u32..).zip(sum.iter()) {
         if *p != last {
             ws.write_string_with_format(row, 0, p, &bold)?;
             last = p.clone();
@@ -793,7 +792,6 @@ fn write_xlsx(r: &Report, from: NaiveDate, to: NaiveDate) -> Result<Vec<u8>, rus
         if r.money {
             ws.write_number_with_format(row, 3, *c, &money_f)?;
         }
-        row += 1;
     }
     ws.set_column_width(0, 40)?;
     ws.set_column_width(1, 24)?;

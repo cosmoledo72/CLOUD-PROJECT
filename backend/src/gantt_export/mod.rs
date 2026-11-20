@@ -392,7 +392,7 @@ async fn collect(state: &AppState, user: &CurrentUser, id: Uuid, req: &ExportReq
 
     // --- Tree order, filters --------------------------------------------------
     let wanted: Option<HashSet<Uuid>> = req.task_ids.as_ref().map(|v| v.iter().copied().collect());
-    let keep = |t: &TaskRow| wanted.as_ref().map_or(true, |w| w.contains(&t.id)) && !(req.hide_done && t.status == "done");
+    let keep = |t: &TaskRow| wanted.as_ref().is_none_or(|w| w.contains(&t.id)) && !(req.hide_done && t.status == "done");
     let by_id: HashMap<Uuid, &TaskRow> = tasks.iter().map(|t| (t.id, t)).collect();
     let mut children: HashMap<Option<Uuid>, Vec<&TaskRow>> = HashMap::new();
     for t in &tasks {

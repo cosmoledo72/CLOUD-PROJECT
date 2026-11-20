@@ -6,6 +6,8 @@
   import { api, formatSize, type BackupItem, type BackupStatus } from '$lib/api';
   import { session } from '$lib/session.svelte';
   import EmptyState from '$lib/EmptyState.svelte';
+  import { zoneLabel } from '$lib/timezones';
+  import Clock from '@lucide/svelte/icons/clock';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import Copy from '@lucide/svelte/icons/copy';
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
@@ -38,6 +40,27 @@
     const t = setInterval(load, 10_000);
     return () => clearInterval(t);
   });
+
+  // Schedule: the hour is edited here, the time zone is the portal's.
+  let hourDraft = $state(3);
+  let savingHour = $state(false);
+  let hourSaved = $state(false);
+  $effect(() => {
+    if (data) hourDraft = data.hour;
+  });
+  async function saveHour() {
+    savingHour = true;
+    try {
+      data = await api.patch<BackupStatus>('/admin/reserve/settings', { hour: hourDraft });
+      error = '';
+      hourSaved = true;
+      setTimeout(() => (hourSaved = false), 2500);
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      savingHour = false;
+    }
+  }
 
   async function makeNow() {
     busy = true;
@@ -100,6 +123,20 @@
         {#if data.warnings.length}
           <ul class="warn">{#each data.warnings as w}<li>{w}</li>{/each}</ul>
         {/if}
+        <div class="sched">
+          <Clock size={16} />
+          <label for="bk-hour">Время ночной копии</label>
+          <select id="bk-hour" class="input sm" bind:value={hourDraft}>
+            {#each Array.from({ length: 24 }, (_, i) => i) as h}<option value={h}>{String(h).padStart(2, '0')}:00</option>{/each}
+          </select>
+          {#if hourDraft !== data.hour}
+            <button class="btn primary sm" onclick={saveHour} disabled={savingHour}>Сохранить</button>
+          {:else if hourSaved}
+            <span class="ok-t">сохранено</span>
+          {/if}
+          <span class="faint small tz">по поясу портала: {zoneLabel(data.timezone)} · <a href="/admin/portal">изменить</a></span>
+        </div>
+        <p class="faint small catch">Если в это время компьютер выключен, копия будет сделана сразу после его включения.</p>
         <dl class="facts">
           <div><dt>Последняя готовая копия</dt><dd>{#if latest}{when(latest)} <span class="faint">· {ago(latest.time)}</span>{:else}—{/if}</dd></div>
           <div><dt>Размер последней</dt><dd>{latest ? formatSize(total(latest)) : '—'}</dd></div>
@@ -190,6 +227,11 @@
   .st-head b { font-size: 15.5px; }
   .st-head .muted { font-size: 13px; }
   .warn { margin: 12px 0 0; padding: 10px 12px 10px 28px; background: var(--danger-soft); color: var(--danger); border-radius: var(--radius); font-size: 13px; display: grid; gap: 4px; }
+  .sched { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 16px 0 0; font-size: 13.5px; color: var(--text-2); }
+  .sched label { font-weight: 500; color: var(--text); }
+  .sched select { width: auto; min-width: 88px; height: 30px; padding-top: 0; padding-bottom: 0; }
+  .sched .tz { flex-basis: 100%; }
+  .catch { margin: 4px 0 0; }
   .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 16px 0 0; }
   .facts div { display: grid; gap: 2px; }
   .facts dt { font-size: 12px; color: var(--text-3); }

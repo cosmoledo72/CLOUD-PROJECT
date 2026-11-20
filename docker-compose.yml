@@ -129,7 +129,10 @@ services:
       PGUSER: workhub
       PGDATABASE: workhub
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      # Defaults only: the hour is set in «Резервные копии», the time zone is the
+      # one of the BACKUP_PORTAL portal («Администрирование → Портал»).
       BACKUP_HOUR: ${BACKUP_HOUR:-03}
+      BACKUP_PORTAL: ${BACKUP_PORTAL:-}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
       BLOBS_DIR: /data/blobs
       BACKUP_DIR: /backups
