@@ -34,6 +34,8 @@ pub struct MeResponse {
     pub display_name: String,
     pub role: String,
     pub totp_enabled: bool,
+    /// Unused 2FA recovery codes (0 when 2FA is off).
+    pub recovery_codes_left: i64,
     pub crm_role: String,
     /// Effective finance access: none | view | edit (administrators: edit).
     pub finance_role: String,
@@ -59,6 +61,7 @@ async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
     .fetch_one(&state.db)
     .await?;
     let backups = crate::backups::allowed(state, &row.2, &row.6);
+    let recovery_codes_left = if row.7 { super::mfa::codes_left(state, user_id).await? } else { 0 };
     Ok(MeResponse {
         id: row.0,
         tenant_id: row.1,
@@ -68,6 +71,7 @@ async fn load_me(state: &AppState, user_id: Uuid) -> ApiResult<MeResponse> {
         display_name: row.5,
         role: row.6,
         totp_enabled: row.7,
+        recovery_codes_left,
         crm_role: row.8,
         finance_role: row.12,
         position: row.9,
@@ -264,8 +268,8 @@ pub async fn verify_totp(
     let token = token_from_headers(&headers).ok_or(ApiError::Unauthorized)?;
     let hash = token_hash(&token);
 
-    let row: Option<(Uuid, Uuid, i16, Option<String>, String, String)> = sqlx::query_as(
-        "SELECT s.user_id, s.tenant_id, s.mfa_attempts, u.totp_secret, u.email::text, t.name
+    let row: Option<(Uuid, Uuid, i16, Option<Vec<u8>>, String, String)> = sqlx::query_as(
+        "SELECT s.user_id, s.tenant_id, s.mfa_attempts, u.totp_secret_enc, u.email::text, t.name
            FROM sessions s JOIN users u ON u.id = s.user_id JOIN tenants t ON t.id = s.tenant_id
           WHERE s.token_hash = $1 AND s.stage = 'pending_mfa' AND s.expires_at > now()",
     )
@@ -273,12 +277,19 @@ pub async fn verify_totp(
     .fetch_optional(&state.db)
     .await?;
     let (user_id, tenant_id, attempts, secret, email, tenant_name) = row.ok_or(ApiError::Unauthorized)?;
-    let secret = secret.ok_or(ApiError::Unauthorized)?;
+    let secret = secret.and_then(|b| super::mfa::open_secret(&state, &b)).ok_or(ApiError::Unauthorized)?;
     // Wrong codes count across pending sessions, so re-logging in does not reset the budget.
     let mfa_key = format!("mfa:{user_id}");
     state.limiter.check(&mfa_key, state.cfg.login_account_limit, WINDOW_15_MIN)?;
 
-    if !totp_ok(&build_totp(&secret, &tenant_name, &email)?, &req.code) {
+    // A recovery code («XXXX-XXXX») works once instead of the authenticator code.
+    let by_recovery = super::mfa::is_recovery_code(&req.code);
+    let ok = if by_recovery {
+        super::mfa::use_code(&state, user_id, &req.code).await?
+    } else {
+        totp_ok(&build_totp(&secret, &tenant_name, &email)?, &req.code)
+    };
+    if !ok {
         state.limiter.hit(&mfa_key, WINDOW_15_MIN);
         if attempts + 1 >= MAX_MFA_ATTEMPTS {
             sqlx::query("DELETE FROM sessions WHERE token_hash = $1").bind(&hash).execute(&state.db).await?;
@@ -295,7 +306,11 @@ pub async fn verify_totp(
     state.limiter.reset(&mfa_key);
     sqlx::query("DELETE FROM sessions WHERE token_hash = $1").bind(&hash).execute(&state.db).await?;
     let cookie = start_session(&state, &headers, tenant_id, user_id, "active").await?;
-    state.audit(tenant_id, Some(user_id), "auth.login", None, None, json!({ "mfa": true })).await;
+    if by_recovery {
+        let left = super::mfa::codes_left(&state, user_id).await?;
+        state.audit(tenant_id, Some(user_id), "auth.recovery_code_used", None, None, json!({ "left": left })).await;
+    }
+    state.audit(tenant_id, Some(user_id), "auth.login", None, None, json!({ "mfa": true, "recovery_code": by_recovery })).await;
     Ok((jar.add(cookie), Json(load_me(&state, user_id).await?)))
 }
 
@@ -330,8 +345,8 @@ pub async fn totp_setup(State(state): State<AppState>, user: CurrentUser) -> Api
         .fetch_one(&state.db)
         .await?;
     let totp = build_totp(&secret, &tenant_name, &user.email)?;
-    sqlx::query("UPDATE users SET totp_secret = $1 WHERE id = $2")
-        .bind(&secret)
+    sqlx::query("UPDATE users SET totp_secret_enc = $1, totp_secret = NULL WHERE id = $2")
+        .bind(super::mfa::seal_secret(&state, &secret)?)
         .bind(user.user_id)
         .execute(&state.db)
         .await?;
@@ -344,19 +359,20 @@ pub async fn totp_enable(
     user: CurrentUser,
     Json(req): Json<CodeRequest>,
 ) -> ApiResult<Json<Value>> {
-    let (secret, tenant_name): (Option<String>, String) = sqlx::query_as(
-        "SELECT u.totp_secret, t.name FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1",
-    )
-    .bind(user.user_id)
-    .fetch_one(&state.db)
-    .await?;
-    let secret = secret.ok_or_else(|| ApiError::BadRequest("call /auth/totp/setup first".into()))?;
+    let tenant_name: String = sqlx::query_scalar("SELECT name FROM tenants WHERE id = $1")
+        .bind(user.tenant_id)
+        .fetch_one(&state.db)
+        .await?;
+    let secret = super::mfa::load_secret(&state, user.user_id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest("call /auth/totp/setup first".into()))?;
     if !totp_ok(&build_totp(&secret, &tenant_name, &user.email)?, &req.code) {
         return bad_request("invalid code");
     }
     sqlx::query("UPDATE users SET totp_enabled = true WHERE id = $1").bind(user.user_id).execute(&state.db).await?;
+    let codes = super::mfa::issue_codes(&state, user.user_id).await?;
     state.audit(user.tenant_id, Some(user.user_id), "auth.mfa_enabled", None, None, json!({})).await;
-    Ok(Json(json!({ "ok": true })))
+    Ok(Json(json!({ "ok": true, "recovery_codes": codes })))
 }
 
 #[derive(Deserialize)]
@@ -376,10 +392,7 @@ pub async fn totp_disable(
     if !verify_password(req.password, hash).await {
         return Err(ApiError::Forbidden);
     }
-    sqlx::query("UPDATE users SET totp_enabled = false, totp_secret = NULL WHERE id = $1")
-        .bind(user.user_id)
-        .execute(&state.db)
-        .await?;
+    super::mfa::clear(&state, user.user_id).await?;
     state.audit(user.tenant_id, Some(user.user_id), "auth.mfa_disabled", None, None, json!({})).await;
     Ok(Json(json!({ "ok": true })))
 }

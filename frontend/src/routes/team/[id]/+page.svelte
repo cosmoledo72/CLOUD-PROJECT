@@ -438,6 +438,9 @@
       <section class="card pad narrowcard">
         <h2>Безопасность</h2>
         <div class="arow"><span>Двухфакторная защита</span><b class:ok-text={u.totp_enabled}>{u.totp_enabled ? 'Включена' : 'Не включена'}</b></div>
+        {#if u.totp_enabled && u.recovery_codes_left !== undefined}
+          <div class="arow"><span>Резервные коды</span><b class:warn-text={u.recovery_codes_left <= 2}>{u.recovery_codes_left ? `осталось ${u.recovery_codes_left} из 10` : 'не выпущены'}</b></div>
+        {/if}
         <div class="arow"><span>Последний визит</span><b>{u.last_seen_at ? formatDateTime(u.last_seen_at) : '—'}</b></div>
         <div class="arow"><span>В портале с</span><b>{formatDate(u.created_at)}</b></div>
         {#if self}
@@ -535,6 +538,7 @@
   .chip.static { cursor: default; }
   .foot { margin: 10px 0 0; }
   .ok-text { color: var(--ok); }
+  .warn-text { color: var(--warn); }
   .danger-text { color: var(--danger); }
   .admin-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   .btn.danger { color: var(--danger); }

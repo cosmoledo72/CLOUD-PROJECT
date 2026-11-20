@@ -34,6 +34,7 @@ use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::AsyncReadExt;
+use uuid::Uuid;
 
 use crate::{
     auth::CurrentUser,
@@ -153,22 +154,8 @@ fn status_with(state: &AppState, hour: u32, timezone: &str) -> Value {
     let last_ok = items.iter().find(|i| i.state == "ready");
     let request = dir.join("REQUEST");
     let requested_at = if request.is_file() { mtime_secs(&request) } else { None };
-    let mut warnings: Vec<String> = Vec::new();
-    if !dir.is_dir() {
-        warnings.push("Папка резервных копий недоступна серверу портала — проверьте подключение папки backups к сервису backend".into());
-    } else if !alive {
-        warnings.push("Сервис резервного копирования не отвечает больше 10 минут — проверьте, запущен ли он: docker compose ps backup".into());
-    }
-    match last_ok {
-        None => warnings.push("Готовых резервных копий нет".into()),
-        Some(b) if now.saturating_sub(b.time) > FRESH_SECS => {
-            warnings.push(format!("Последняя готовая копия сделана более {} ч назад", now.saturating_sub(b.time) / 3600))
-        }
-        _ => {}
-    }
-    if last.get("result").map(String::as_str) == Some("error") {
-        warnings.push(format!("Последняя попытка ({}) завершилась ошибкой: {}", last.get("time").cloned().unwrap_or_default(), last.get("error").cloned().unwrap_or_default()));
-    }
+    let problems = problems(&dir, now, alive, last_ok, &last);
+    let warnings: Vec<&String> = problems.iter().map(|(_, text)| text).collect();
     json!({
         "available": dir.is_dir(),
         "alive": alive,
@@ -183,6 +170,127 @@ fn status_with(state: &AppState, hour: u32, timezone: &str) -> Value {
         "warnings": warnings,
         "backups": items,
     })
+}
+
+/// What needs attention: (stable key, text). The key identifies the kind of
+/// problem for the mail alerts; the text is shown in the section and the letter.
+fn problems(dir: &FsPath, now: u64, alive: bool, last_ok: Option<&BackupItem>, last: &HashMap<String, String>) -> Vec<(&'static str, String)> {
+    let mut out: Vec<(&'static str, String)> = Vec::new();
+    if !dir.is_dir() {
+        out.push(("unavailable", "Папка резервных копий недоступна серверу портала — проверьте подключение папки backups к сервису backend".into()));
+    } else if !alive {
+        out.push(("silent", "Сервис резервного копирования не отвечает больше 10 минут — проверьте, запущен ли он: docker compose ps backup".into()));
+    }
+    match last_ok {
+        None => out.push(("none", "Готовых резервных копий нет".into())),
+        Some(b) if now.saturating_sub(b.time) > FRESH_SECS => {
+            out.push(("stale", format!("Последняя готовая копия сделана более {} ч назад", now.saturating_sub(b.time) / 3600)))
+        }
+        _ => {}
+    }
+    if last.get("result").map(String::as_str) == Some("error") {
+        out.push((
+            "error",
+            format!("Последняя попытка ({}) завершилась ошибкой: {}", last.get("time").cloned().unwrap_or_default(), last.get("error").cloned().unwrap_or_default()),
+        ));
+    }
+    out
+}
+
+// ---------------------------------------------------------------------------
+// Mail alerts to the owner of the backup portal
+// ---------------------------------------------------------------------------
+
+/// Check the backups every `BACKUP_ALERT_SECS` (default 5 minutes) and mail the
+/// owner of `BACKUP_PORTAL` when a new problem appears and when all is well again.
+/// The first check waits one interval, so a service that is still starting is
+/// not reported.
+pub fn spawn_alerts(state: AppState) {
+    if state.cfg.backup_portal.is_none() {
+        return;
+    }
+    let every = std::env::var("BACKUP_ALERT_SECS").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(300).max(1);
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(every)).await;
+            if let Err(e) = check_alerts(&state).await {
+                tracing::warn!(error = ?e, "backup alert check failed");
+            }
+        }
+    });
+}
+
+/// One check: compare the current problems with those already reported.
+pub async fn check_alerts(state: &AppState) -> ApiResult<()> {
+    let Some(slug) = state.cfg.backup_portal.as_deref() else { return Ok(()) };
+    let owner: Option<(Uuid, String)> = sqlx::query_as(
+        "SELECT t.id, u.email::text FROM tenants t JOIN users u ON u.tenant_id = t.id
+          WHERE t.slug = $1 AND u.role = 'owner' AND u.is_active ORDER BY u.created_at LIMIT 1",
+    )
+    .bind(slug)
+    .fetch_optional(&state.db)
+    .await?;
+    let Some((tenant_id, email)) = owner else { return Ok(()) };
+
+    let dir = PathBuf::from(&state.cfg.backup_dir);
+    let now = now_secs();
+    let items = scan(&dir);
+    let heartbeat = read_kv(&dir.join("STATUS")).get("alive").and_then(|v| v.parse::<u64>().ok());
+    let alive = heartbeat.is_some_and(|t| now.saturating_sub(t) < ALIVE_SECS);
+    let last = read_kv(&dir.join("LAST_RESULT"));
+    let current = problems(&dir, now, alive, items.iter().find(|i| i.state == "ready"), &last);
+    let keys: Vec<String> = current.iter().map(|(k, _)| k.to_string()).collect();
+
+    let before: Vec<String> = sqlx::query_scalar("SELECT alert_keys FROM backup_settings WHERE id")
+        .fetch_optional(&state.db)
+        .await?
+        .unwrap_or_default();
+    let new_problem = keys.iter().any(|k| !before.contains(k));
+    let recovered = keys.is_empty() && !before.is_empty();
+    if keys == before {
+        return Ok(());
+    }
+    sqlx::query(
+        "INSERT INTO backup_settings (id, alert_keys, alert_changed_at) VALUES (TRUE, $1, now())
+         ON CONFLICT (id) DO UPDATE SET alert_keys = EXCLUDED.alert_keys, alert_changed_at = now()",
+    )
+    .bind(&keys)
+    .execute(&state.db)
+    .await?;
+    if !new_problem && !recovered {
+        // Some problems went away, others remain: nothing new to report.
+        return Ok(());
+    }
+
+    let portal = crate::mail::portal_name(state, tenant_id).await?;
+    let url = format!("{}/admin/backups", state.cfg.public_url);
+    let mail = if recovered {
+        crate::mail::render(
+            &email,
+            &portal,
+            "Резервные копии снова в порядке",
+            &["Проблемы с резервным копированием, о которых мы писали, устранены: сервис работает, последняя копия свежая.".to_string()],
+            Some(("Открыть «Резервные копии»", &url)),
+            "Письмо отправлено владельцу портала автоматически.",
+        )
+    } else {
+        let mut paragraphs = vec!["Резервное копирование портала требует внимания:".to_string()];
+        paragraphs.extend(current.iter().map(|(_, t)| format!("• {t}")));
+        paragraphs.push("Пока проблема не устранена, новых копий может не быть. Следующее письмо придёт, когда всё восстановится или появится другая проблема.".into());
+        crate::mail::render(
+            &email,
+            &portal,
+            "Резервные копии: требуется внимание",
+            &paragraphs,
+            Some(("Открыть «Резервные копии»", &url)),
+            "Письмо отправлено владельцу портала автоматически.",
+        )
+    };
+    crate::mail::enqueue(state, tenant_id, "backup_alert", &mail).await?;
+    state
+        .audit(tenant_id, None, if recovered { "backup.alert_resolved" } else { "backup.alert_sent" }, Some("backup"), None, json!({ "problems": keys }))
+        .await;
+    Ok(())
 }
 
 /// `GET /api/admin/reserve`

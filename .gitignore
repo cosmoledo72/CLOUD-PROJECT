@@ -17,3 +17,8 @@ deploy/caddy-local-root.crt
 # Leftovers that do not belong to the repository
 /Claude outputs/
 /transfer/skills/
+
+# Test artefacts
+/.ci/
+frontend/test-results/
+frontend/playwright-report/

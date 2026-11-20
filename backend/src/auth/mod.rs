@@ -2,6 +2,7 @@
 //! `CurrentUser` extractor.
 
 pub mod handlers;
+pub mod mfa;
 
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},

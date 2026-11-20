@@ -28,6 +28,8 @@ export interface ProfileUser {
   crm_role: 'none' | 'user' | 'manager';
   finance_role: 'none' | 'view' | 'edit';
   totp_enabled: boolean;
+  /** Unused 2FA recovery codes; only for the person and administrators. */
+  recovery_codes_left?: number;
   invite_pending: boolean;
   // The person and administrators only:
   birth_date?: string | null;

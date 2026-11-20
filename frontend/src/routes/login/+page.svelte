@@ -9,7 +9,7 @@
   import Lock from '@lucide/svelte/icons/lock';
   import Mail from '@lucide/svelte/icons/mail';
 
-  type Mode = 'login' | 'mfa' | 'signup' | 'forgot' | 'sent';
+  type Mode = 'login' | 'mfa' | 'recovery' | 'signup' | 'forgot' | 'sent';
   let mode = $state<Mode>('login');
   let error = $state('');
   let busy = $state(false);
@@ -63,7 +63,11 @@
       error = !(e instanceof ApiError)
         ? 'Сервер недоступен'
         : e.status === 401
-          ? 'Неверные данные для входа'
+          ? mode === 'mfa'
+            ? 'Неверный код'
+            : mode === 'recovery'
+              ? 'Код неверный или уже использован'
+              : 'Неверные данные для входа'
           : e.status === 429
             ? mode === 'forgot'
               ? 'Слишком много запросов. Повторите через час.'
@@ -154,6 +158,19 @@
       <input class="input code" bind:value={code} inputmode="numeric" maxlength="6" autocomplete="one-time-code" required autofocus aria-label="Код" />
       {#if error}<div class="error-box">{error}</div>{/if}
       <button class="btn primary full" disabled={busy || code.length !== 6}>Подтвердить</button>
+      <button type="button" class="linkish alt" onclick={() => { mode = 'recovery'; code = ''; error = ''; }}>Нет доступа к телефону? Войти по резервному коду</button>
+      <button type="button" class="btn ghost full" onclick={() => { mode = 'login'; error = ''; }}>Назад</button>
+    </form>
+  {:else if mode === 'recovery'}
+    <form onsubmit={(e) => { e.preventDefault(); verify(); }}>
+      <h2>Вход по резервному коду</h2>
+      <p class="muted">Введите один из сохранённых резервных кодов. После входа он перестанет действовать.</p>
+      <!-- svelte-ignore a11y_autofocus -->
+      <input class="input code rcode" bind:value={code} maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false"
+             placeholder="XXXX-XXXX" required autofocus aria-label="Резервный код" />
+      {#if error}<div class="error-box">{error}</div>{/if}
+      <button class="btn primary full" disabled={busy || code.replace(/[^0-9a-z]/gi, '').length !== 8}>Войти</button>
+      <button type="button" class="linkish alt" onclick={() => { mode = 'mfa'; code = ''; error = ''; }}>Ввести код из приложения</button>
       <button type="button" class="btn ghost full" onclick={() => { mode = 'login'; error = ''; }}>Назад</button>
     </form>
   {:else}
@@ -189,6 +206,9 @@
   .stack { display: grid; gap: 12px; }
   .linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; }
   .linkish:hover { text-decoration: underline; }
+  .linkish.alt { display: block; margin: 10px auto 2px; font-size: 13.5px; text-align: center; }
+  .rcode { letter-spacing: .14em; text-transform: uppercase; }
+  .rcode::placeholder { text-transform: none; letter-spacing: .14em; }
   .forgot { justify-self: end; font-size: 13px; margin-top: -4px; }
   .join { margin: 0; text-align: center; font-size: 13.5px; color: var(--text-2); }
   .intro { display: grid; gap: 2px; margin-bottom: 6px; }

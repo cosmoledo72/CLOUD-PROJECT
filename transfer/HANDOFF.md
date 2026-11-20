@@ -23,7 +23,7 @@
 
 ## 2. Состояние
 
-Сделаны итерации 1–29 и 33 (SvelteKit 3, 20.11.2026); 30 и 31 отложены заказчиком. Последняя — **29 «Гигиена и надёжность»** (20.11.2026, по ревизии — документ проекта AUDIT_2026-11-20.md): расписание резервных копий в портале (час — в «Резервных копиях», пояс — пояс системного портала, миграция 0030), догоняющая копия, плашка «Портал обновлён» и запрет кэширования `index.html`, защитные заголовки nginx, обновление зависимостей, clippy, git в рабочей папке и GitHub.
+Сделаны итерации 1–29, 33 (SvelteKit 3) и 32 (защита 2FA, резервные коды, письма владельцу о сбоях копий, GitHub Actions, Playwright) — 20.11.2026; 30 и 31 отложены заказчиком. Последняя — **29 «Гигиена и надёжность»** (20.11.2026, по ревизии — документ проекта AUDIT_2026-11-20.md): расписание резервных копий в портале (час — в «Резервных копиях», пояс — пояс системного портала, миграция 0030), догоняющая копия, плашка «Портал обновлён» и запрет кэширования `index.html`, защитные заголовки nginx, обновление зависимостей, clippy, git в рабочей папке и GitHub.
 
 Следующее по плану (PLAN.md, пересчитан 20.11.2026): итерация 30 «Запуск в офисе» (A1–A4, нужен заказчик); пилот A5–A7; итерация 31 — XLSX и расширенные шаблоны (C8); 32 — D3, оповещения, CI (D6), Playwright (D7); 33 — SvelteKit 3.
 
@@ -63,23 +63,23 @@ python3 transfer/dev-env/seed/seed.py   # portal "demo"
 
 Демо-портал: `demo`, владелец o@example.com / owner-password-1; Борис Ковалёв — b@example.com / boris-password-1 (или b-password-123 по seed.py); Анна Петрова — a@example.com. Остальные `seed*.py` дозаполняют проекты, финансы, CRM (пути внутри скриптов — `/home/claude/cp/...`).
 
-Сквозные тесты (28 файлов, onlyoffice_live_test — только с настоящим ONLYOFFICE):
+Сквозные тесты (31 файл, onlyoffice_live_test — только с настоящим ONLYOFFICE). Проще всего — `scripts/run_e2e.sh` (с `WEB=http://localhost:8090`, если запущен nginx с `frontend/nginx.conf`); то же запускается на GitHub (`.github/workflows/ci.yml`, раздел 13 SPEC):
 
 ```bash
-export BACKUP_DIR=/home/claude/run/backups BACKUP_PORTAL=bkptest PGHOST=localhost PGUSER=postgres PGPASSWORD=postgres PGDATABASE=workhub BLOBS_DIR=/home/claude/run/data
+export BACKUP_DIR=/home/claude/run/backups BACKUP_PORTAL=bkptest BACKUP_ALERT_SECS=2 PGHOST=localhost PGUSER=postgres PGPASSWORD=postgres PGDATABASE=workhub BLOBS_DIR=/home/claude/run/data
 for t in scripts/*_test.py; do [ "$t" = scripts/onlyoffice_live_test.py ] && continue
   r=$(API=http://localhost:8080 DOCS_JWT_SECRET=dev-docs-secret-123 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/workhub timeout 300 python3 $t 2>&1 | tail -1); echo "$t: $r"; done
 ```
 
 Длительный прогон запускать в фоне с записью в лог. Если несколько тестов подряд падают с 429 — сработала защита от подбора пароля (iter3_test её проверяет): перезапустить backend и повторить.
 
-Также: `cargo test` (73 теста) в `backend/`, `npx svelte-check --threshold warning` в `frontend/`. Скриншоты — Playwright (`require('playwright')`, примеры в `transfer/dev-env/*.js`).
+Также: `cargo test` (74 теста) и `cargo clippy --all-targets -- -D warnings` в `backend/`, `npx svelte-kit sync && npx svelte-check --threshold warning` в `frontend/`; сценарии интерфейса — `WEB=http://localhost:8090 npm run test:ui` в `frontend/` (Playwright, `frontend/e2e`). Скриншоты — Playwright (`require('playwright')`, примеры в `transfer/dev-env/*.js`). Результат проверки на GitHub виден заказчику в Actions; из сессии Claude без подключённого GitHub его не прочитать — спросить заказчика.
 
 ## 5. Важные технические заметки
 
 - **Шаблоны документов** (`backend/src/ooxml.rs`, `templates.rs`): метки `{{key}}`, только ASCII, регистр не важен; `values_for` строит словарь (используется в генерации, проверке и CRM-документах); алиасы — `resolve_key`/`add_aliases`; данные человека — `profiles::person_values`.
 - **Реквизиты проектов** — `backend/src/fields.rs` (пресеты, ключ ГИПа — `chief_engineer`, тип `user`).
 - **Права**: роли owner/admin/member/guest; коллеги видят контакты сотрудника, реквизиты — сам сотрудник и администраторы.
-- **Защита входа**: ограничение попыток в `ratelimit.rs` (по IP из X-Real-IP).
+- **Защита входа**: ограничение попыток в `ratelimit.rs` (по IP из X-Real-IP). Ключи 2FA — только в `users.totp_secret_enc` (шифрование и резервные коды — `auth/mfa.rs`).
 - **Тесты, зависящие от даты**: учитывать часовой пояс Сахалина (UTC+11) и рабочие дни проекта.
 - **Docker на Windows**: первая сборка backend ~9 минут, повторные ~4 минуты; при ошибке «read-only file system» — перезапуск Docker Desktop / очистка `docker builder prune`.

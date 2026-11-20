@@ -44,6 +44,7 @@ struct ProfileRow {
     finance_role: String,
     is_active: bool,
     totp_enabled: bool,
+    recovery_codes_left: i64,
     invite_pending: bool,
     position: String,
     phone: String,
@@ -88,6 +89,7 @@ fn require_view(user: &CurrentUser, id: Uuid) -> ApiResult<()> {
 async fn load_row(state: &AppState, tenant_id: Uuid, id: Uuid) -> ApiResult<ProfileRow> {
     sqlx::query_as::<_, ProfileRow>(
         "SELECT u.id, u.email::text AS email, u.display_name, u.role, u.crm_role, u.finance_role, u.is_active, u.totp_enabled,
+                (SELECT count(*) FROM user_recovery_codes r WHERE r.user_id = u.id AND r.used_at IS NULL) AS recovery_codes_left,
                 u.invite_pending, u.position, u.phone, u.last_name, u.first_name, u.middle_name, u.birth_date, u.department,
                 u.manager_id, m.display_name AS manager_name, u.hired_on, u.phone_mobile, u.telegram, u.doc_short_name,
                 u.doc_position, u.name_genitive, u.name_dative, u.nrs_number, u.qual_cert, u.power_of_attorney,
@@ -170,6 +172,7 @@ pub async fn get(State(state): State<AppState>, user: CurrentUser, Path(id): Pat
         "crm_role": u.crm_role, "finance_role": u.finance_role, "totp_enabled": u.totp_enabled, "invite_pending": u.invite_pending,
     });
     if own {
+        card["recovery_codes_left"] = json!(u.recovery_codes_left);
         card["birth_date"] = json!(u.birth_date);
         for (k, v) in [
             ("doc_short_name", &u.doc_short_name),

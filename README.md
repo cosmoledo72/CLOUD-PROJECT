@@ -101,6 +101,13 @@ On Windows PowerShell, set variables with `$env:NAME = "value"` instead of `expo
 
 ## Tests
 
+**CI.** Every push runs `.github/workflows/ci.yml` on GitHub Actions: `cargo clippy` (warnings are errors), `cargo test`, `svelte-check`, `npm audit`, all end-to-end tests against PostgreSQL 16 and the built SPA behind `frontend/nginx.conf`, the Playwright interface tests and the Docker image builds. Locally, with the backend started as in `transfer/dev-env/server.sh`:
+
+```bash
+API=http://localhost:8080 WEB=http://localhost:8090 scripts/run_e2e.sh   # every scripts/*_test.py, non-zero exit on failure
+cd frontend && WEB=http://localhost:8090 API=http://localhost:8080 npm run test:ui   # Playwright scenarios (frontend/e2e)
+```
+
 The end-to-end API smoke test needs a running backend and uses only the Python standard library. It covers:
 
 - sign-up and TOTP login;

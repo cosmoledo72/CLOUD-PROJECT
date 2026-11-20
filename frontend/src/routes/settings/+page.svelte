@@ -5,6 +5,10 @@
   import QRCode from 'qrcode';
   import { api, plainMessage, roleLabel } from '#lib/api.ts';
   import NotificationPrefs from '#lib/NotificationPrefs.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import RecoveryCodes from '#lib/RecoveryCodes.svelte';
+  import KeyRound from '@lucide/svelte/icons/key-round';
+  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import { session } from '#lib/session.svelte.ts';
 
   let error = $state('');
@@ -27,10 +31,11 @@
   async function enable() {
     error = '';
     try {
-      await api.post('/auth/totp/enable', { code });
+      const r = await api.post<{ recovery_codes: string[] }>('/auth/totp/enable', { code });
       setup = null;
       code = '';
       notice = 'Двухфакторная аутентификация включена.';
+      showCodes(r.recovery_codes, false);
       await session.load();
     } catch (e) {
       error = plainMessage((e as Error).message);
@@ -45,6 +50,32 @@
       await session.load();
     } catch {
       error = 'Неверный пароль';
+    }
+  }
+
+  // --- Recovery codes ---------------------------------------------------------
+  let codes = $state<string[]>([]);
+  let codesOpen = $state(false);
+  let codesReissued = $state(false);
+  function showCodes(list: string[], reissued: boolean) {
+    codes = list;
+    codesReissued = reissued;
+    codesOpen = true;
+  }
+  const codesLeft = $derived(session.me?.recovery_codes_left ?? 0);
+  let reissueOpen = $state(false);
+  let reissuePassword = $state('');
+  let reissueError = $state('');
+  async function reissue() {
+    reissueError = '';
+    try {
+      const r = await api.post<{ recovery_codes: string[] }>('/auth/totp/recovery-codes', { password: reissuePassword });
+      reissueOpen = false;
+      reissuePassword = '';
+      showCodes(r.recovery_codes, true);
+      await session.load();
+    } catch {
+      reissueError = 'Неверный пароль';
     }
   }
 
@@ -86,6 +117,14 @@
       <h2>Двухфакторная аутентификация</h2>
       {#if session.me.totp_enabled}
         <p>Включена. При входе запрашивается код из приложения-аутентификатора.</p>
+        <div class="rc" class:low={codesLeft <= 2}>
+          <KeyRound size={18} />
+          <span class="rc-text">
+            {#if codesLeft === 0}Резервных кодов нет — выпустите их, чтобы войти без телефона
+            {:else}Резервные коды: <b>осталось {codesLeft} из 10</b>{#if codesLeft <= 2} — пора выпустить новые{/if}{/if}
+          </span>
+          <button class="btn sm" onclick={() => { reissueOpen = true; reissueError = ''; }}><RefreshCw size={15} />Выпустить новые</button>
+        </div>
         <div class="row">
           <input class="input" type="password" placeholder="Пароль для подтверждения" bind:value={disablePassword} autocomplete="current-password" />
           <button class="btn danger" disabled={!disablePassword} onclick={disable}>Отключить</button>
@@ -120,7 +159,27 @@
   {/if}
 </div>
 
+<Modal bind:open={reissueOpen} title="Новые резервные коды" width={420}>
+  <p class="muted small">Прежние коды перестанут действовать. Для подтверждения введите пароль.</p>
+  <input class="pm-user" type="email" name="username" autocomplete="username" value={session.me?.email ?? ''} readonly tabindex="-1" aria-hidden="true" />
+  <!-- svelte-ignore a11y_autofocus -->
+  <input class="input" type="password" placeholder="Пароль" bind:value={reissuePassword} autocomplete="current-password" autofocus
+         onkeydown={(e) => e.key === 'Enter' && reissuePassword && reissue()} />
+  {#if reissueError}<div class="error-box">{reissueError}</div>{/if}
+  {#snippet footer()}
+    <button class="btn" onclick={() => (reissueOpen = false)}>Отмена</button>
+    <button class="btn primary" disabled={!reissuePassword} onclick={reissue}>Выпустить</button>
+  {/snippet}
+</Modal>
+<RecoveryCodes bind:open={codesOpen} {codes} reissued={codesReissued} portal={session.me?.tenant_slug ?? ''} email={session.me?.email ?? ''} />
+
 <style>
+  .rc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 12px;
+        border: 1px solid var(--border); border-radius: 8px; color: var(--text-2); font-size: 13.5px; }
+  .rc.low { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+  .rc-text { flex: 1; min-width: 200px; color: var(--text); }
+  .rc.low .rc-text { color: var(--warn); }
+  .error-box { margin-top: 10px; }
   .me-card { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .me-card h2 { margin: 0; }
   .me-card p { margin: 2px 0 0; }

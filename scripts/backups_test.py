@@ -207,6 +207,50 @@ def main():
     else:
         print("  (backup.sh not run: no pg_dump / PGHOST)")
 
+    # --- Mail to the owner when backups need attention (iteration 32) -------
+    every = int(os.environ.get("BACKUP_ALERT_SECS", "0") or 0)
+    if every and every <= 5:
+        def alerts():
+            return [m for m in admin.call("GET", "/admin/mail")["outbox"] if m["kind"] == "backup_alert"]
+
+        def hold(seconds, last_result="ok"):
+            """Keep the service «alive» for a while (as backup.sh does every minute)."""
+            end = time.time() + seconds
+            while time.time() < end:
+                with open(os.path.join(DIR, "STATUS"), "w") as f:
+                    f.write(f"alive={int(time.time())}\n")
+                with open(os.path.join(DIR, "LAST_RESULT"), "w") as f:
+                    f.write(f"result={last_result}\ntime=2026-11-20 03:00\nname=x\nerror={'pg_dump failed' if last_result == 'error' else ''}\n")
+                time.sleep(0.5)
+
+        for x in os.listdir(DIR):
+            if x.startswith("cloud-project-"):
+                shutil.rmtree(os.path.join(DIR, x))
+        make_folder("cloud-project-2026-11-20_0300")
+        hold(every * 3)
+        base = len(alerts())
+        hold(every * 3, "error")
+        got = alerts()
+        assert len(got) == base + 1, (base, got[:3])
+        assert got[0]["to_email"] == "o@example.com" and "внимание" in got[0]["subject"], got[0]
+        hold(every * 3, "error")
+        assert len(alerts()) == base + 1, "the same problem is reported once"
+        for x in os.listdir(DIR):
+            if x.startswith("cloud-project-"):
+                shutil.rmtree(os.path.join(DIR, x))
+        make_folder("cloud-project-2026-11-18_0300", age=3 * 86400)
+        hold(every * 3, "error")
+        assert len(alerts()) == base + 2, "a new kind of problem is a new letter"
+        make_folder("cloud-project-2026-11-20_0300")
+        hold(every * 3)
+        got = alerts()
+        assert len(got) == base + 3 and "порядке" in got[0]["subject"], got[:2]
+        assert all(m["to_email"] == "o@example.com" for m in got)
+        assert len(admin.call("GET", "/admin/audit?action=backup.alert_sent&limit=50")["entries"]) >= 2
+        step("Owner mail: one letter when a problem appears, one for a new kind of problem, one when all is well again")
+    else:
+        print("  (mail alerts not checked: start the server with BACKUP_ALERT_SECS=1..5 and pass it here)")
+
     # Leave the folder clean.
     for x in os.listdir(DIR):
         p = os.path.join(DIR, x)

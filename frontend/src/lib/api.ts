@@ -57,6 +57,8 @@ export interface Me {
   display_name: string;
   role: 'owner' | 'admin' | 'member' | 'guest';
   totp_enabled: boolean;
+  /** Unused 2FA recovery codes (0 when 2FA is off). */
+  recovery_codes_left: number;
   crm_role: CrmRole;
   /** Effective finance access (administrators: edit). */
   finance_role: FinanceRole;

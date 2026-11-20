@@ -240,7 +240,7 @@ pub async fn reset_password(
 pub async fn reset_mfa(State(state): State<AppState>, user: CurrentUser, Path(id): Path<Uuid>) -> ApiResult<Json<Value>> {
     user.require_admin()?;
     manageable_target(&state, &user, id).await?;
-    sqlx::query("UPDATE users SET totp_enabled = false, totp_secret = NULL WHERE id = $1").bind(id).execute(&state.db).await?;
+    crate::auth::mfa::clear(&state, id).await?;
     sqlx::query("DELETE FROM sessions WHERE user_id = $1").bind(id).execute(&state.db).await?;
     state.audit(user.tenant_id, Some(user.user_id), "user.mfa_reset", Some("user"), Some(id), json!({})).await;
     Ok(Json(json!({ "ok": true })))

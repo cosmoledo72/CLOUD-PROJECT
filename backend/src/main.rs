@@ -78,6 +78,7 @@ fn router(state: AppState) -> Router {
         .route("/auth/totp/setup", post(authh::totp_setup))
         .route("/auth/totp/enable", post(authh::totp_enable))
         .route("/auth/totp/disable", post(authh::totp_disable))
+        .route("/auth/totp/recovery-codes", post(auth::mfa::regenerate))
         .route("/auth/profile", put(team::update_profile))
         // Team directory
         .route("/team", get(team::list))
@@ -331,8 +332,10 @@ async fn main() -> anyhow::Result<()> {
         .timeout(std::time::Duration::from_secs(120))
         .build()?;
     let state = AppState { db, cfg: Arc::new(cfg.clone()), store: Arc::new(store), http, limiter: Default::default(), mail_wakeup: Default::default(), events: tokio::sync::broadcast::channel(1024).0 };
+    auth::mfa::encrypt_legacy_secrets(&state).await.context("encrypt TOTP secrets")?;
     trash::spawn_auto_purge(state.clone());
     mail::spawn_worker(state.clone());
+    backups::spawn_alerts(state.clone());
     notify::spawn_worker(state.clone());
     textract::spawn_worker(state.clone());
     if let Err(e) = kb::convert_markdown(&state).await {

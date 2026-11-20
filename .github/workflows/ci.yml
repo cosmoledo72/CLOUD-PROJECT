@@ -1,0 +1,164 @@
+# CI for CLOUD-PROJECT: on every push and pull request.
+#
+#   checks  — cargo clippy (warnings are errors), cargo test, svelte-check, npm audit
+#   e2e     — backend + PostgreSQL 16 + the built SPA behind the project's nginx
+#             config: all scripts/*_test.py and the Playwright interface tests
+#   docker  — the backend and frontend images build
+#
+# The test settings mirror transfer/dev-env/server.sh.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+      - name: cargo clippy
+        working-directory: backend
+        run: cargo clippy --all-targets -- -D warnings
+      - name: cargo test
+        working-directory: backend
+        run: cargo test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+      - name: svelte-check
+        working-directory: frontend
+        run: npx svelte-kit sync && npx svelte-check --threshold warning --fail-on-warnings
+      - name: npm audit
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  e2e:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workhub
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      API: http://localhost:8080
+      WEB: http://localhost:8090
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/workhub
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/workhub
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: workhub
+      APP_SECRET: ci-app-secret-0123456789abcdef0123456789
+      DOCS_JWT_SECRET: dev-docs-secret-123
+      DOCS_PUBLIC_URL: http://localhost:9999
+      DOCS_INTERNAL_URL: http://localhost:9999
+      INTERNAL_URL: http://localhost:8080
+      SMTP_ALLOW_PRIVATE: "true"
+      NOTIFY_EMAIL_DELAY_SECS: "2"
+      DUE_SCAN_SECS: "2"
+      DUE_REMINDER_HOUR: "0"
+      SIGNUP_IP_LIMIT: "100000"
+      STORAGE_DIR: ${{ github.workspace }}/.ci/data
+      BLOBS_DIR: ${{ github.workspace }}/.ci/data
+      BACKUP_DIR: ${{ github.workspace }}/.ci/backups
+      BACKUP_PORTAL: bkptest
+      BACKUP_ALERT_SECS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Tools (nginx, PostgreSQL 16 client)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q nginx-light postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
+      - name: Build backend
+        working-directory: backend
+        run: cargo build
+      - name: Build frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Start backend
+        run: |
+          mkdir -p .ci/data .ci/backups
+          (cd backend && nohup ./target/debug/workhub-server > ../.ci/server.log 2>&1 &)
+          for i in $(seq 1 60); do curl -fs localhost:8080/api/health > /dev/null && break; sleep 1; done
+          curl -fs localhost:8080/api/health
+      - name: Start web (frontend/nginx.conf on :8090)
+        run: |
+          sed -e 's/\${REAL_IP_FROM}/127.0.0.1/' -e 's#backend:8080#127.0.0.1:8080#' \
+              -e "s#/usr/share/nginx/html#$GITHUB_WORKSPACE/frontend/build#" -e 's/listen 80;/listen 8090;/' \
+              frontend/nginx.conf > .ci/site.conf
+          printf 'worker_processes 1;\npid %s/.ci/nginx.pid;\nerror_log %s/.ci/nginx-error.log;\nevents {}\nhttp { include /etc/nginx/mime.types; access_log off; include %s/.ci/site.conf; }\n' \
+              "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE" > .ci/nginx.conf
+          chmod o+x "$HOME" "$GITHUB_WORKSPACE" || true
+          sudo nginx -c "$GITHUB_WORKSPACE/.ci/nginx.conf"
+          curl -fsI localhost:8090/ | head -1
+      - name: End-to-end tests (scripts/*_test.py)
+        run: scripts/run_e2e.sh
+      - name: Interface tests (Playwright)
+        working-directory: frontend
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:ui
+      - name: Logs and screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: |
+            .ci/server.log
+            .ci/nginx-error.log
+            frontend/test-results/
+          retention-days: 7
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: false
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
